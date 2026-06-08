@@ -10,7 +10,7 @@ const Logo = ({ size = 'md', className = '' }) => {
   return (
     <span className={`font-bold tracking-tight ${sizes[size]} ${className}`}>
       <span className="text-slate-900 dark:text-white">Se</span>
-      <span className="text-blue-600 dark:text-blue-400">Note</span>
+      <span className="text-blue-500">Note.</span>
     </span>
   );
 };

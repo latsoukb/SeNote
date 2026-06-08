@@ -4,16 +4,28 @@
   "description": "Prise de notes manuscrites avec papier Seyès, zoom stylet et dossiers",
   "icons": [
     {
-      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%232563EB'/%3E%3Cpath d='M48 40h96v112H48z' fill='%23fff' rx='4'/%3E%3Cpath d='M56 72h80M56 96h80M56 120h56' stroke='%23C4B5FD' stroke-width='3'/%3E%3Cpath d='M72 40v112' stroke='%23DC2626' stroke-width='4'/%3E%3C/svg%3E",
+      "src": "icons/icon-192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "start_url": "/",
   "display": "standalone",
-  "theme_color": "#2563EB",
-  "background_color": "#F8FAFC",
+  "theme_color": "#000000",
+  "background_color": "#000000",
   "orientation": "any",
   "lang": "fr",
   "shortcuts": [
@@ -22,7 +34,13 @@
       "short_name": "Nouveau",
       "description": "Créer un nouveau cahier",
       "url": "/?action=new",
-      "icons": [{ "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'%3E%3Crect width='96' height='96' rx='20' fill='%232563EB'/%3E%3Cpath d='M48 28v40M28 48h40' stroke='white' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E", "sizes": "96x96" }]
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ]
 }
