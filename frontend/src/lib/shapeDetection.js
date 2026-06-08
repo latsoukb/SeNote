@@ -1,3 +1,5 @@
+import { shapeToPoints } from './shapeGeometry';
+
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
 const boundingBox = (points) => {
@@ -45,6 +47,61 @@ const rdp = (points, epsilon) => {
   return [...left.slice(0, -1), ...right];
 };
 
+const mergeNearby = (pts, threshold) => {
+  const out = [];
+  pts.forEach((p) => {
+    if (!out.some((q) => dist(p, q) < threshold)) out.push(p);
+  });
+  return out;
+};
+
+/** Régression cercle — méthode algébrique (least squares) */
+const fitCircleAlgebraic = (points) => {
+  const n = points.length;
+  let sx = 0, sy = 0, sx2 = 0, sy2 = 0, sxy = 0;
+  let sx3 = 0, sy3 = 0, sx2y = 0, sxy2 = 0;
+
+  points.forEach((p) => {
+    const x = p.x;
+    const y = p.y;
+    sx += x;
+    sy += y;
+    sx2 += x * x;
+    sy2 += y * y;
+    sxy += x * y;
+    sx3 += x * x * x;
+    sy3 += y * y * y;
+    sx2y += x * x * y;
+    sxy2 += x * y * y;
+  });
+
+  const C = n * sx2 - sx * sx;
+  const D = n * sxy - sx * sy;
+  const E = n * sy2 - sy * sy;
+  const G = 0.5 * (n * sx3 + n * sxy2 - sx * (sx2 + sy2));
+  const H = 0.5 * (n * sy3 + n * sx2y - sy * (sx2 + sy2));
+  const denom = C * E - D * D;
+
+  if (Math.abs(denom) < 1e-4) {
+    const box = boundingBox(points);
+    const cx = (box.minX + box.maxX) / 2;
+    const cy = (box.minY + box.maxY) / 2;
+    const r = (box.w + box.h) / 4;
+    return { cx, cy, r, err: r * 0.2 };
+  }
+
+  const cx = (G * E - H * D) / denom;
+  const cy = (C * H - D * G) / denom;
+  let rSum = 0;
+  points.forEach((p) => {
+    rSum += dist(p, { x: cx, y: cy });
+  });
+  const r = rSum / n;
+  const err =
+    points.reduce((e, p) => e + Math.abs(dist(p, { x: cx, y: cy }) - r), 0) / n;
+  return { cx, cy, r, err };
+};
+
 const fitLine = (points) => {
   const n = points.length;
   let sx = 0, sy = 0, sxx = 0, sxy = 0;
@@ -79,41 +136,6 @@ const lineError = (points, line) => {
   return err / points.length;
 };
 
-const mergeNearby = (pts, threshold) => {
-  const out = [];
-  pts.forEach((p) => {
-    if (!out.some((q) => dist(p, q) < threshold)) out.push(p);
-  });
-  return out;
-};
-
-const fitCircle = (points) => {
-  const box = boundingBox(points);
-  let cx = (box.minX + box.maxX) / 2;
-  let cy = (box.minY + box.maxY) / 2;
-  let r = (box.w + box.h) / 4;
-  for (let iter = 0; iter < 4; iter++) {
-    let n = 0;
-    let sx = 0, sy = 0, sr = 0;
-    points.forEach((p) => {
-      const d = dist(p, { x: cx, y: cy }) || 0.001;
-      const w = 1 / d;
-      sx += w * p.x;
-      sy += w * p.y;
-      sr += w * d;
-      n += w;
-    });
-    if (n > 0) {
-      cx = sx / n;
-      cy = sy / n;
-      r = sr / n;
-    }
-  }
-  const err =
-    points.reduce((e, p) => e + Math.abs(dist(p, { x: cx, y: cy }) - r), 0) / points.length;
-  return { cx, cy, r, err };
-};
-
 const circularityOf = (points, box) => {
   const plen = pathLength(points);
   const area = box.w * box.h;
@@ -131,42 +153,6 @@ const edgeRatio = (points, box) => {
   return onEdge / points.length;
 };
 
-const detectArrow = (points, size) => {
-  if (points.length < 14) return null;
-  const split = Math.floor(points.length * 0.82);
-  const shaft = points.slice(0, split);
-  const head = points.slice(split);
-  if (shaft.length < 8 || head.length < 4) return null;
-  const line = fitLine(shaft);
-  if (lineError(shaft, line) > size * 0.08) return null;
-  const tip = points[points.length - 1];
-  const headLen = dist(head[0], tip);
-  if (headLen < size * 0.06 || headLen > size * 0.38) return null;
-  const headOff = head.filter((p) => perpendicularDist(p, line) > size * 0.05).length;
-  if (headOff < 2) return null;
-  const dx = line.x2 - line.x1;
-  const dy = line.y2 - line.y1;
-  const len = Math.hypot(dx, dy) || 1;
-  const ux = dx / len;
-  const uy = dy / len;
-  const headSize = Math.min(size * 0.2, len * 0.35);
-  return {
-    type: 'arrow',
-    x1: line.x1,
-    y1: line.y1,
-    x2: tip.x,
-    y2: tip.y,
-    headLeft: {
-      x: tip.x - ux * headSize - uy * headSize * 0.55,
-      y: tip.y - uy * headSize + ux * headSize * 0.55,
-    },
-    headRight: {
-      x: tip.x - ux * headSize + uy * headSize * 0.55,
-      y: tip.y - uy * headSize - ux * headSize * 0.55,
-    },
-  };
-};
-
 const getMainVerts = (points, size) => {
   const simplified = rdp(points, size * 0.1);
   let verts = simplified;
@@ -174,6 +160,36 @@ const getMainVerts = (points, size) => {
     verts = verts.slice(0, -1);
   }
   return mergeNearby(verts, size * 0.12);
+};
+
+const fitRectangle = (points, size, forceSquare) => {
+  const verts = getMainVerts(points, size);
+  const box = boundingBox(points);
+
+  if (verts.length === 4) {
+    const xs = verts.map((v) => v.x);
+    const ys = verts.map((v) => v.y);
+    const x = Math.min(...xs);
+    const y = Math.min(...ys);
+    const w = Math.max(...xs) - x;
+    const h = Math.max(...ys) - y;
+    if (forceSquare) {
+      const s = Math.max(w, h);
+      const cx = x + w / 2;
+      const cy = y + h / 2;
+      return { x: cx - s / 2, y: cy - s / 2, w: s, h: s };
+    }
+    return { x, y, w, h };
+  }
+
+  return forceSquare ? makeSquare(box) : { x: box.minX, y: box.minY, w: box.w, h: box.h };
+};
+
+const makeSquare = (box) => {
+  const s = Math.max(box.w, box.h);
+  const cx = box.minX + box.w / 2;
+  const cy = box.minY + box.h / 2;
+  return { x: cx - s / 2, y: cy - s / 2, w: s, h: s };
 };
 
 const pickTriangleVerts = (points, size) => {
@@ -187,23 +203,67 @@ const pickTriangleVerts = (points, size) => {
   ];
 };
 
-const makeRect = (box, forceSquare) => {
-  let { minX, minY, w, h } = { minX: box.minX, minY: box.minY, w: box.w, h: box.h };
-  if (forceSquare) {
-    const s = Math.max(w, h);
-    const cx = minX + w / 2;
-    const cy = minY + h / 2;
-    return { x: cx - s / 2, y: cy - s / 2, w: s, h: s };
+const fitLineEndpoints = (points) => {
+  const line = fitLine(points);
+  const dx = line.x2 - line.x1;
+  const dy = line.y2 - line.y1;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len;
+  const uy = dy / len;
+
+  let minT = Infinity;
+  let maxT = -Infinity;
+  let p1 = points[0];
+  let p2 = points[points.length - 1];
+
+  points.forEach((p) => {
+    const t = (p.x - line.x1) * ux + (p.y - line.y1) * uy;
+    if (t < minT) {
+      minT = t;
+      p1 = { x: line.x1 + ux * t, y: line.y1 + uy * t };
+    }
+    if (t > maxT) {
+      maxT = t;
+      p2 = { x: line.x1 + ux * t, y: line.y1 + uy * t };
+    }
+  });
+
+  return { type: 'line', x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y };
+};
+
+/** Traits cursive / écriture — ne pas convertir en forme géométrique */
+export const looksLikeHandwriting = (points) => {
+  if (!points || points.length < 10) return false;
+  let reversals = 0;
+  let lastAngle = null;
+  const step = Math.max(2, Math.floor(points.length / 15));
+  for (let i = step; i < points.length; i += step) {
+    const dx = points[i].x - points[i - step].x;
+    const dy = points[i].y - points[i - step].y;
+    if (dx * dx + dy * dy < 4) continue;
+    const angle = Math.atan2(dy, dx);
+    if (lastAngle !== null) {
+      let diff = angle - lastAngle;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      if (Math.abs(diff) > 0.65) reversals++;
+    }
+    lastAngle = angle;
   }
-  return { x: minX, y: minY, w, h };
+  const start = points[0];
+  const end = points[points.length - 1];
+  const chord = dist(start, end);
+  let plen = 0;
+  for (let i = 1; i < points.length; i++) plen += dist(points[i - 1], points[i]);
+  return reversals >= 3 && plen > chord * 1.6;
 };
 
 export const detectShape = (points, options = {}) => {
-  if (!points || points.length < 8) return null;
+  if (!points || points.length < 16) return null;
 
   const box = boundingBox(points);
   const size = Math.max(box.w, box.h);
-  if (size < 55) return null;
+  if (size < 80) return null;
 
   const start = points[0];
   const end = points[points.length - 1];
@@ -213,35 +273,28 @@ export const detectShape = (points, options = {}) => {
 
   const verts = getMainVerts(points, size);
   const edges = edgeRatio(points, box);
-  const { cx, cy, r, err } = fitCircle(points);
-  const relErr = err / (r || 1);
+  const circle = fitCircleAlgebraic(points);
+  const relErr = circle.err / (circle.r || 1);
   const circ = circularityOf(points, box);
   const aspect = box.w / (box.h || 1);
 
-  if (options.forceSquare && (verts.length >= 3 || edges > 0.4)) {
-    return { type: 'rect', ...makeRect(box, true) };
+  if (options.forceSquare) {
+    return { type: 'rect', ...fitRectangle(points, size, true) };
   }
   if (options.forceCircle) {
-    return { type: 'circle', cx, cy, r: Math.max(r, (box.w + box.h) / 4) };
+    return { type: 'circle', cx: circle.cx, cy: circle.cy, r: circle.r, rx: circle.r, ry: circle.r };
   }
 
-  if (closed && relErr < 0.07 && circ > 0.82 && aspect > 0.55 && aspect < 1.8) {
-    return { type: 'circle', cx, cy, r };
+  if (closed && relErr < 0.08 && circ > 0.78 && aspect > 0.55 && aspect < 1.85) {
+    return { type: 'circle', cx: circle.cx, cy: circle.cy, r: circle.r, rx: circle.r, ry: circle.r };
   }
 
-  if (
-    closed &&
-    edges > 0.78 &&
-    relErr > 0.06 &&
-    circ < 0.84 &&
-    box.w > 30 &&
-    box.h > 30
-  ) {
-    return { type: 'rect', ...makeRect(box, false) };
+  if (closed && edges > 0.75 && relErr > 0.05 && circ < 0.86 && box.w > 30 && box.h > 30) {
+    return { type: 'rect', ...fitRectangle(points, size, false) };
   }
 
   if (verts.length === 4 && box.w > 30 && box.h > 30) {
-    return { type: 'rect', ...makeRect(box, false) };
+    return { type: 'rect', ...fitRectangle(points, size, false) };
   }
 
   if (verts.length === 3) {
@@ -250,13 +303,10 @@ export const detectShape = (points, options = {}) => {
   }
 
   if (!closed) {
-    const line = fitLine(points);
     const chord = dist(start, end);
-    if (lineError(points, line) < size * 0.08 && chord > size * 0.38) {
-      return { type: 'line', ...line };
+    if (lineError(points, fitLine(points)) < size * 0.08 && chord > size * 0.35) {
+      return fitLineEndpoints(points);
     }
-    const arrow = detectArrow(points, size);
-    if (arrow) return arrow;
     if (verts.length >= 3 && verts.length <= 4) {
       const [a, b, c] = pickTriangleVerts(points, size);
       return { type: 'triangle', x1: a.x, y1: a.y, x2: b.x, y2: b.y, x3: c.x, y3: c.y };
@@ -274,61 +324,6 @@ export const detectShape = (points, options = {}) => {
 
 export const shapeToStroke = (shape, color, thickness, tool = 'pen') => {
   const base = { id: null, type: tool, color, thickness, shape };
-  if (shape.type === 'line') {
-    return {
-      ...base,
-      points: [
-        { x: shape.x1, y: shape.y1 },
-        { x: shape.x2, y: shape.y2 },
-      ],
-    };
-  }
-  if (shape.type === 'arrow') {
-    return {
-      ...base,
-      points: [
-        { x: shape.x1, y: shape.y1 },
-        { x: shape.x2, y: shape.y2 },
-        { x: shape.headLeft.x, y: shape.headLeft.y },
-        { x: shape.x2, y: shape.y2 },
-        { x: shape.headRight.x, y: shape.headRight.y },
-      ],
-    };
-  }
-  if (shape.type === 'circle') {
-    const pts = [];
-    for (let i = 0; i <= 64; i++) {
-      const a = (i / 64) * Math.PI * 2;
-      pts.push({
-        x: shape.cx + Math.cos(a) * shape.r,
-        y: shape.cy + Math.sin(a) * shape.r,
-      });
-    }
-    return { ...base, points: pts };
-  }
-  if (shape.type === 'rect') {
-    const { x, y, w, h } = shape;
-    return {
-      ...base,
-      points: [
-        { x, y },
-        { x: x + w, y },
-        { x: x + w, y: y + h },
-        { x, y: y + h },
-        { x, y },
-      ],
-    };
-  }
-  if (shape.type === 'triangle') {
-    return {
-      ...base,
-      points: [
-        { x: shape.x1, y: shape.y1 },
-        { x: shape.x2, y: shape.y2 },
-        { x: shape.x3, y: shape.y3 },
-        { x: shape.x1, y: shape.y1 },
-      ],
-    };
-  }
-  return null;
+  const pts = shapeToPoints(shape);
+  return pts.length ? { ...base, points: pts } : null;
 };

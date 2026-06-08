@@ -4,6 +4,20 @@ Application de prise de notes manuscrites (style cahier numérique).
 
 ## Lancer l'application
 
+### Backend (API + sauvegarde)
+
+```bash
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn server:app --reload --port 8000
+```
+
+Les données sont stockées dans `backend/data/` (fichiers JSON par espace de travail).
+
+### Frontend
+
 ```bash
 cd frontend
 npm install --legacy-peer-deps
@@ -11,6 +25,8 @@ npm start
 ```
 
 Puis ouvrez **http://localhost:3000** dans votre navigateur.
+
+Le frontend synchronise automatiquement avec l'API sur `http://localhost:8000`. En cas d'absence du backend, le mode local (localStorage) reste actif.
 
 > Si le terminal affiche `Compiled successfully!` et `Local: http://localhost:3000`, l'app est prête — ouvrez cette adresse dans Chrome ou Safari.
 

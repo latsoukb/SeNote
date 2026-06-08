@@ -1,34 +1,34 @@
-import React, { useRef, useState } from 'react';
-import { X, GripVertical } from 'lucide-react';
+import React, { useRef } from 'react';
 import { PAGE_W } from '../lib/pageDimensions';
+import { TEXT_FONTS } from './TextBoxToolbar';
 
 const TextBox = ({
   box,
   tool,
   editing,
+  selected,
   onEdit,
   onBlur,
   onChange,
-  onDelete,
+  onSelect,
+  onDragStart,
 }) => {
   const dragRef = useRef(null);
-  const [resizing, setResizing] = useState(false);
+  const interactionScale = (box.scale || 1) * (box.zoom || 1);
+  const canEdit = tool === 'text' || tool === 'lasso';
+  const showChrome = editing || (canEdit && selected);
+  const font = TEXT_FONTS.find((f) => f.id === box.fontFamily) || TEXT_FONTS[0];
 
   const startDrag = (e) => {
-    if (tool !== 'text' && !editing) return;
+    if (!showChrome) return;
     e.preventDefault();
     e.stopPropagation();
-    dragRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      origX: box.x,
-      origY: box.y,
-    };
+    onDragStart?.();
+    dragRef.current = { startX: e.clientX, startY: e.clientY, origX: box.x, origY: box.y };
     const onMove = (ev) => {
       if (!dragRef.current) return;
-      const scale = box.scale || 1;
-      const dx = (ev.clientX - dragRef.current.startX) / scale;
-      const dy = (ev.clientY - dragRef.current.startY) / scale;
+      const dx = (ev.clientX - dragRef.current.startX) / interactionScale;
+      const dy = (ev.clientY - dragRef.current.startY) / interactionScale;
       onChange({
         x: Math.max(0, dragRef.current.origX + dx),
         y: Math.max(0, dragRef.current.origY + dy),
@@ -46,16 +46,18 @@ const TextBox = ({
   const startResize = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    setResizing(true);
-    const startY = e.clientY;
+    onDragStart?.();
+    const startW = box.width || 200;
     const startSize = box.size || 16;
-    const scale = box.scale || 1;
+    const startX = e.clientX;
     const onMove = (ev) => {
-      const dy = (ev.clientY - startY) / scale;
-      onChange({ size: Math.max(10, Math.min(120, startSize + dy * 0.5)) });
+      const dx = (ev.clientX - startX) / interactionScale;
+      onChange({
+        width: Math.max(60, startW + dx),
+        size: Math.max(8, Math.min(72, startSize + dx * 0.04)),
+      });
     };
     const onUp = () => {
-      setResizing(false);
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
     };
@@ -63,72 +65,70 @@ const TextBox = ({
     window.addEventListener('pointerup', onUp);
   };
 
-  const width = box.width || Math.max(160, (box.text?.length || 0) * (box.size * 0.5) + 40);
+  const width = box.width || Math.max(80, (box.text?.length || 0) * (box.size * 0.55) + 8);
+
+  const lineH = (box.size || 16) * 1.4;
+  const lines = Math.max(1, (box.text || '').split('\n').length);
+  const minH = Math.max(lineH, lines * lineH);
 
   return (
     <div
-      className="absolute group pointer-events-auto"
+      className="absolute pointer-events-auto"
       style={{
         left: box.x,
         top: box.y,
-        width: Math.min(width, PAGE_W - box.x - 10),
+        width: Math.min(width, PAGE_W - box.x - 8),
+        minHeight: minH,
       }}
+      onPointerDown={(e) => {
+        if (canEdit) {
+          e.stopPropagation();
+          e.preventDefault();
+          onSelect?.();
+        }
+      }}
+      onClick={(e) => e.stopPropagation()}
     >
-      {(tool === 'text' || editing) && (
-        <div
-          onPointerDown={startDrag}
-          className="flex items-center gap-0.5 px-1 py-0.5 bg-blue-500/90 text-white rounded-t cursor-grab active:cursor-grabbing text-[10px]"
-        >
-          <GripVertical className="w-3 h-3" />
-          <span>Déplacer</span>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            className="ml-auto p-0.5 hover:bg-red-500 rounded"
-            aria-label="Supprimer"
-          >
-            <X className="w-3 h-3" />
-          </button>
-        </div>
-      )}
       {editing ? (
         <textarea
           autoFocus
           value={box.text}
-          onChange={(e) => onChange({ text: e.target.value })}
+          onChange={(e) => onChange({ text: e.target.value, width: Math.max(80, e.target.scrollWidth) })}
           onBlur={onBlur}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') onBlur();
-          }}
-          className="bg-white/95 dark:bg-slate-100 outline outline-2 outline-blue-500 rounded-b px-2 py-1 resize-none w-full"
+          onKeyDown={(e) => e.key === 'Escape' && onBlur()}
+          className="bg-transparent outline-none resize-none w-full border-b border-blue-500/60"
           style={{
             color: box.color,
             fontSize: box.size,
-            fontFamily: 'inherit',
-            lineHeight: 1.3,
-            minHeight: box.size * 1.8,
+            fontFamily: font.family,
+            lineHeight: 1.35,
+            minHeight: box.size * 1.4,
           }}
         />
       ) : (
         <div
-          onDoubleClick={onEdit}
-          onClick={() => tool === 'text' && onEdit()}
-          className={`whitespace-pre-wrap leading-tight px-2 py-1 rounded-b ${
-            tool === 'text' ? 'hover:outline hover:outline-2 hover:outline-blue-400 bg-white/80' : ''
-          } ${resizing ? 'outline outline-2 outline-blue-500' : ''}`}
-          style={{ color: box.color, fontSize: box.size, cursor: tool === 'text' ? 'text' : 'default' }}
+          onDoubleClick={() => tool === 'text' && onEdit?.()}
+          onPointerDown={startDrag}
+          className={`whitespace-pre-wrap leading-snug relative ${
+            showChrome ? 'outline outline-1 outline-blue-400/50 outline-offset-2' : ''
+          }`}
+          style={{
+            color: box.color,
+            fontSize: box.size,
+            fontFamily: font.family,
+            cursor: showChrome ? 'grab' : 'default',
+            background: 'transparent',
+          }}
         >
-          {box.text || <span className="text-slate-400 italic">Tapez votre texte…</span>}
+          {box.text}
+          {showChrome && (
+            <div
+              onPointerDown={startResize}
+              className="absolute -bottom-1 -right-1 w-3 h-3 bg-blue-600 border border-white rounded-sm cursor-se-resize z-10"
+              aria-label="Redimensionner"
+            />
+          )}
         </div>
-      )}
-      {(tool === 'text' || editing) && (
-        <div
-          onPointerDown={startResize}
-          className="absolute -bottom-1 -right-1 w-4 h-4 bg-blue-500 rounded-full cursor-se-resize border-2 border-white shadow"
-          aria-label="Redimensionner"
-        />
       )}
     </div>
   );

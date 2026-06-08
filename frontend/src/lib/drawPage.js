@@ -29,7 +29,9 @@ const drawStroke = (ctx, s, sx, sy) => {
       ctx.moveTo(sh.x1 * sx, sh.y1 * sy);
       ctx.lineTo(sh.x2 * sx, sh.y2 * sy);
     } else if (sh.type === 'circle') {
-      ctx.arc(sh.cx * sx, sh.cy * sy, sh.r * sx, 0, Math.PI * 2);
+      const rx = (sh.rx ?? sh.r) * sx;
+      const ry = (sh.ry ?? sh.r) * sy;
+      ctx.ellipse(sh.cx * sx, sh.cy * sy, rx, ry, 0, 0, Math.PI * 2);
     } else if (sh.type === 'rect') {
       ctx.rect(sh.x * sx, sh.y * sy, sh.w * sx, sh.h * sy);
     } else if (sh.type === 'triangle') {

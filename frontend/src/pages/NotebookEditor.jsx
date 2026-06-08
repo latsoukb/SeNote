@@ -9,6 +9,7 @@ import {
   PanelLeft,
   ArrowDown,
   ArrowLeft as ArrowLeftIcon,
+  LayoutTemplate,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -36,7 +37,15 @@ const NotebookEditor = () => {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const { settings } = useSettings();
-  const { getNotebook, updateNotebook, addPage, deletePage, updatePage } = useNotes();
+  const {
+    getNotebook,
+    updateNotebook,
+    addPage,
+    deletePage,
+    updatePage,
+    setPageTemplate,
+    setNotebookTemplate,
+  } = useNotes();
 
   const notebook = getNotebook(id);
   const [currentPageIdx, setCurrentPageIdx] = useState(0);
@@ -44,6 +53,8 @@ const NotebookEditor = () => {
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
   const [addPageOpen, setAddPageOpen] = useState(false);
+  const [notebookTemplateOpen, setNotebookTemplateOpen] = useState(false);
+  const [pageTemplateOpen, setPageTemplateOpen] = useState(null);
 
   const [tool, setTool] = useState('pen');
   const [color, setColor] = useState('#0F172A');
@@ -110,7 +121,7 @@ const NotebookEditor = () => {
     }
     deletePage(notebook.id, pageId);
     setCurrentPageIdx((idx) => Math.max(0, idx - 1));
-    toast('Page supprimée');
+    toast('Page déplacée vers la corbeille');
   };
 
   const handlePageUpdate = (pageId, patch) => {
@@ -293,10 +304,40 @@ const NotebookEditor = () => {
                 </p>
               </div>
             </div>
-            <div className="flex items-center justify-between px-3 py-2 border-b border-slate-200 dark:border-slate-800">
+            <div className="flex items-center justify-between px-3 py-2 border-b border-slate-200 dark:border-slate-800 gap-1">
               <span className="text-xs uppercase tracking-wide font-medium text-slate-500">
                 Pages
               </span>
+              <div className="flex items-center gap-0.5">
+              <Popover open={notebookTemplateOpen} onOpenChange={setNotebookTemplateOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800"
+                    aria-label="Style de page du cahier"
+                    title="Appliquer un style à tout le cahier"
+                  >
+                    <LayoutTemplate className="w-4 h-4" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-72">
+                  <p className="text-xs font-medium text-slate-500 mb-3">Style pour tout le cahier</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {PAGE_TEMPLATES.map((t) => (
+                      <PageTemplatePreview
+                        key={t.id}
+                        template={t}
+                        size="sm"
+                        selected={notebook.pageTemplate === t.id}
+                        onClick={() => {
+                          setNotebookTemplate(notebook.id, t.id);
+                          setNotebookTemplateOpen(false);
+                          toast.success(`Style « ${t.name} » appliqué à tout le cahier`);
+                        }}
+                      />
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
               <Popover open={addPageOpen} onOpenChange={setAddPageOpen}>
                 <PopoverTrigger asChild>
                   <button
@@ -320,6 +361,7 @@ const NotebookEditor = () => {
                   </div>
                 </PopoverContent>
               </Popover>
+              </div>
             </div>
             <div className="flex-1 overflow-y-auto thin-scroll p-3 space-y-3">
               {notebook.pages.map((p, idx) => (
@@ -335,15 +377,50 @@ const NotebookEditor = () => {
                     <PageLiveThumbnail page={p} />
                   </button>
                   <p className="text-[11px] text-center mt-1 text-slate-500">{idx + 1}</p>
-                  {notebook.pages.length > 1 && (
-                    <button
-                      onClick={() => handleDeletePage(p.id)}
-                      className="absolute top-1 right-1 p-1 rounded bg-white/90 dark:bg-slate-800/90 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                      aria-label="Supprimer la page"
+                  <div className="absolute top-1 right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Popover
+                      open={pageTemplateOpen === p.id}
+                      onOpenChange={(open) => setPageTemplateOpen(open ? p.id : null)}
                     >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  )}
+                      <PopoverTrigger asChild>
+                        <button
+                          onClick={(e) => e.stopPropagation()}
+                          className="p-1 rounded bg-white/90 dark:bg-slate-800/90 text-slate-600"
+                          aria-label="Changer le style de page"
+                          title="Style de cette page"
+                        >
+                          <LayoutTemplate className="w-3 h-3" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent align="end" className="w-72" onClick={(e) => e.stopPropagation()}>
+                        <p className="text-xs font-medium text-slate-500 mb-3">Style de la page {idx + 1}</p>
+                        <div className="grid grid-cols-3 gap-2">
+                          {PAGE_TEMPLATES.map((t) => (
+                            <PageTemplatePreview
+                              key={t.id}
+                              template={t}
+                              size="sm"
+                              selected={p.template === t.id}
+                              onClick={() => {
+                                setPageTemplate(notebook.id, p.id, t.id);
+                                setPageTemplateOpen(null);
+                                toast.success(`Page ${idx + 1} : ${t.name}`);
+                              }}
+                            />
+                          ))}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                    {notebook.pages.length > 1 && (
+                      <button
+                        onClick={() => handleDeletePage(p.id)}
+                        className="p-1 rounded bg-white/90 dark:bg-slate-800/90 text-red-500"
+                        aria-label="Supprimer la page"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

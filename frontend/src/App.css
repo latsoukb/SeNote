@@ -5,6 +5,7 @@
 /* Smooth canvas cursor */
 .canvas-pen { cursor: crosshair; }
 .canvas-eraser { cursor: cell; }
+.canvas-lasso { cursor: pointer; }
 .canvas-text { cursor: text; }
 .canvas-hand { cursor: grab; }
 .canvas-hand:active,

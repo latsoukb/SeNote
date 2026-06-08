@@ -73,6 +73,8 @@ const PdfDocumentView = ({
     if (!root) return;
 
     const onScroll = () => {
+      if (writeZoom > 1) return;
+
       const scrollPos = isVertical ? root.scrollTop : root.scrollLeft;
       const clientSize = isVertical ? root.clientHeight : root.clientWidth;
       const scrollSize = isVertical ? root.scrollHeight : root.scrollWidth;
@@ -128,6 +130,7 @@ const PdfDocumentView = ({
     onAutoAddPage,
     onPageChange,
     isVertical,
+    writeZoom,
   ]);
 
   const handleTouchStart = (e) => {

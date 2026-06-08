@@ -13,6 +13,8 @@ import {
   Pin,
   PinOff,
   FolderInput,
+  ArchiveRestore,
+  Trash,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -150,12 +152,18 @@ const Library = () => {
   const {
     folders,
     notebooks,
+    trash,
     addNotebook,
     deleteNotebook,
     moveNotebookToFolder,
     togglePinNotebook,
     addFolder,
     deleteFolder,
+    restoreNotebookFromTrash,
+    permanentlyDeleteNotebook,
+    restorePageFromTrash,
+    permanentlyDeletePage,
+    emptyTrash,
   } = useNotes();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -216,8 +224,10 @@ const Library = () => {
 
   const handleDelete = (id, title) => {
     deleteNotebook(id);
-    toast('Cahier supprimé', { description: title });
+    toast('Cahier déplacé vers la corbeille', { description: title });
   };
+
+  const trashCount = (trash?.notebooks?.length || 0) + (trash?.pages?.length || 0);
 
   const handleMove = (notebookId, folderId) => {
     moveNotebookToFolder(notebookId, folderId);
@@ -306,6 +316,25 @@ const Library = () => {
             Sans dossier
           </button>
           <div className="h-px bg-slate-200 dark:bg-slate-800 my-3" />
+          <button
+            onClick={() => setSelectedFolder('trash')}
+            className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+              selectedFolder === 'trash'
+                ? 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-medium'
+                : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <Trash className="w-4 h-4" />
+              Corbeille
+            </span>
+            {trashCount > 0 && (
+              <span className="text-xs bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded-full">
+                {trashCount}
+              </span>
+            )}
+          </button>
+          <div className="h-px bg-slate-200 dark:bg-slate-800 my-3" />
           <p className="text-xs uppercase tracking-wide font-medium text-slate-500 px-2 mb-2">
             Dossiers
           </p>
@@ -391,6 +420,138 @@ const Library = () => {
         </aside>
 
         <main className="flex-1 px-6 py-10 min-w-0">
+          {selectedFolder === 'trash' ? (
+            <>
+              <div className="flex items-end justify-between mb-8 gap-4 flex-wrap">
+                <div>
+                  <h1 className="text-3xl font-semibold tracking-tight">Corbeille</h1>
+                  <p className="text-slate-500 dark:text-slate-400 mt-1">
+                    {trashCount} élément{trashCount > 1 ? 's' : ''}
+                  </p>
+                </div>
+                {trashCount > 0 && (
+                  <Button
+                    variant="outline"
+                    className="text-red-600 border-red-200 hover:bg-red-50"
+                    onClick={() => {
+                      emptyTrash();
+                      toast('Corbeille vidée');
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Vider la corbeille
+                  </Button>
+                )}
+              </div>
+              {trashCount === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24 text-center">
+                  <Trash className="w-12 h-12 text-slate-300 mb-4" />
+                  <h3 className="font-medium text-lg">Corbeille vide</h3>
+                  <p className="text-slate-500 dark:text-slate-400 mt-1">
+                    Les cahiers et pages supprimés apparaîtront ici.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-10">
+                  {(trash?.notebooks?.length || 0) > 0 && (
+                    <section>
+                      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-4">
+                        Cahiers
+                      </h2>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {trash.notebooks.map((nb) => (
+                          <div
+                            key={nb.id}
+                            className="flex items-center justify-between p-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+                          >
+                            <div className="min-w-0">
+                              <p className="font-medium truncate">{nb.title}</p>
+                              <p className="text-xs text-slate-500">
+                                Supprimé {formatDate(nb.deletedAt)}
+                              </p>
+                            </div>
+                            <div className="flex gap-1 shrink-0 ml-2">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => {
+                                  restoreNotebookFromTrash(nb.id);
+                                  toast.success('Cahier restauré', { description: nb.title });
+                                }}
+                                aria-label="Restaurer"
+                              >
+                                <ArchiveRestore className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="text-red-600 hover:text-red-700"
+                                onClick={() => {
+                                  permanentlyDeleteNotebook(nb.id);
+                                  toast('Cahier supprimé définitivement');
+                                }}
+                                aria-label="Supprimer définitivement"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  )}
+                  {(trash?.pages?.length || 0) > 0 && (
+                    <section>
+                      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-4">
+                        Pages
+                      </h2>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {trash.pages.map((entry) => (
+                          <div
+                            key={entry.id}
+                            className="flex items-center justify-between p-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
+                          >
+                            <div className="min-w-0">
+                              <p className="font-medium truncate">{entry.notebookTitle}</p>
+                              <p className="text-xs text-slate-500">
+                                Page · supprimée {formatDate(entry.deletedAt)}
+                              </p>
+                            </div>
+                            <div className="flex gap-1 shrink-0 ml-2">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => {
+                                  restorePageFromTrash(entry.id);
+                                  toast.success('Page restaurée');
+                                }}
+                                aria-label="Restaurer"
+                              >
+                                <ArchiveRestore className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="text-red-600 hover:text-red-700"
+                                onClick={() => {
+                                  permanentlyDeletePage(entry.id);
+                                  toast('Page supprimée définitivement');
+                                }}
+                                aria-label="Supprimer définitivement"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  )}
+                </div>
+              )}
+            </>
+          ) : (
+          <>
           <div className="flex items-end justify-between mb-8 gap-4 flex-wrap">
             <div>
               <h1 className="text-3xl font-semibold tracking-tight">Ma bibliothèque</h1>
@@ -496,6 +657,8 @@ const Library = () => {
                 <NotebookCard key={nb.id} nb={nb} {...cardProps} />
               ))}
             </div>
+          )}
+          </>
           )}
         </main>
       </div>

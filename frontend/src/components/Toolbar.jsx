@@ -10,6 +10,7 @@ import {
   Trash,
   Ruler,
   Download,
+  Lasso,
 } from 'lucide-react';
 import { PEN_COLORS, HIGHLIGHTER_COLORS } from '../mock/mock';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
@@ -81,6 +82,9 @@ const Toolbar = ({
         <ToolButton active={tool === 'text'} onClick={() => setTool('text')} label="Texte">
           <Type className="w-5 h-5" />
         </ToolButton>
+        <ToolButton active={tool === 'lasso'} onClick={() => setTool('lasso')} label="Lasso — sélectionner traits, formes et texte">
+          <Lasso className="w-5 h-5" />
+        </ToolButton>
 
         <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 mx-0.5 shrink-0" />
 
@@ -103,14 +107,19 @@ const Toolbar = ({
           <Popover>
             <PopoverTrigger asChild>
               <button className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-sm hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0">
-                <div
-                  className="rounded-full bg-slate-800 dark:bg-slate-200"
-                  style={{ width: Math.max(4, thickness * 1.5), height: Math.max(4, thickness * 1.5) }}
-                />
-                <span className="text-xs">{thickness.toFixed(1)}</span>
+                <div className="w-6 h-6 flex items-center justify-center shrink-0">
+                  <div
+                    className="rounded-full bg-slate-800 dark:bg-slate-200"
+                    style={{
+                      width: Math.min(22, Math.max(4, thickness * 1.5)),
+                      height: Math.min(22, Math.max(4, thickness * 1.5)),
+                    }}
+                  />
+                </div>
+                <span className="text-xs tabular-nums w-7">{thickness.toFixed(1)}</span>
               </button>
             </PopoverTrigger>
-            <PopoverContent className="w-52">
+            <PopoverContent className="w-52" avoidCollisions={false}>
               <Slider
                 value={[thickness]}
                 onValueChange={(v) => setThickness(v[0])}
