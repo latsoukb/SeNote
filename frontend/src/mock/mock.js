@@ -1,5 +1,4 @@
 // Mock data for SeNote - simulates user's notebooks library
-// Each notebook has pages, each page has strokes (drawings) and textBoxes
 
 export const COVER_TEMPLATES = [
   { id: 'cover-blue', name: 'Bleu', gradient: 'linear-gradient(135deg, #3B82F6 0%, #1E40AF 100%)' },
@@ -12,14 +11,20 @@ export const COVER_TEMPLATES = [
   { id: 'cover-leather', name: 'Cuir', gradient: 'linear-gradient(135deg, #92400E 0%, #451A03 100%)' },
 ];
 
+export const FOLDER_COLORS = [
+  '#3B82F6', '#10B981', '#F59E0B', '#F43F5E', '#8B5CF6', '#64748B', '#EC4899', '#0891B2',
+];
+
 export const PAGE_TEMPLATES = [
+  { id: 'seyes', name: 'Seyès' },
   { id: 'blank', name: 'Vierge' },
   { id: 'lined', name: 'Ligné' },
   { id: 'grid', name: 'Quadrillé' },
   { id: 'dotted', name: 'Pointillé' },
+  { id: 'calligraphy', name: 'Caligraphe' },
 ];
 
-const makePage = (template = 'lined') => ({
+const makePage = (template = 'seyes') => ({
   id: `page-${Math.random().toString(36).slice(2, 10)}`,
   template,
   strokes: [],
@@ -27,13 +32,20 @@ const makePage = (template = 'lined') => ({
   createdAt: Date.now(),
 });
 
+export const initialFolders = [
+  { id: 'folder-school', name: 'École', color: '#3B82F6', createdAt: Date.now() - 86400000 * 7 },
+  { id: 'folder-personal', name: 'Personnel', color: '#10B981', createdAt: Date.now() - 86400000 * 3 },
+];
+
 export const initialNotebooks = [
   {
     id: 'nb-welcome',
     title: 'Bienvenue sur SeNote',
     cover: 'cover-blue',
-    pageTemplate: 'lined',
-    pages: [makePage('lined'), makePage('lined')],
+    pageTemplate: 'seyes',
+    folderId: 'folder-school',
+    pinned: true,
+    pages: [makePage('seyes'), makePage('seyes')],
     updatedAt: Date.now(),
     createdAt: Date.now() - 86400000,
   },
@@ -41,8 +53,10 @@ export const initialNotebooks = [
     id: 'nb-meetings',
     title: 'Notes de réunion',
     cover: 'cover-slate',
-    pageTemplate: 'lined',
-    pages: [makePage('lined')],
+    pageTemplate: 'seyes',
+    folderId: 'folder-school',
+    pinned: false,
+    pages: [makePage('seyes')],
     updatedAt: Date.now() - 3600000,
     createdAt: Date.now() - 5 * 86400000,
   },
@@ -51,6 +65,8 @@ export const initialNotebooks = [
     title: 'Croquis & idées',
     cover: 'cover-amber',
     pageTemplate: 'blank',
+    folderId: 'folder-personal',
+    pinned: false,
     pages: [makePage('blank'), makePage('grid')],
     updatedAt: Date.now() - 7200000,
     createdAt: Date.now() - 10 * 86400000,
@@ -60,6 +76,8 @@ export const initialNotebooks = [
     title: 'Mathématiques',
     cover: 'cover-emerald',
     pageTemplate: 'grid',
+    folderId: null,
+    pinned: false,
     pages: [makePage('grid')],
     updatedAt: Date.now() - 4 * 86400000,
     createdAt: Date.now() - 30 * 86400000,
@@ -67,33 +85,47 @@ export const initialNotebooks = [
 ];
 
 export const PEN_COLORS = [
-  '#0F172A', // near black
-  '#2563EB', // blue
-  '#DC2626', // red
-  '#16A34A', // green
-  '#CA8A04', // amber
-  '#9333EA', // purple
-  '#0891B2', // cyan
-  '#EC4899', // pink
-  '#FFFFFF', // white
+  '#0F172A',
+  '#2563EB',
+  '#DC2626',
+  '#16A34A',
+  '#CA8A04',
+  '#9333EA',
+  '#0891B2',
+  '#EC4899',
+  '#FFFFFF',
 ];
 
 export const HIGHLIGHTER_COLORS = [
-  '#FDE047', // yellow
-  '#86EFAC', // green
-  '#FCA5A5', // red
-  '#93C5FD', // blue
-  '#F0ABFC', // pink
-  '#FDBA74', // orange
+  '#FDE047',
+  '#86EFAC',
+  '#FCA5A5',
+  '#93C5FD',
+  '#F0ABFC',
+  '#FDBA74',
 ];
 
 export const newPage = makePage;
 
-export const newNotebook = (title = 'Nouveau cahier', cover = 'cover-blue', pageTemplate = 'lined') => ({
+export const newFolder = (name = 'Nouveau dossier', color = FOLDER_COLORS[0]) => ({
+  id: `folder-${Math.random().toString(36).slice(2, 10)}`,
+  name,
+  color,
+  createdAt: Date.now(),
+});
+
+export const newNotebook = (
+  title = 'Nouveau cahier',
+  cover = 'cover-blue',
+  pageTemplate = 'seyes',
+  folderId = null
+) => ({
   id: `nb-${Math.random().toString(36).slice(2, 10)}`,
   title,
   cover,
   pageTemplate,
+  folderId,
+  pinned: false,
   pages: [makePage(pageTemplate)],
   updatedAt: Date.now(),
   createdAt: Date.now(),

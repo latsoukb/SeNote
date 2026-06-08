@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -6,30 +6,36 @@ import {
   Trash2,
   Moon,
   Sun,
-  ChevronLeft,
-  ChevronRight,
   PanelLeft,
+  ArrowDown,
+  ArrowLeft as ArrowLeftIcon,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { useTheme } from '../context/ThemeContext';
 import { useNotes } from '../context/NotesContext';
+import { useSettings } from '../context/SettingsContext';
 import { PAGE_TEMPLATES, COVER_TEMPLATES } from '../mock/mock';
 import Logo from '../components/Logo';
 import Toolbar from '../components/Toolbar';
-import NoteCanvas from '../components/NoteCanvas';
+import PdfDocumentView from '../components/PdfDocumentView';
+import PageTemplatePreview from '../components/PageTemplatePreview';
+import PageLiveThumbnail from '../components/PageLiveThumbnail';
+import SettingsDialog from '../components/SettingsDialog';
+import { exportNotebookToPdf } from '../lib/exportNotebookPdf';
+import { defaultRuler } from '../lib/instrumentSnap';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '../components/ui/dropdown-menu';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '../components/ui/popover';
 import { toast } from 'sonner';
 
 const NotebookEditor = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  const { settings } = useSettings();
   const { getNotebook, updateNotebook, addPage, deletePage, updatePage } = useNotes();
 
   const notebook = getNotebook(id);
@@ -37,15 +43,33 @@ const NotebookEditor = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
+  const [addPageOpen, setAddPageOpen] = useState(false);
 
-  // Tool state
-  const [tool, setTool] = useState('pen'); // pen | highlighter | eraser | text | hand
+  const [tool, setTool] = useState('pen');
   const [color, setColor] = useState('#0F172A');
   const [thickness, setThickness] = useState(2.5);
+  const [writeZoom, setWriteZoom] = useState(1);
+  const [writePan, setWritePan] = useState({ x: 0, y: 0 });
 
-  // Undo/redo stacks per page
   const undoStackRef = useRef({});
   const redoStackRef = useRef({});
+
+  const handlePageChange = useCallback((idx) => {
+    setCurrentPageIdx(idx);
+    setWritePan({ x: 0, y: 0 });
+  }, []);
+
+  const handleAutoAddPage = useCallback(
+    (template) => {
+      if (!notebook) return;
+      const newIdx = notebook.pages.length;
+      addPage(notebook.id, template);
+      setCurrentPageIdx(newIdx);
+    },
+    [addPage, notebook]
+  );
+
+  const currentPage = notebook?.pages[currentPageIdx] || notebook?.pages[0];
 
   if (!notebook) {
     return (
@@ -60,8 +84,6 @@ const NotebookEditor = () => {
     );
   }
 
-  const currentPage = notebook.pages[currentPageIdx] || notebook.pages[0];
-
   const startEditTitle = () => {
     setTitleDraft(notebook.title);
     setEditingTitle(true);
@@ -74,10 +96,11 @@ const NotebookEditor = () => {
   };
 
   const handleAddPage = (template) => {
-    const p = addPage(notebook.id, template || notebook.pageTemplate);
+    const tpl = template || currentPage?.template || notebook.pageTemplate;
+    addPage(notebook.id, tpl);
     setCurrentPageIdx(notebook.pages.length);
+    setAddPageOpen(false);
     toast.success('Page ajoutée');
-    return p;
   };
 
   const handleDeletePage = (pageId) => {
@@ -90,16 +113,16 @@ const NotebookEditor = () => {
     toast('Page supprimée');
   };
 
-  const handleUpdatePage = (patch) => {
-    updatePage(notebook.id, currentPage.id, patch);
+  const handlePageUpdate = (pageId, patch) => {
+    updatePage(notebook.id, pageId, patch);
   };
 
-  const pushUndo = (snapshot) => {
-    const stack = undoStackRef.current[currentPage.id] || [];
+  const pushUndo = (pageId, snapshot) => {
+    const stack = undoStackRef.current[pageId] || [];
     stack.push(snapshot);
     if (stack.length > 50) stack.shift();
-    undoStackRef.current[currentPage.id] = stack;
-    redoStackRef.current[currentPage.id] = [];
+    undoStackRef.current[pageId] = stack;
+    redoStackRef.current[pageId] = [];
   };
 
   const handleUndo = () => {
@@ -107,9 +130,13 @@ const NotebookEditor = () => {
     if (stack.length === 0) return;
     const prev = stack.pop();
     const redo = redoStackRef.current[currentPage.id] || [];
-    redo.push({ strokes: currentPage.strokes, textBoxes: currentPage.textBoxes });
+    redo.push({
+      strokes: currentPage.strokes,
+      textBoxes: currentPage.textBoxes,
+      instruments: currentPage.instruments,
+    });
     redoStackRef.current[currentPage.id] = redo;
-    handleUpdatePage(prev);
+    handlePageUpdate(currentPage.id, prev);
   };
 
   const handleRedo = () => {
@@ -117,31 +144,72 @@ const NotebookEditor = () => {
     if (redo.length === 0) return;
     const next = redo.pop();
     const stack = undoStackRef.current[currentPage.id] || [];
-    stack.push({ strokes: currentPage.strokes, textBoxes: currentPage.textBoxes });
+    stack.push({
+      strokes: currentPage.strokes,
+      textBoxes: currentPage.textBoxes,
+      instruments: currentPage.instruments,
+    });
     undoStackRef.current[currentPage.id] = stack;
-    handleUpdatePage(next);
+    handlePageUpdate(currentPage.id, next);
   };
 
   const handleClearPage = () => {
-    pushUndo({ strokes: currentPage.strokes, textBoxes: currentPage.textBoxes });
-    handleUpdatePage({ strokes: [], textBoxes: [] });
+    pushUndo(currentPage.id, {
+      strokes: currentPage.strokes,
+      textBoxes: currentPage.textBoxes,
+      instruments: currentPage.instruments,
+    });
+    handlePageUpdate(currentPage.id, { strokes: [], textBoxes: [] });
     toast('Page effacée');
+  };
+
+  const handleWriteZoomReset = () => {
+    setWriteZoom(1);
+    setWritePan({ x: 0, y: 0 });
+  };
+
+  const rulerActive = !!(currentPage?.instruments || []).find((i) => i.type === 'ruler');
+
+  const handleToggleRuler = () => {
+    if (tool === 'ruler') {
+      setTool('pen');
+      return;
+    }
+    setTool('ruler');
+    if (!rulerActive) {
+      pushUndo(currentPage.id, {
+        strokes: currentPage.strokes,
+        textBoxes: currentPage.textBoxes,
+        instruments: currentPage.instruments,
+      });
+      handlePageUpdate(currentPage.id, {
+        instruments: [...(currentPage.instruments || []), defaultRuler()],
+      });
+      setTool('pen');
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      toast.loading('Export PDF…', { id: 'export' });
+      await exportNotebookToPdf(notebook);
+      toast.success('PDF exporté', { id: 'export' });
+    } catch {
+      toast.error('Échec de l\'export', { id: 'export' });
+    }
   };
 
   const coverGradient =
     COVER_TEMPLATES.find((c) => c.id === notebook.cover)?.gradient || COVER_TEMPLATES[0].gradient;
 
+  const scrollLabel =
+    settings.scrollDirection === 'vertical' ? 'Défilement ↓' : 'Défilement ←';
+
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Top bar */}
-      <header className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 z-20">
+    <div className="h-dvh flex flex-col overflow-hidden">
+      <header className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 z-40">
         <div className="flex items-center gap-3 min-w-0">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate('/')}
-            aria-label="Retour"
-          >
+          <Button variant="ghost" size="icon" onClick={() => navigate('/')} aria-label="Retour">
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <Button
@@ -166,16 +234,25 @@ const NotebookEditor = () => {
           ) : (
             <button
               onClick={startEditTitle}
-              className="font-medium text-sm hover:bg-slate-100 dark:hover:bg-slate-800 px-2 py-1 rounded-md truncate max-w-[40vw]"
+              className="font-medium text-sm hover:bg-slate-100 dark:hover:bg-slate-800 px-2 py-1 rounded-md truncate max-w-[30vw]"
             >
               {notebook.title}
             </button>
           )}
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-500 dark:text-slate-400">
-            Page {currentPageIdx + 1} / {notebook.pages.length}
+          <span className="hidden sm:flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+            {settings.scrollDirection === 'vertical' ? (
+              <ArrowDown className="w-3 h-3" />
+            ) : (
+              <ArrowLeftIcon className="w-3 h-3" />
+            )}
+            {scrollLabel}
           </span>
+          <span className="text-xs text-slate-500 dark:text-slate-400">
+            {currentPageIdx + 1} / {notebook.pages.length}
+          </span>
+          <SettingsDialog />
           <Button
             variant="ghost"
             size="icon"
@@ -188,14 +265,27 @@ const NotebookEditor = () => {
         </div>
       </header>
 
+      <Toolbar
+        tool={tool}
+        setTool={setTool}
+        color={color}
+        setColor={setColor}
+        thickness={thickness}
+        setThickness={setThickness}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        onClear={handleClearPage}
+        writeZoom={writeZoom}
+        onWriteZoomReset={handleWriteZoomReset}
+        onToggleRuler={handleToggleRuler}
+        rulerActive={rulerActive}
+        onExport={handleExport}
+      />
+
       <div className="flex flex-1 min-h-0">
-        {/* Pages sidebar */}
         {sidebarOpen && (
-          <aside className="w-56 border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex flex-col">
-            <div
-              className="h-24 cover-shine relative"
-              style={{ background: coverGradient }}
-            >
+          <aside className="w-56 border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex flex-col shrink-0">
+            <div className="h-24 cover-shine relative" style={{ background: coverGradient }}>
               <div className="cover-spine" />
               <div className="absolute inset-0 p-3 flex items-end">
                 <p className="text-white text-sm font-medium drop-shadow line-clamp-2">
@@ -207,42 +297,42 @@ const NotebookEditor = () => {
               <span className="text-xs uppercase tracking-wide font-medium text-slate-500">
                 Pages
               </span>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+              <Popover open={addPageOpen} onOpenChange={setAddPageOpen}>
+                <PopoverTrigger asChild>
                   <button
                     className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800"
                     aria-label="Ajouter une page"
                   >
                     <Plus className="w-4 h-4" />
                   </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {PAGE_TEMPLATES.map((t) => (
-                    <DropdownMenuItem key={t.id} onClick={() => handleAddPage(t.id)}>
-                      {t.name}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-80 max-h-[70vh] overflow-y-auto">
+                  <p className="text-xs font-medium text-slate-500 mb-3">Choisir un modèle</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {PAGE_TEMPLATES.map((t) => (
+                      <PageTemplatePreview
+                        key={t.id}
+                        template={t}
+                        size="sm"
+                        onClick={() => handleAddPage(t.id)}
+                      />
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="flex-1 overflow-y-auto thin-scroll p-3 space-y-3">
               {notebook.pages.map((p, idx) => (
                 <div key={p.id} className="group relative">
                   <button
-                    onClick={() => setCurrentPageIdx(idx)}
+                    onClick={() => handlePageChange(idx)}
                     className={`w-full aspect-[3/4] rounded-md bg-white dark:bg-slate-100 border-2 transition-all overflow-hidden ${
                       idx === currentPageIdx
                         ? 'border-blue-600 shadow-md'
                         : 'border-slate-200 dark:border-slate-700 hover:border-slate-400'
                     }`}
                   >
-                    <div
-                      className={`w-full h-full ${
-                        p.template === 'lined' ? 'paper-lined' : ''
-                      } ${p.template === 'grid' ? 'paper-grid' : ''} ${
-                        p.template === 'dotted' ? 'paper-dotted' : ''
-                      }`}
-                    />
+                    <PageLiveThumbnail page={p} />
                   </button>
                   <p className="text-[11px] text-center mt-1 text-slate-500">{idx + 1}</p>
                   {notebook.pages.length > 1 && (
@@ -260,47 +350,25 @@ const NotebookEditor = () => {
           </aside>
         )}
 
-        {/* Canvas area */}
-        <div className="flex-1 flex flex-col bg-slate-100 dark:bg-slate-900 min-w-0">
-          <Toolbar
+        <div className="flex-1 flex flex-col bg-slate-100 dark:bg-slate-900 min-w-0 min-h-0">
+          <PdfDocumentView
+            notebook={notebook}
+            pages={notebook.pages}
+            currentPageIdx={currentPageIdx}
+            onPageChange={handlePageChange}
+            scrollDirection={settings.scrollDirection}
+            autoAddPage={settings.autoAddPage}
+            onAutoAddPage={handleAutoAddPage}
             tool={tool}
-            setTool={setTool}
             color={color}
-            setColor={setColor}
             thickness={thickness}
-            setThickness={setThickness}
-            onUndo={handleUndo}
-            onRedo={handleRedo}
-            onClear={handleClearPage}
+            onPageUpdate={handlePageUpdate}
+            pushUndo={pushUndo}
+            writeZoom={writeZoom}
+            onWriteZoomChange={setWriteZoom}
+            writePan={writePan}
+            onWritePanChange={setWritePan}
           />
-          <div className="flex-1 overflow-auto thin-scroll flex items-center justify-center p-6 relative">
-            <button
-              onClick={() => setCurrentPageIdx((i) => Math.max(0, i - 1))}
-              disabled={currentPageIdx === 0}
-              className="absolute left-3 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full bg-white dark:bg-slate-800 shadow-md disabled:opacity-30 hover:scale-110 transition-transform"
-              aria-label="Page précédente"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <NoteCanvas
-              page={currentPage}
-              tool={tool}
-              color={color}
-              thickness={thickness}
-              onChange={handleUpdatePage}
-              pushUndo={pushUndo}
-            />
-            <button
-              onClick={() =>
-                setCurrentPageIdx((i) => Math.min(notebook.pages.length - 1, i + 1))
-              }
-              disabled={currentPageIdx === notebook.pages.length - 1}
-              className="absolute right-3 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full bg-white dark:bg-slate-800 shadow-md disabled:opacity-30 hover:scale-110 transition-transform"
-              aria-label="Page suivante"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </div>
         </div>
       </div>
     </div>

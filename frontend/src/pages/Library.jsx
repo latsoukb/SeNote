@@ -1,6 +1,19 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Plus, Moon, Sun, Search, Trash2, BookOpen, Settings, MoreVertical } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import {
+  Plus,
+  Moon,
+  Sun,
+  Search,
+  Trash2,
+  BookOpen,
+  MoreVertical,
+  Folder,
+  FolderPlus,
+  Pin,
+  PinOff,
+  FolderInput,
+} from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import {
@@ -15,13 +28,19 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu';
 import { Label } from '../components/ui/label';
 import { useTheme } from '../context/ThemeContext';
 import { useNotes } from '../context/NotesContext';
-import { COVER_TEMPLATES, PAGE_TEMPLATES } from '../mock/mock';
+import { COVER_TEMPLATES, PAGE_TEMPLATES, FOLDER_COLORS } from '../mock/mock';
 import Logo from '../components/Logo';
+import PageTemplatePreview from '../components/PageTemplatePreview';
+import SettingsDialog from '../components/SettingsDialog';
 import { toast } from 'sonner';
 
 const formatDate = (ts) => {
@@ -34,27 +53,165 @@ const formatDate = (ts) => {
   return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
 };
 
+const NotebookCard = ({
+  nb,
+  getCoverGradient,
+  folders,
+  onDelete,
+  onTogglePin,
+  onMoveToFolder,
+}) => (
+  <div className="group fade-up">
+    <Link to={`/notebook/${nb.id}`} className="block relative">
+      {nb.pinned && (
+        <span className="absolute top-2 right-2 z-10 bg-blue-600 text-white rounded-full p-1 shadow">
+          <Pin className="w-3 h-3" />
+        </span>
+      )}
+      <div
+        className="relative aspect-[3/4] rounded-md cover-shine shadow-md group-hover:shadow-xl transition-all duration-300 group-hover:-translate-y-1"
+        style={{ background: getCoverGradient(nb.cover) }}
+      >
+        <div className="cover-spine" />
+        <div className="absolute inset-0 p-5 flex flex-col justify-end">
+          <h3 className="text-white font-semibold text-base leading-snug line-clamp-3 drop-shadow">
+            {nb.title}
+          </h3>
+          <p className="text-white/70 text-xs mt-1">
+            {nb.pages.length} page{nb.pages.length > 1 ? 's' : ''}
+          </p>
+        </div>
+      </div>
+    </Link>
+    <div className="flex items-start justify-between mt-3 px-1">
+      <div className="min-w-0">
+        <p className="font-medium text-sm truncate">{nb.title}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">{formatDate(nb.updatedAt)}</p>
+      </div>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            className="p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 opacity-0 group-hover:opacity-100 transition-opacity"
+            aria-label="Options"
+          >
+            <MoreVertical className="w-4 h-4" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => onTogglePin(nb.id)}>
+            {nb.pinned ? (
+              <>
+                <PinOff className="w-4 h-4 mr-2" />
+                Retirer le raccourci
+              </>
+            ) : (
+              <>
+                <Pin className="w-4 h-4 mr-2" />
+                Épingler (raccourci)
+              </>
+            )}
+          </DropdownMenuItem>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              <FolderInput className="w-4 h-4 mr-2" />
+              Déplacer vers…
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              <DropdownMenuItem onClick={() => onMoveToFolder(nb.id, null)}>
+                Sans dossier
+              </DropdownMenuItem>
+              {folders.map((f) => (
+                <DropdownMenuItem key={f.id} onClick={() => onMoveToFolder(nb.id, f.id)}>
+                  <span
+                    className="w-2.5 h-2.5 rounded-full mr-2 shrink-0"
+                    style={{ background: f.color }}
+                  />
+                  {f.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={() => onDelete(nb.id, nb.title)}
+            className="text-red-600 focus:text-red-600"
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Supprimer
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  </div>
+);
+
 const Library = () => {
   const { theme, toggleTheme } = useTheme();
-  const { notebooks, addNotebook, deleteNotebook } = useNotes();
+  const {
+    folders,
+    notebooks,
+    addNotebook,
+    deleteNotebook,
+    moveNotebookToFolder,
+    togglePinNotebook,
+    addFolder,
+    deleteFolder,
+  } = useNotes();
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [search, setSearch] = useState('');
+  const [selectedFolder, setSelectedFolder] = useState('all');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [folderDialogOpen, setFolderDialogOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newCover, setNewCover] = useState('cover-blue');
-  const [newTemplate, setNewTemplate] = useState('lined');
+  const [newTemplate, setNewTemplate] = useState('seyes');
+  const [newFolderName, setNewFolderName] = useState('');
+  const [newFolderColor, setNewFolderColor] = useState(FOLDER_COLORS[0]);
 
-  const filtered = notebooks.filter((n) =>
-    n.title.toLowerCase().includes(search.toLowerCase())
-  );
+  useEffect(() => {
+    if (searchParams.get('action') === 'new') {
+      setDialogOpen(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  const getCoverGradient = (coverId) =>
+    COVER_TEMPLATES.find((c) => c.id === coverId)?.gradient || COVER_TEMPLATES[0].gradient;
+
+  const folderFilter = (nb) => {
+    if (selectedFolder === 'all') return true;
+    if (selectedFolder === 'pinned') return nb.pinned;
+    if (selectedFolder === 'none') return !nb.folderId;
+    return nb.folderId === selectedFolder;
+  };
+
+  const filtered = notebooks
+    .filter(folderFilter)
+    .filter((n) => n.title.toLowerCase().includes(search.toLowerCase()));
+
+  const pinnedNotebooks = notebooks.filter((n) => n.pinned);
 
   const handleCreate = () => {
     const title = newTitle.trim() || 'Sans titre';
-    addNotebook(title, newCover, newTemplate);
+    const folderId = selectedFolder !== 'all' && selectedFolder !== 'pinned' && selectedFolder !== 'none'
+      ? selectedFolder
+      : null;
+    addNotebook(title, newCover, newTemplate, folderId);
     toast.success('Cahier créé', { description: title });
     setNewTitle('');
     setNewCover('cover-blue');
-    setNewTemplate('lined');
+    setNewTemplate('seyes');
     setDialogOpen(false);
+  };
+
+  const handleCreateFolder = () => {
+    const name = newFolderName.trim() || 'Nouveau dossier';
+    addFolder(name, newFolderColor);
+    toast.success('Dossier créé', { description: name });
+    setNewFolderName('');
+    setNewFolderColor(FOLDER_COLORS[0]);
+    setFolderDialogOpen(false);
   };
 
   const handleDelete = (id, title) => {
@@ -62,12 +219,27 @@ const Library = () => {
     toast('Cahier supprimé', { description: title });
   };
 
-  const getCoverGradient = (coverId) =>
-    COVER_TEMPLATES.find((c) => c.id === coverId)?.gradient || COVER_TEMPLATES[0].gradient;
+  const handleMove = (notebookId, folderId) => {
+    moveNotebookToFolder(notebookId, folderId);
+    toast('Cahier déplacé');
+  };
+
+  const handleTogglePin = (id) => {
+    togglePinNotebook(id);
+    const nb = notebooks.find((n) => n.id === id);
+    toast(nb?.pinned ? 'Raccourci retiré' : 'Épinglé en raccourci');
+  };
+
+  const cardProps = {
+    getCoverGradient,
+    folders,
+    onDelete: handleDelete,
+    onTogglePin: handleTogglePin,
+    onMoveToFolder: handleMove,
+  };
 
   return (
-    <div className="min-h-screen">
-      {/* Top bar */}
+    <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-30 backdrop-blur-md bg-white/80 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
           <Logo size="md" />
@@ -90,160 +262,243 @@ const Library = () => {
             >
               {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </Button>
-            <Button variant="ghost" size="icon" className="rounded-full" aria-label="Paramètres">
-              <Settings className="w-5 h-5" />
-            </Button>
+            <SettingsDialog />
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-10">
-        <div className="flex items-end justify-between mb-8 gap-4 flex-wrap">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight">Ma bibliothèque</h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1">
-              {notebooks.length} cahier{notebooks.length > 1 ? 's' : ''}
-            </p>
-          </div>
-
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <div className="flex flex-1 max-w-7xl mx-auto w-full">
+        <aside className="w-52 shrink-0 border-r border-slate-200 dark:border-slate-800 p-4 space-y-1 hidden md:block">
+          <p className="text-xs uppercase tracking-wide font-medium text-slate-500 px-2 mb-3">
+            Organisation
+          </p>
+          <button
+            onClick={() => setSelectedFolder('all')}
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+              selectedFolder === 'all'
+                ? 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-medium'
+                : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            <BookOpen className="w-4 h-4" />
+            Tous les cahiers
+          </button>
+          <button
+            onClick={() => setSelectedFolder('pinned')}
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+              selectedFolder === 'pinned'
+                ? 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-medium'
+                : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            <Pin className="w-4 h-4" />
+            Raccourcis
+          </button>
+          <button
+            onClick={() => setSelectedFolder('none')}
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+              selectedFolder === 'none'
+                ? 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-medium'
+                : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            <Folder className="w-4 h-4 opacity-50" />
+            Sans dossier
+          </button>
+          <div className="h-px bg-slate-200 dark:bg-slate-800 my-3" />
+          <p className="text-xs uppercase tracking-wide font-medium text-slate-500 px-2 mb-2">
+            Dossiers
+          </p>
+          {folders.map((f) => (
+            <div key={f.id} className="group flex items-center">
+              <button
+                onClick={() => setSelectedFolder(f.id)}
+                className={`flex-1 flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors truncate ${
+                  selectedFolder === f.id
+                    ? 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-medium'
+                    : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <span
+                  className="w-3 h-3 rounded-sm shrink-0"
+                  style={{ background: f.color }}
+                />
+                <span className="truncate">{f.name}</span>
+              </button>
+              <button
+                onClick={() => {
+                  deleteFolder(f.id);
+                  if (selectedFolder === f.id) setSelectedFolder('all');
+                  toast('Dossier supprimé');
+                }}
+                className="p-1 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-opacity"
+                aria-label="Supprimer le dossier"
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+          <Dialog open={folderDialogOpen} onOpenChange={setFolderDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-5 h-11 gap-2">
-                <Plus className="w-4 h-4" />
-                Nouveau cahier
-              </Button>
+              <button className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 mt-1">
+                <FolderPlus className="w-4 h-4" />
+                Nouveau dossier
+              </button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-sm">
               <DialogHeader>
-                <DialogTitle>Créer un nouveau cahier</DialogTitle>
+                <DialogTitle>Nouveau dossier</DialogTitle>
               </DialogHeader>
-              <div className="space-y-5 py-2">
+              <div className="space-y-4 py-2">
                 <div className="space-y-2">
-                  <Label htmlFor="nb-title">Titre</Label>
+                  <Label htmlFor="folder-name">Nom</Label>
                   <Input
-                    id="nb-title"
-                    value={newTitle}
-                    onChange={(e) => setNewTitle(e.target.value)}
-                    placeholder="Mon cahier"
+                    id="folder-name"
+                    value={newFolderName}
+                    onChange={(e) => setNewFolderName(e.target.value)}
+                    placeholder="Mon dossier"
                     autoFocus
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Couverture</Label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {COVER_TEMPLATES.map((c) => (
+                  <Label>Couleur</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {FOLDER_COLORS.map((c) => (
                       <button
-                        key={c.id}
+                        key={c}
                         type="button"
-                        onClick={() => setNewCover(c.id)}
-                        className={`h-16 rounded-md cover-shine border-2 transition-all ${
-                          newCover === c.id
-                            ? 'border-blue-600 scale-105'
-                            : 'border-transparent hover:border-slate-300 dark:hover:border-slate-700'
+                        onClick={() => setNewFolderColor(c)}
+                        className={`w-8 h-8 rounded-md border-2 transition-transform ${
+                          newFolderColor === c ? 'border-slate-900 dark:border-white scale-110' : 'border-transparent'
                         }`}
-                        style={{ background: c.gradient }}
-                        aria-label={c.name}
+                        style={{ background: c }}
+                        aria-label={`Couleur ${c}`}
                       />
-                    ))}
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Modèle de page</Label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {PAGE_TEMPLATES.map((t) => (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => setNewTemplate(t.id)}
-                        className={`py-2.5 rounded-md text-sm font-medium border transition-colors ${
-                          newTemplate === t.id
-                            ? 'border-blue-600 bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300'
-                            : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
-                        }`}
-                      >
-                        {t.name}
-                      </button>
                     ))}
                   </div>
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="ghost" onClick={() => setDialogOpen(false)}>
+                <Button variant="ghost" onClick={() => setFolderDialogOpen(false)}>
                   Annuler
                 </Button>
-                <Button
-                  onClick={handleCreate}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                >
+                <Button onClick={handleCreateFolder} className="bg-blue-600 hover:bg-blue-700 text-white">
                   Créer
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        </div>
+        </aside>
 
-        {filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-900 flex items-center justify-center mb-4">
-              <BookOpen className="w-7 h-7 text-slate-400" />
+        <main className="flex-1 px-6 py-10 min-w-0">
+          <div className="flex items-end justify-between mb-8 gap-4 flex-wrap">
+            <div>
+              <h1 className="text-3xl font-semibold tracking-tight">Ma bibliothèque</h1>
+              <p className="text-slate-500 dark:text-slate-400 mt-1">
+                {filtered.length} cahier{filtered.length > 1 ? 's' : ''}
+              </p>
             </div>
-            <h3 className="font-medium text-lg">Aucun cahier</h3>
-            <p className="text-slate-500 dark:text-slate-400 mt-1">
-              Créez votre premier cahier pour commencer.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-6 gap-y-10">
-            {filtered.map((nb) => (
-              <div key={nb.id} className="group fade-up">
-                <Link to={`/notebook/${nb.id}`} className="block">
-                  <div
-                    className="relative aspect-[3/4] rounded-md cover-shine shadow-md group-hover:shadow-xl transition-all duration-300 group-hover:-translate-y-1"
-                    style={{ background: getCoverGradient(nb.cover) }}
-                  >
-                    <div className="cover-spine" />
-                    <div className="absolute inset-0 p-5 flex flex-col justify-end">
-                      <h3 className="text-white font-semibold text-base leading-snug line-clamp-3 drop-shadow">
-                        {nb.title}
-                      </h3>
-                      <p className="text-white/70 text-xs mt-1">
-                        {nb.pages.length} page{nb.pages.length > 1 ? 's' : ''}
-                      </p>
+
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-5 h-11 gap-2">
+                  <Plus className="w-4 h-4" />
+                  Nouveau cahier
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Créer un nouveau cahier</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-5 py-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="nb-title">Titre</Label>
+                    <Input
+                      id="nb-title"
+                      value={newTitle}
+                      onChange={(e) => setNewTitle(e.target.value)}
+                      placeholder="Mon cahier"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Couverture</Label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {COVER_TEMPLATES.map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => setNewCover(c.id)}
+                          className={`h-16 rounded-md cover-shine border-2 transition-all ${
+                            newCover === c.id
+                              ? 'border-blue-600 scale-105'
+                              : 'border-transparent hover:border-slate-300 dark:hover:border-slate-700'
+                          }`}
+                          style={{ background: c.gradient }}
+                          aria-label={c.name}
+                        />
+                      ))}
                     </div>
                   </div>
-                </Link>
-                <div className="flex items-start justify-between mt-3 px-1">
-                  <div className="min-w-0">
-                    <p className="font-medium text-sm truncate">{nb.title}</p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {formatDate(nb.updatedAt)}
-                    </p>
+                  <div className="space-y-2">
+                    <Label>Modèle de page</Label>
+                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                      {PAGE_TEMPLATES.map((t) => (
+                        <PageTemplatePreview
+                          key={t.id}
+                          template={t}
+                          selected={newTemplate === t.id}
+                          onClick={() => setNewTemplate(t.id)}
+                        />
+                      ))}
+                    </div>
                   </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        className="p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 opacity-0 group-hover:opacity-100 transition-opacity"
-                        aria-label="Options"
-                      >
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() => handleDelete(nb.id, nb.title)}
-                        className="text-red-600 focus:text-red-600"
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Supprimer
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
                 </div>
-              </div>
-            ))}
+                <DialogFooter>
+                  <Button variant="ghost" onClick={() => setDialogOpen(false)}>
+                    Annuler
+                  </Button>
+                  <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700 text-white">
+                    Créer
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
-        )}
-      </main>
+
+          {selectedFolder === 'all' && pinnedNotebooks.length > 0 && !search && (
+            <section className="mb-10">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-4 flex items-center gap-2">
+                <Pin className="w-4 h-4" />
+                Raccourcis
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-6 gap-y-10">
+                {pinnedNotebooks.map((nb) => (
+                  <NotebookCard key={nb.id} nb={nb} {...cardProps} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-900 flex items-center justify-center mb-4">
+                <BookOpen className="w-7 h-7 text-slate-400" />
+              </div>
+              <h3 className="font-medium text-lg">Aucun cahier</h3>
+              <p className="text-slate-500 dark:text-slate-400 mt-1">
+                Créez votre premier cahier pour commencer.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-6 gap-y-10">
+              {filtered.map((nb) => (
+                <NotebookCard key={nb.id} nb={nb} {...cardProps} />
+              ))}
+            </div>
+          )}
+        </main>
+      </div>
     </div>
   );
 };
