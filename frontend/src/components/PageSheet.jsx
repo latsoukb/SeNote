@@ -30,6 +30,15 @@ import {
   shouldIgnoreDrawPointer,
   isPalmTouch,
 } from '../lib/pointerInput';
+import {
+  getCoalescedPointerEvents,
+  shouldAddPoint,
+  pressureWidth,
+  clampPan,
+  focalPan,
+} from '../lib/inkEngine';
+import { drawStroke, createStaticLayer } from '../lib/strokeRenderer';
+import { MIN_ZOOM, MAX_ZOOM } from './NoteCanvas';
 
 const SHAPE_DELAY_MS = 650;
 
@@ -45,6 +54,7 @@ const PageSheet = ({
   writeZoom = 1,
   writePan = { x: 0, y: 0 },
   onWritePanChange,
+  onWriteZoomChange,
   stylusOnly = true,
 }) => {
   const canvasRef = useRef(null);
@@ -72,11 +82,24 @@ const PageSheet = ({
   const lassoDragRef = useRef(null);
   const lassoOrigStrokeRef = useRef(null);
   const textTapRef = useRef(null);
+  const staticLayerRef = useRef(null);
+  const staticDirtyRef = useRef(true);
+  const viewportRef = useRef(null);
+  const pinchRef = useRef(null);
+  const writeZoomRef = useRef(writeZoom);
+  const writePanRef = useRef(writePan);
+  const onZoomRef = useRef(onWriteZoomChange);
+  const onPanRef = useRef(onWritePanChange);
+  writeZoomRef.current = writeZoom;
+  writePanRef.current = writePan;
+  onZoomRef.current = onWriteZoomChange;
+  onPanRef.current = onWritePanChange;
 
   useEffect(() => {
     if (page.id !== pageIdRef.current) {
       strokesRef.current = page.strokes || [];
       pageIdRef.current = page.id;
+      staticDirtyRef.current = true;
       return;
     }
     if (isDrawing || liveStrokesRef.current || currentStrokeRef.current) return;
@@ -90,8 +113,110 @@ const PageSheet = ({
       prop.some((s, i) => s.id !== local[i]?.id)
     ) {
       strokesRef.current = prop;
+      staticDirtyRef.current = true;
     }
   }, [page.id, page.strokes, isDrawing]);
+
+  useEffect(() => {
+    if (!isActive || !onWritePanChange || writeZoom <= 1) return;
+    const el = viewportRef.current;
+    if (!el) return;
+    const clamped = clampPan(writePan, writeZoom, el.clientWidth, el.clientHeight);
+    if (clamped.x !== writePan.x || clamped.y !== writePan.y) {
+      onWritePanChange(clamped);
+    }
+  }, [writeZoom, writePan, isActive, onWritePanChange]);
+
+  useEffect(() => {
+    if (!isActive) return;
+    const el = viewportRef.current;
+    if (!el) return;
+
+    const applyZoom = (newZoom, clientX, clientY, fromPinch) => {
+      const onZoom = onZoomRef.current;
+      const onPan = onPanRef.current;
+      if (!onZoom) return;
+
+      const clampedZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, newZoom));
+      if (clampedZoom <= 1) {
+        onZoom(clampedZoom);
+        onPan?.({ x: 0, y: 0 });
+        return;
+      }
+
+      const rect = el.getBoundingClientRect();
+      const focalX = clientX - rect.left;
+      const focalY = clientY - rect.top;
+      const prevZoom =
+        fromPinch && pinchRef.current ? pinchRef.current.lastZoom : writeZoomRef.current;
+      const prevPan =
+        fromPinch && pinchRef.current ? pinchRef.current.pan : writePanRef.current;
+      const rawPan = focalPan(focalX, focalY, prevPan, prevZoom, clampedZoom);
+      const newPan = clampPan(rawPan, clampedZoom, rect.width, rect.height);
+
+      if (fromPinch && pinchRef.current) {
+        pinchRef.current.lastZoom = clampedZoom;
+        pinchRef.current.pan = newPan;
+      }
+      onZoom(clampedZoom);
+      onPan?.(newPan);
+    };
+
+    const onTouchStart = (e) => {
+      if (e.touches.length !== 2) return;
+      const [t0, t1] = e.touches;
+      pinchRef.current = {
+        dist: Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY),
+        zoom: writeZoomRef.current,
+        pan: { ...writePanRef.current },
+        lastZoom: writeZoomRef.current,
+      };
+    };
+
+    const onTouchMove = (e) => {
+      if (e.touches.length !== 2 || !pinchRef.current) return;
+      e.preventDefault();
+      const [t0, t1] = e.touches;
+      const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+      const ratio = dist / pinchRef.current.dist;
+      const next = Math.min(
+        MAX_ZOOM,
+        Math.max(MIN_ZOOM, pinchRef.current.zoom * ratio)
+      );
+      const cx = (t0.clientX + t1.clientX) / 2;
+      const cy = (t0.clientY + t1.clientY) / 2;
+      applyZoom(next, cx, cy, true);
+    };
+
+    const onTouchEnd = () => {
+      pinchRef.current = null;
+    };
+
+    const onWheel = (e) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.08 : 0.08;
+      const next = Math.min(
+        MAX_ZOOM,
+        Math.max(MIN_ZOOM, writeZoomRef.current + delta)
+      );
+      applyZoom(next, e.clientX, e.clientY, false);
+    };
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    el.addEventListener('touchend', onTouchEnd, { passive: true });
+    el.addEventListener('touchcancel', onTouchEnd, { passive: true });
+    el.addEventListener('wheel', onWheel, { passive: false });
+
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+      el.removeEventListener('touchcancel', onTouchEnd);
+      el.removeEventListener('wheel', onWheel);
+    };
+  }, [isActive]);
 
   const displayHeight = displayWidth * (PAGE_H / PAGE_W);
   const scale = displayWidth / PAGE_W;
@@ -117,26 +242,23 @@ const PageSheet = ({
 
   const getPos = (e) => getPosFromClient(e.clientX, e.clientY, e.pressure > 0 ? e.pressure : 0.5);
 
-  const drawStrokePath = (ctx, s) => {
-    if (s.shape) {
-      drawShape(ctx, s.shape);
-      return;
+  const ensureStaticLayer = useCallback(() => {
+    if (!staticLayerRef.current) {
+      staticLayerRef.current = createStaticLayer();
+      staticLayerRef.current.width = PAGE_W;
+      staticLayerRef.current.height = PAGE_H;
     }
-    if (!s.points?.length) return;
-    ctx.beginPath();
-    ctx.moveTo(s.points[0].x, s.points[0].y);
-    if (s.points.length < 3) {
-      s.points.slice(1).forEach((p) => ctx.lineTo(p.x, p.y));
-    } else {
-      for (let i = 1; i < s.points.length - 1; i++) {
-        const xc = (s.points[i].x + s.points[i + 1].x) / 2;
-        const yc = (s.points[i].y + s.points[i + 1].y) / 2;
-        ctx.quadraticCurveTo(s.points[i].x, s.points[i].y, xc, yc);
-      }
-      ctx.lineTo(s.points[s.points.length - 1].x, s.points[s.points.length - 1].y);
-    }
-    ctx.stroke();
-  };
+    return staticLayerRef.current;
+  }, []);
+
+  const rebuildStaticLayer = useCallback(() => {
+    const layer = ensureStaticLayer();
+    const sctx = layer.getContext('2d');
+    sctx.clearRect(0, 0, PAGE_W, PAGE_H);
+    const list = strokesRef.current ?? page.strokes ?? [];
+    list.forEach((s) => drawStroke(sctx, s));
+    staticDirtyRef.current = false;
+  }, [ensureStaticLayer]);
 
   const renderCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -144,23 +266,16 @@ const PageSheet = ({
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, PAGE_W, PAGE_H);
 
-    const list = liveStrokesRef.current ?? strokesRef.current ?? page.strokes ?? [];
-    const drawOne = (s) => {
-      ctx.save();
-      ctx.strokeStyle = s.color;
-      ctx.lineWidth = s.thickness;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      if (s.type === 'highlighter') {
-        ctx.globalAlpha = 0.35;
-        ctx.lineCap = 'butt';
-      }
-      drawStrokePath(ctx, s);
-      ctx.restore();
-    };
+    const isErasing = tool === 'eraser' && liveStrokesRef.current;
+    if (isErasing) {
+      liveStrokesRef.current.forEach((s) => drawStroke(ctx, s));
+    } else {
+      if (staticDirtyRef.current) rebuildStaticLayer();
+      const layer = staticLayerRef.current;
+      if (layer) ctx.drawImage(layer, 0, 0);
+    }
 
-    list.forEach(drawOne);
-    if (currentStrokeRef.current) drawOne(currentStrokeRef.current);
+    if (currentStrokeRef.current) drawStroke(ctx, currentStrokeRef.current);
 
     if (tool === 'eraser' && isDrawing && eraserPathRef.current.length) {
       const last = eraserPathRef.current[eraserPathRef.current.length - 1];
@@ -174,7 +289,7 @@ const PageSheet = ({
       ctx.stroke();
       ctx.restore();
     }
-  }, [page.strokes, tool, isDrawing, thickness]);
+  }, [tool, isDrawing, thickness, rebuildStaticLayer]);
 
   const scheduleRender = useCallback(() => {
     if (rafRef.current) return;
@@ -252,6 +367,7 @@ const PageSheet = ({
 
   const commitStrokes = (next) => {
     strokesRef.current = next;
+    staticDirtyRef.current = true;
     onChange({ strokes: next });
     scheduleRender();
   };
@@ -308,6 +424,12 @@ const PageSheet = ({
     }
     setSelectedStrokeId(null);
     return null;
+  };
+
+  const clampedPan = (pan) => {
+    const el = viewportRef.current;
+    if (!el || writeZoom <= 1) return { x: 0, y: 0 };
+    return clampPan(pan, writeZoom, el.clientWidth, el.clientHeight);
   };
 
   const startPan = (e, target = e.currentTarget) => {
@@ -410,12 +532,11 @@ const PageSheet = ({
     }
     setSelectedStrokeId(null);
 
-    const t = thickness * (tool === 'highlighter' ? 1 : 0.35 + pos.pressure * 0.65);
     const stroke = {
       id: makeId('s'),
       type: tool,
       color,
-      thickness: tool === 'highlighter' ? Math.max(14, t) : t,
+      thickness: pressureWidth(thickness, pos.pressure, tool),
       points: [{ x: pos.x, y: pos.y }],
     };
 
@@ -432,10 +553,12 @@ const PageSheet = ({
   const moveDraw = (e) => {
     if (isPanning && onWritePanChange) {
       e.preventDefault();
-      onWritePanChange({
-        x: panStartRef.current.panX + (e.clientX - panStartRef.current.x),
-        y: panStartRef.current.panY + (e.clientY - panStartRef.current.y),
-      });
+      onWritePanChange(
+        clampedPan({
+          x: panStartRef.current.panX + (e.clientX - panStartRef.current.x),
+          y: panStartRef.current.panY + (e.clientY - panStartRef.current.y),
+        })
+      );
       return;
     }
     if (tool === 'lasso' && lassoDragRef.current && lassoOrigStrokeRef.current) {
@@ -482,11 +605,21 @@ const PageSheet = ({
 
     if (currentStrokeRef.current?.points) {
       const pts = currentStrokeRef.current.points;
-      const last = pts[pts.length - 1];
-      if ((pos.x - last.x) ** 2 + (pos.y - last.y) ** 2 > 0.8) {
-        pts.push({ x: pos.x, y: pos.y });
-        scheduleRender();
-      }
+      const events = getCoalescedPointerEvents(e);
+      let changed = false;
+      events.forEach((ev) => {
+        const p = getPosFromClient(
+          ev.clientX,
+          ev.clientY,
+          ev.pressure > 0 ? ev.pressure : 0.5
+        );
+        const last = pts[pts.length - 1];
+        if (shouldAddPoint(last, p)) {
+          pts.push({ x: p.x, y: p.y });
+          changed = true;
+        }
+      });
+      if (changed) scheduleRender();
     }
   };
 
@@ -553,6 +686,7 @@ const PageSheet = ({
       liveInstrumentsRef.current = null;
       eraserPathRef.current = [];
       setErasePreview(null);
+      staticDirtyRef.current = true;
       renderCanvas();
       return;
     }
@@ -591,12 +725,14 @@ const PageSheet = ({
           strokes: nextStrokes,
           textBoxes: (page.textBoxes || []).filter((t) => !toRemoveText.has(t.id)),
         });
+        staticDirtyRef.current = true;
         renderCanvas();
         return;
       }
 
       const nextStrokes = [...strokesRef.current, saved];
       strokesRef.current = nextStrokes;
+      staticDirtyRef.current = true;
       onChange({ strokes: nextStrokes });
 
       if (tool === 'pen' && saved.points.length >= 20 && !looksLikeHandwriting(saved.points)) {
@@ -648,8 +784,6 @@ const PageSheet = ({
   const contentScale = scale;
   const panX = isActive && effectiveZoom > 1 ? writePan.x : 0;
   const panY = isActive && effectiveZoom > 1 ? writePan.y : 0;
-  const sheetW = baseW * effectiveZoom;
-  const sheetH = baseH * effectiveZoom;
   const selectionBounds = tool === 'lasso' && selectedStroke ? getStrokeBounds(selectedStroke) : null;
 
   const pageContent = (
@@ -675,7 +809,7 @@ const PageSheet = ({
         onPointerCancel={endDraw}
         className={`absolute inset-0 w-full h-full ${cursorClass}`}
         style={{
-          touchAction: stylusOnly ? 'pan-x pan-y' : 'none',
+          touchAction: 'none',
           zIndex: 10,
           pointerEvents: tool === 'hand' && effectiveZoom <= 1 ? 'none' : 'auto',
         }}
@@ -764,8 +898,9 @@ const PageSheet = ({
 
   return (
     <div
+      ref={viewportRef}
       className={`relative bg-white overflow-hidden shadow-lg ${isActive ? 'ring-2 ring-blue-500/40' : ''}`}
-      style={{ width: sheetW, height: sheetH }}
+      style={{ width: baseW, height: baseH, touchAction: 'none' }}
       onPointerDown={
         tool === 'hand' && effectiveZoom > 1 ? (e) => startPan(e) : undefined
       }
@@ -779,9 +914,10 @@ const PageSheet = ({
           height: baseH,
           transform:
             effectiveZoom !== 1 || panX || panY
-              ? `scale(${effectiveZoom}) translate(${panX / effectiveZoom}px, ${panY / effectiveZoom}px)`
+              ? `translate(${panX}px, ${panY}px) scale(${effectiveZoom})`
               : undefined,
           transformOrigin: 'top left',
+          willChange: effectiveZoom > 1 ? 'transform' : undefined,
         }}
       >
         <div className="relative" style={{ width: baseW, height: baseH }}>

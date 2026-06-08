@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -81,6 +81,23 @@ const NotebookEditor = () => {
   );
 
   const currentPage = notebook?.pages[currentPageIdx] || notebook?.pages[0];
+
+  useEffect(() => {
+    const blockSafariZoom = (e) => e.preventDefault();
+    const blockTrackpadZoom = (e) => {
+      if (e.ctrlKey || e.metaKey) e.preventDefault();
+    };
+    document.addEventListener('gesturestart', blockSafariZoom, { passive: false });
+    document.addEventListener('gesturechange', blockSafariZoom, { passive: false });
+    document.addEventListener('gestureend', blockSafariZoom, { passive: false });
+    document.addEventListener('wheel', blockTrackpadZoom, { passive: false });
+    return () => {
+      document.removeEventListener('gesturestart', blockSafariZoom);
+      document.removeEventListener('gesturechange', blockSafariZoom);
+      document.removeEventListener('gestureend', blockSafariZoom);
+      document.removeEventListener('wheel', blockTrackpadZoom);
+    };
+  }, []);
 
   if (!notebook) {
     return (

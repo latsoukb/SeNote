@@ -1,8 +1,6 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import PageSheet from './PageSheet';
 import { PAGE_W, PAGE_H } from '../lib/pageDimensions';
-import { MIN_ZOOM, MAX_ZOOM } from './NoteCanvas';
-
 const GAP = 16;
 
 const PdfDocumentView = ({
@@ -28,7 +26,6 @@ const PdfDocumentView = ({
   const pageRefs = useRef([]);
   const addingRef = useRef(false);
   const wasAtEndRef = useRef(false);
-  const pinchRef = useRef(null);
   const [pageWidth, setPageWidth] = useState(700);
   const isVertical = scrollDirection !== 'horizontal';
 
@@ -134,78 +131,15 @@ const PdfDocumentView = ({
     writeZoom,
   ]);
 
-  const handleTouchStart = (e) => {
-    if (e.touches.length === 2) {
-      const [t0, t1] = e.touches;
-      pinchRef.current = {
-        dist: Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY),
-        zoom: writeZoom,
-        pan: { ...writePan },
-        lastZoom: writeZoom,
-      };
-    }
-  };
-
-  const applyFocalZoom = (newZoom, clientX, clientY, fromPinch = false) => {
-    const pageEl = pageRefs.current[currentPageIdx];
-    if (!pageEl) {
-      onWriteZoomChange?.(newZoom);
-      return;
-    }
-    const rect = pageEl.getBoundingClientRect();
-    const focalX = clientX - rect.left;
-    const focalY = clientY - rect.top;
-    const prevZoom = fromPinch && pinchRef.current ? pinchRef.current.lastZoom : writeZoom;
-    const prevPan = fromPinch && pinchRef.current ? pinchRef.current.pan : writePan;
-    const ratio = newZoom / prevZoom;
-    const newPan = {
-      x: focalX - (focalX - prevPan.x) * ratio,
-      y: focalY - (focalY - prevPan.y) * ratio,
-    };
-    if (fromPinch && pinchRef.current) {
-      pinchRef.current.lastZoom = newZoom;
-      pinchRef.current.pan = newPan;
-    }
-    onWriteZoomChange?.(newZoom);
-    onWritePanChange?.(newPan);
-  };
-
-  const handleTouchMove = (e) => {
-    if (e.touches.length !== 2 || !pinchRef.current) return;
-    e.preventDefault();
-    const [t0, t1] = e.touches;
-    const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
-    const ratio = dist / pinchRef.current.dist;
-    const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, pinchRef.current.zoom * ratio));
-    const cx = (t0.clientX + t1.clientX) / 2;
-    const cy = (t0.clientY + t1.clientY) / 2;
-    applyFocalZoom(next, cx, cy, true);
-  };
-
-  const handleTouchEnd = () => {
-    pinchRef.current = null;
-  };
-
-  const handleWheel = (e) => {
-    if (e.ctrlKey || e.metaKey) {
-      e.preventDefault();
-      const delta = e.deltaY > 0 ? -0.08 : 0.08;
-      const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, writeZoom + delta));
-      applyFocalZoom(next, e.clientX, e.clientY);
-    }
-  };
-
   return (
     <div
       ref={scrollRef}
       className={`flex-1 thin-scroll bg-slate-200/80 dark:bg-slate-950/50 ${
         isVertical ? 'overflow-y-auto overflow-x-hidden' : 'overflow-x-auto overflow-y-hidden'
       }`}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onWheel={handleWheel}
-      style={{ touchAction: isVertical ? 'pan-y pinch-zoom' : 'pan-x pinch-zoom' }}
+      style={{
+        touchAction: writeZoom > 1 ? 'none' : isVertical ? 'pan-y' : 'pan-x',
+      }}
     >
       <div
         className={`mx-auto py-6 px-4 ${
@@ -234,6 +168,7 @@ const PdfDocumentView = ({
               writeZoom={idx === currentPageIdx ? writeZoom : 1}
               writePan={idx === currentPageIdx ? writePan : { x: 0, y: 0 }}
               onWritePanChange={idx === currentPageIdx ? onWritePanChange : undefined}
+              onWriteZoomChange={idx === currentPageIdx ? onWriteZoomChange : undefined}
               stylusOnly={stylusOnly}
             />
           </div>

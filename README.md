@@ -43,6 +43,10 @@ Le frontend synchronise automatiquement avec l'API sur `http://localhost:8000`. 
 - **Mode GoodNotes** : stylet pour écrire, doigt pour faire défiler, paume ignorée (Paramètres)
 - Zoom pour écrire précisément (comme GoodNotes), puis dézoomer pour voir le résultat final
 
-## Déploiement privé (bêta testeurs)
+## Partager avec un ami (tablette)
 
-Voir [DEPLOY.md](./DEPLOY.md) — Vercel + code PIN pour partager l'app avec un ami sans exposer le code.
+```bash
+./scripts/share.sh 1234
+```
+
+Voir [DEPLOY.md](./DEPLOY.md) — 30 secondes en Wi-Fi, ou 1 commande Vercel pour une URL en ligne.
