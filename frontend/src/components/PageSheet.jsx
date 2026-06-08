@@ -25,6 +25,11 @@ import TextBoxToolbar from './TextBoxToolbar';
 import GeometryInstruments from './GeometryInstruments';
 import ShapeEditor from './ShapeEditor';
 import LassoSelection from './LassoSelection';
+import {
+  canDrawWithPointer,
+  shouldIgnoreDrawPointer,
+  isPalmTouch,
+} from '../lib/pointerInput';
 
 const SHAPE_DELAY_MS = 650;
 
@@ -40,6 +45,7 @@ const PageSheet = ({
   writeZoom = 1,
   writePan = { x: 0, y: 0 },
   onWritePanChange,
+  stylusOnly = true,
 }) => {
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -304,21 +310,32 @@ const PageSheet = ({
     return null;
   };
 
-  const startPan = (e) => {
-    if (tool !== 'hand' || !isActive || writeZoom <= 1) return;
+  const startPan = (e, target = e.currentTarget) => {
+    if (!isActive || writeZoom <= 1 || !onWritePanChange) return;
     e.preventDefault();
     setIsPanning(true);
     panStartRef.current = { x: e.clientX, y: e.clientY, panX: writePan.x, panY: writePan.y };
-    e.currentTarget.setPointerCapture(e.pointerId);
+    target?.setPointerCapture?.(e.pointerId);
   };
 
   const startDraw = (e) => {
     if (!isActive) return;
+    if (isPalmTouch(e)) return;
+
+    if (stylusOnly && shouldIgnoreDrawPointer(e, stylusOnly)) {
+      if (writeZoom > 1 && onWritePanChange) {
+        startPan(e, canvasRef.current);
+      }
+      return;
+    }
+
     if (tool === 'hand') {
       startPan(e);
       return;
     }
     if (tool === 'ruler') return;
+
+    if (stylusOnly && !canDrawWithPointer(e, stylusOnly)) return;
 
     if (tool === 'lasso') {
       e.preventDefault();
@@ -413,9 +430,9 @@ const PageSheet = ({
   };
 
   const moveDraw = (e) => {
-    if (isPanning && tool === 'hand') {
+    if (isPanning && onWritePanChange) {
       e.preventDefault();
-      onWritePanChange?.({
+      onWritePanChange({
         x: panStartRef.current.panX + (e.clientX - panStartRef.current.x),
         y: panStartRef.current.panY + (e.clientY - panStartRef.current.y),
       });
@@ -658,7 +675,7 @@ const PageSheet = ({
         onPointerCancel={endDraw}
         className={`absolute inset-0 w-full h-full ${cursorClass}`}
         style={{
-          touchAction: 'none',
+          touchAction: stylusOnly ? 'pan-x pan-y' : 'none',
           zIndex: 10,
           pointerEvents: tool === 'hand' && effectiveZoom <= 1 ? 'none' : 'auto',
         }}
@@ -749,9 +766,11 @@ const PageSheet = ({
     <div
       className={`relative bg-white overflow-hidden shadow-lg ${isActive ? 'ring-2 ring-blue-500/40' : ''}`}
       style={{ width: sheetW, height: sheetH }}
-      onPointerDown={tool === 'hand' && effectiveZoom > 1 ? startPan : undefined}
-      onPointerMove={tool === 'hand' && effectiveZoom > 1 ? moveDraw : undefined}
-      onPointerUp={tool === 'hand' && effectiveZoom > 1 ? endDraw : undefined}
+      onPointerDown={
+        tool === 'hand' && effectiveZoom > 1 ? (e) => startPan(e) : undefined
+      }
+      onPointerMove={isPanning ? moveDraw : tool === 'hand' && effectiveZoom > 1 ? moveDraw : undefined}
+      onPointerUp={isPanning || (tool === 'hand' && effectiveZoom > 1) ? endDraw : undefined}
     >
       <div
         className="absolute top-0 left-0"

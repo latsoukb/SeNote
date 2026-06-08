@@ -6,6 +6,7 @@ const SETTINGS_KEY = 'senote-settings-v1';
 const DEFAULT_SETTINGS = {
   scrollDirection: 'vertical', // 'vertical' | 'horizontal'
   autoAddPage: true,
+  stylusOnly: true, // stylet écrit, doigt déplace (GoodNotes)
 };
 
 export const SettingsProvider = ({ children }) => {

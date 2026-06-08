@@ -445,6 +445,7 @@ const NotebookEditor = () => {
             onWriteZoomChange={setWriteZoom}
             writePan={writePan}
             onWritePanChange={setWritePan}
+            stylusOnly={settings.stylusOnly !== false}
           />
         </div>
       </div>

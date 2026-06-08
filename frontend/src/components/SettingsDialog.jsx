@@ -73,6 +73,21 @@ const SettingsDialog = ({ trigger }) => {
 
           <div className="flex items-center justify-between gap-4">
             <div className="space-y-0.5">
+              <Label htmlFor="stylus-only">Stylet uniquement pour écrire</Label>
+              <p className="text-xs text-slate-500">
+                Comme GoodNotes : le stylet écrit, le doigt fait défiler la page. La paume est
+                ignorée.
+              </p>
+            </div>
+            <Switch
+              id="stylus-only"
+              checked={settings.stylusOnly !== false}
+              onCheckedChange={(v) => updateSettings({ stylusOnly: v })}
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-0.5">
               <Label htmlFor="auto-add">Ajout auto de page</Label>
               <p className="text-xs text-slate-500">
                 Nouvelle page au même style en fin de défilement

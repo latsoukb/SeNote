@@ -40,4 +40,9 @@ Le frontend synchronise automatiquement avec l'API sur `http://localhost:8000`. 
 
 - Modèles de page : Vierge, Ligné, Quadrillé, Pointillé, **Caligraphe** (trait rouge + lignes bleues)
 - Écriture au stylet avec prise en charge de la pression
+- **Mode GoodNotes** : stylet pour écrire, doigt pour faire défiler, paume ignorée (Paramètres)
 - Zoom pour écrire précisément (comme GoodNotes), puis dézoomer pour voir le résultat final
+
+## Déploiement privé (bêta testeurs)
+
+Voir [DEPLOY.md](./DEPLOY.md) — Vercel + code PIN pour partager l'app avec un ami sans exposer le code.
