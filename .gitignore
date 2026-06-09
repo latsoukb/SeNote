@@ -82,3 +82,6 @@ memory/test_credentials.md
 
 # Mobile development
 android-sdk/
+SeNote-tablet.apk
+frontend/android/app/build/
+frontend/android/.gradle/

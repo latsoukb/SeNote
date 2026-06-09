@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import Logo from './Logo';
+import { isKioskApp } from '../lib/platform';
 
 const BETA_PIN = process.env.REACT_APP_BETA_PIN || '';
 const SESSION_KEY = 'senote-beta-access';
@@ -18,7 +19,7 @@ const AccessGate = ({ children }) => {
     }
   });
 
-  if (!BETA_PIN || granted) return children;
+  if (!BETA_PIN || granted || isKioskApp()) return children;
 
   const submit = (e) => {
     e.preventDefault();

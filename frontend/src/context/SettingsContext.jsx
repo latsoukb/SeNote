@@ -7,6 +7,7 @@ const DEFAULT_SETTINGS = {
   scrollDirection: 'vertical', // 'vertical' | 'horizontal'
   autoAddPage: true,
   stylusOnly: true, // stylet écrit, doigt déplace (GoodNotes)
+  googleDriveAutoSync: true,
 };
 
 export const SettingsProvider = ({ children }) => {

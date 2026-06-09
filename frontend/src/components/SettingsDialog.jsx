@@ -12,6 +12,8 @@ import { Switch } from './ui/switch';
 import { Settings, Download, ArrowDown, ArrowLeft } from 'lucide-react';
 import { useSettings } from '../context/SettingsContext';
 import { usePWAInstall } from '../hooks/usePWAInstall';
+import GoogleDriveSettings from './GoogleDriveSettings';
+import { isNativeApp } from '../lib/platform';
 
 const SettingsDialog = ({ trigger }) => {
   const { settings, updateSettings } = useSettings();
@@ -100,6 +102,9 @@ const SettingsDialog = ({ trigger }) => {
             />
           </div>
 
+          <GoogleDriveSettings />
+
+          {!isNativeApp() && (
           <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-slate-800">
             <Label>Raccourci / installation</Label>
             {isInstalled ? (
@@ -118,6 +123,7 @@ const SettingsDialog = ({ trigger }) => {
               </p>
             )}
           </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

@@ -6,12 +6,16 @@ import {
   newPage as createPage,
   newFolder as createFolder,
 } from '../mock/mock';
-import { checkBackend, fetchWorkspace, saveWorkspace } from '../lib/api';
+import { checkBackend, fetchWorkspace, saveWorkspace as saveWorkspaceApi } from '../lib/api';
+import { loadWorkspace, saveWorkspace, getStorageLabel } from '../lib/dataStore';
+import {
+  uploadToGoogleDrive,
+  mergeWithGoogleDrive,
+  getDriveStatus,
+} from '../lib/googleDriveSync';
+import { isNativeApp } from '../lib/platform';
 
 const NotesContext = createContext(null);
-
-const STORAGE_KEY = 'senote-data-v3';
-const LEGACY_KEYS = ['senote-data-v2', 'senote-data-v1'];
 
 const emptyTrash = () => ({ notebooks: [], pages: [] });
 
@@ -22,98 +26,173 @@ const migrateNotebook = (nb) => ({
   pageTemplate: nb.pageTemplate ?? 'seyes',
 });
 
-const loadData = () => {
-  if (typeof window === 'undefined') {
-    return { folders: initialFolders, notebooks: initialNotebooks, trash: emptyTrash() };
-  }
-  try {
-    let raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      for (const key of LEGACY_KEYS) {
-        raw = localStorage.getItem(key);
-        if (raw) break;
-      }
-      if (raw) {
-        const data = JSON.parse(raw);
-        return {
-          folders: data.folders ?? initialFolders,
-          notebooks: (data.notebooks ?? []).map(migrateNotebook),
-          trash: data.trash ?? emptyTrash(),
-        };
-      }
-    }
-    if (raw) {
-      const data = JSON.parse(raw);
-      return {
-        folders: data.folders ?? initialFolders,
-        notebooks: (data.notebooks ?? []).map(migrateNotebook),
-        trash: data.trash ?? emptyTrash(),
-      };
-    }
-  } catch (e) {
-    console.warn('Failed to load notebooks', e);
-  }
-  return { folders: initialFolders, notebooks: initialNotebooks, trash: emptyTrash() };
-};
+const defaultData = () => ({
+  folders: initialFolders,
+  notebooks: initialNotebooks,
+  trash: emptyTrash(),
+  savedAt: 0,
+});
 
 export const NotesProvider = ({ children }) => {
-  const [folders, setFolders] = useState(() => loadData().folders);
-  const [notebooks, setNotebooks] = useState(() => loadData().notebooks);
-  const [trash, setTrash] = useState(() => loadData().trash);
-  const [synced, setSynced] = useState(false);
+  const [folders, setFolders] = useState(initialFolders);
+  const [notebooks, setNotebooks] = useState(initialNotebooks);
+  const [trash, setTrash] = useState(emptyTrash);
+  const [ready, setReady] = useState(false);
+  const [driveSyncing, setDriveSyncing] = useState(false);
+  const [lastDriveSync, setLastDriveSync] = useState(null);
   const saveTimerRef = useRef(null);
+  const driveTimerRef = useRef(null);
+
+  const applyWorkspace = useCallback((data) => {
+    if (!data) return;
+    setFolders(data.folders ?? initialFolders);
+    setNotebooks((data.notebooks ?? []).map(migrateNotebook));
+    setTrash(data.trash ?? emptyTrash());
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const online = await checkBackend();
-      if (cancelled) return;
-      if (online) {
-        try {
-          const remote = await fetchWorkspace();
-          const hasRemote =
-            (remote.notebooks?.length || 0) > 0 || (remote.folders?.length || 0) > 0;
-          if (hasRemote) {
-            setFolders(remote.folders ?? initialFolders);
-            setNotebooks((remote.notebooks ?? []).map(migrateNotebook));
-            setTrash(remote.trash ?? emptyTrash());
-          } else {
-            const local = loadData();
-            await saveWorkspace({ folders: local.folders, notebooks: local.notebooks, trash: local.trash });
+      let data = (await loadWorkspace()) || defaultData();
+
+      if (isNativeApp()) {
+        const status = await getDriveStatus();
+        if (status.connected) {
+          data = await mergeWithGoogleDrive(data);
+        }
+      } else {
+        const online = await checkBackend();
+        if (online && !cancelled) {
+          try {
+            const remote = await fetchWorkspace();
+            const hasRemote =
+              (remote.notebooks?.length || 0) > 0 || (remote.folders?.length || 0) > 0;
+            if (hasRemote) {
+              data = {
+                folders: remote.folders ?? initialFolders,
+                notebooks: (remote.notebooks ?? []).map(migrateNotebook),
+                trash: remote.trash ?? emptyTrash(),
+                savedAt: Date.now(),
+              };
+            } else {
+              await saveWorkspaceApi({
+                folders: data.folders,
+                notebooks: data.notebooks,
+                trash: data.trash,
+              });
+            }
+          } catch (e) {
+            console.warn('Sync backend échouée, mode local', e);
           }
-        } catch (e) {
-          console.warn('Sync backend échouée, mode local', e);
         }
       }
-      if (!cancelled) setSynced(true);
+
+      if (!cancelled) {
+        applyWorkspace(data);
+        setReady(true);
+      }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [applyWorkspace]);
+
+  const persist = useCallback(
+    async (payload, syncDrive = false) => {
+      const saved = await saveWorkspace(payload);
+      if (!isNativeApp()) {
+        try {
+          const online = await checkBackend();
+          if (online) {
+            await saveWorkspaceApi(payload);
+          }
+        } catch (e) {
+          console.warn('Sauvegarde backend échouée', e);
+        }
+      }
+      if (syncDrive) {
+        const status = await getDriveStatus();
+        if (status.connected) {
+          setDriveSyncing(true);
+          try {
+            await uploadToGoogleDrive(payload);
+            setLastDriveSync(Date.now());
+          } catch (e) {
+            console.warn('Sync Google Drive échouée', e);
+          } finally {
+            setDriveSyncing(false);
+          }
+        }
+      }
+      return saved;
+    },
+    []
+  );
 
   useEffect(() => {
-    if (!synced) return;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ folders, notebooks, trash }));
-    } catch (e) {
-      console.warn('Failed to save notebooks', e);
-    }
+    if (!ready) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(async () => {
-      try {
-        const online = await checkBackend();
-        if (online) {
-          await saveWorkspace({ folders, notebooks, trash });
-        }
-      } catch (e) {
-        console.warn('Sauvegarde backend échouée', e);
-      }
-    }, 600);
+    saveTimerRef.current = setTimeout(() => {
+      persist({ folders, notebooks, trash }, false);
+    }, 400);
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  }, [folders, notebooks, trash, synced]);
+  }, [folders, notebooks, trash, ready, persist]);
+
+  useEffect(() => {
+    if (!ready || !isNativeApp()) return;
+
+    const isAutoSyncEnabled = () => {
+      try {
+        const raw = localStorage.getItem('senote-settings-v1');
+        if (!raw) return true;
+        return JSON.parse(raw).googleDriveAutoSync !== false;
+      } catch {
+        return true;
+      }
+    };
+
+    const runDriveSync = async () => {
+      if (!isAutoSyncEnabled()) return;
+      const status = await getDriveStatus();
+      if (!status.connected) return;
+      await persist({ folders, notebooks, trash }, true);
+    };
+
+    driveTimerRef.current = setInterval(runDriveSync, 60_000);
+
+    let removePause;
+    (async () => {
+      try {
+        const { App } = await import('@capacitor/app');
+        const handle = await App.addListener('pause', () => {
+          runDriveSync();
+        });
+        removePause = () => handle.remove();
+      } catch {
+        /* web */
+      }
+    })();
+
+    return () => {
+      if (driveTimerRef.current) clearInterval(driveTimerRef.current);
+      removePause?.();
+    };
+  }, [ready, folders, notebooks, trash, persist]);
+
+  const syncNowToDrive = useCallback(async () => {
+    setDriveSyncing(true);
+    try {
+      await persist({ folders, notebooks, trash }, true);
+      return true;
+    } catch (e) {
+      console.warn(e);
+      return false;
+    } finally {
+      setDriveSyncing(false);
+    }
+  }, [folders, notebooks, trash, persist]);
 
   const addNotebook = useCallback((title, cover, pageTemplate, folderId = null) => {
     const nb = createNotebook(title, cover, pageTemplate, folderId);
@@ -306,12 +385,24 @@ export const NotesProvider = ({ children }) => {
     [notebooks]
   );
 
+  if (!ready) {
+    return (
+      <div className="min-h-dvh flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+        <p className="text-slate-500 text-sm">Chargement des cahiers…</p>
+      </div>
+    );
+  }
+
   return (
     <NotesContext.Provider
       value={{
         folders,
         notebooks,
         trash,
+        storageLabel: getStorageLabel(),
+        driveSyncing,
+        lastDriveSync,
+        syncNowToDrive,
         addNotebook,
         deleteNotebook,
         moveNotebookToTrash,

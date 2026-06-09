@@ -30,7 +30,22 @@ Le frontend synchronise automatiquement avec l'API sur `http://localhost:8000`. 
 
 > Si le terminal affiche `Compiled successfully!` et `Local: http://localhost:3000`, l'app est prête — ouvrez cette adresse dans Chrome ou Safari.
 
-## Tester sur tablette
+## Tablette Android dédiée (APK — sans Play Store)
+
+Pour une tablette qui ne sert **qu'à noter** (projet éducatif Sénégal) :
+
+- Stockage **mémoire interne** de la tablette (64 Go)
+- Sync **Google Drive** gratuite (optionnelle)
+- Installation directe de l'APK
+
+**Guide complet : [ANDROID.md](./ANDROID.md)**
+
+```bash
+./scripts/build-apk.sh
+adb install -r SeNote-tablet.apk
+```
+
+## Tester sur tablette (navigateur)
 
 1. Assurez-vous que la tablette est sur le **même réseau Wi‑Fi** que votre Mac.
 2. Au démarrage, le terminal affiche aussi une adresse du type `http://172.x.x.x:3000`.
