@@ -139,7 +139,7 @@ const PdfDocumentView = ({
         isVertical ? 'overflow-y-auto overflow-x-hidden' : 'overflow-x-auto overflow-y-hidden'
       }`}
       style={{
-        touchAction: writeZoom > 1 ? 'none' : isVertical ? 'pan-y' : 'pan-x',
+        touchAction: isVertical ? 'pan-y' : 'pan-x',
       }}
     >
       <div
@@ -172,6 +172,7 @@ const PdfDocumentView = ({
               onWriteZoomChange={idx === currentPageIdx ? onWriteZoomChange : undefined}
               stylusOnly={stylusOnly}
               pageSyncRevision={pageSyncRevision}
+              scrollDirection={scrollDirection}
             />
           </div>
         ))}

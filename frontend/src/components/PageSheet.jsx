@@ -55,6 +55,7 @@ const PageSheet = ({
   onWriteZoomChange,
   stylusOnly = true,
   pageSyncRevision = 0,
+  scrollDirection = 'vertical',
 }) => {
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -86,12 +87,15 @@ const PageSheet = ({
   const staticDirtyRef = useRef(true);
   const viewportRef = useRef(null);
   const pinchRef = useRef(null);
+  const touchPanRef = useRef(null);
   const writeZoomRef = useRef(writeZoom);
   const writePanRef = useRef(writePan);
   const onZoomRef = useRef(onWriteZoomChange);
   const onPanRef = useRef(onWritePanChange);
+  const stylusOnlyRef = useRef(stylusOnly);
   writeZoomRef.current = writeZoom;
   writePanRef.current = writePan;
+  stylusOnlyRef.current = stylusOnly;
   onZoomRef.current = onWriteZoomChange;
   onPanRef.current = onWritePanChange;
 
@@ -197,19 +201,52 @@ const PageSheet = ({
     };
 
     const onTouchStart = (e) => {
-      if (e.touches.length !== 2) return;
-      const [t0, t1] = e.touches;
-      pinchRef.current = {
-        dist: Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY),
-        zoom: writeZoomRef.current,
-        pan: { ...writePanRef.current },
-        lastZoom: writeZoomRef.current,
-      };
+      if (e.touches.length === 2) {
+        touchPanRef.current = null;
+        const [t0, t1] = e.touches;
+        pinchRef.current = {
+          dist: Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY),
+          zoom: writeZoomRef.current,
+          pan: { ...writePanRef.current },
+          lastZoom: writeZoomRef.current,
+        };
+        return;
+      }
+      if (
+        e.touches.length === 1 &&
+        writeZoomRef.current > 1 &&
+        onPanRef.current &&
+        stylusOnlyRef.current
+      ) {
+        const t = e.touches[0];
+        touchPanRef.current = {
+          x: t.clientX,
+          y: t.clientY,
+          panX: writePanRef.current.x,
+          panY: writePanRef.current.y,
+        };
+      }
     };
 
     const onTouchMove = (e) => {
+      if (e.touches.length === 1 && touchPanRef.current && writeZoomRef.current > 1) {
+        e.preventDefault();
+        const t = e.touches[0];
+        const next = clampPan(
+          {
+            x: touchPanRef.current.panX + (t.clientX - touchPanRef.current.x),
+            y: touchPanRef.current.panY + (t.clientY - touchPanRef.current.y),
+          },
+          writeZoomRef.current,
+          el.clientWidth,
+          el.clientHeight
+        );
+        onPanRef.current?.(next);
+        return;
+      }
       if (e.touches.length !== 2 || !pinchRef.current) return;
       e.preventDefault();
+      touchPanRef.current = null;
       const [t0, t1] = e.touches;
       const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
       const ratio = dist / pinchRef.current.dist;
@@ -222,13 +259,17 @@ const PageSheet = ({
       applyZoom(next, cx, cy, true);
     };
 
-    const onTouchEnd = () => {
-      pinchRef.current = null;
+    const onTouchEnd = (e) => {
+      if (e.touches.length === 0) touchPanRef.current = null;
+      if (e.touches.length < 2) pinchRef.current = null;
     };
 
+    const wantsZoom = (e) => e.ctrlKey || e.metaKey || e.altKey;
+
     const onWheel = (e) => {
-      if (writeZoomRef.current > 1 && onPanRef.current && !(e.ctrlKey || e.metaKey)) {
+      if (writeZoomRef.current > 1 && onPanRef.current && !wantsZoom(e)) {
         e.preventDefault();
+        e.stopPropagation();
         const pan = writePanRef.current;
         const next = clampPan(
           { x: pan.x - e.deltaX, y: pan.y - e.deltaY },
@@ -239,9 +280,10 @@ const PageSheet = ({
         onPanRef.current(next);
         return;
       }
-      if (!(e.ctrlKey || e.metaKey)) return;
+      if (!wantsZoom(e)) return;
       e.preventDefault();
-      const delta = e.deltaY > 0 ? -0.08 : 0.08;
+      e.stopPropagation();
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
       const next = Math.min(
         MAX_ZOOM,
         Math.max(MIN_ZOOM, writeZoomRef.current + delta)
@@ -253,14 +295,14 @@ const PageSheet = ({
     el.addEventListener('touchmove', onTouchMove, { passive: false });
     el.addEventListener('touchend', onTouchEnd, { passive: true });
     el.addEventListener('touchcancel', onTouchEnd, { passive: true });
-    el.addEventListener('wheel', onWheel, { passive: false });
+    el.addEventListener('wheel', onWheel, { passive: false, capture: true });
 
     return () => {
       el.removeEventListener('touchstart', onTouchStart);
       el.removeEventListener('touchmove', onTouchMove);
       el.removeEventListener('touchend', onTouchEnd);
       el.removeEventListener('touchcancel', onTouchEnd);
-      el.removeEventListener('wheel', onWheel);
+      el.removeEventListener('wheel', onWheel, { capture: true });
     };
   }, [isActive]);
 
@@ -504,9 +546,19 @@ const PageSheet = ({
   const startPan = (e, target = e.currentTarget) => {
     if (!isActive || writeZoom <= 1 || !onWritePanChange) return;
     e.preventDefault();
+    e.stopPropagation();
+    touchPanRef.current = null;
     setIsPanning(true);
     panStartRef.current = { x: e.clientX, y: e.clientY, panX: writePan.x, panY: writePan.y };
     target?.setPointerCapture?.(e.pointerId);
+  };
+
+  const handleViewportPointerDown = (e) => {
+    if (!isActive || writeZoom <= 1 || !onWritePanChange || isPanning) return;
+    if (e.pointerType === 'pen') return;
+    if (stylusOnly && isFingerPointer(e)) {
+      startPan(e, viewportRef.current);
+    }
   };
 
   const startDraw = (e) => {
@@ -823,6 +875,12 @@ const PageSheet = ({
   const contentScale = scale;
   const panX = isActive && effectiveZoom > 1 ? writePan.x : 0;
   const panY = isActive && effectiveZoom > 1 ? writePan.y : 0;
+  const pageLocked = isActive && writeZoom > 1;
+  const pageTouchAction = pageLocked
+    ? 'none'
+    : scrollDirection === 'horizontal'
+      ? 'pan-x'
+      : 'pan-y';
   const selectionBounds = tool === 'lasso' && selectedStroke ? getStrokeBounds(selectedStroke) : null;
 
   const pageContent = (
@@ -848,7 +906,7 @@ const PageSheet = ({
         onPointerCancel={endDraw}
         className={`absolute inset-0 w-full h-full ${cursorClass}`}
         style={{
-          touchAction: 'none',
+          touchAction: pageTouchAction,
           zIndex: 10,
           pointerEvents: 'auto',
         }}
@@ -932,10 +990,13 @@ const PageSheet = ({
   return (
     <div
       ref={viewportRef}
+      data-page-viewport
       className={`relative bg-white overflow-hidden shadow-lg ${isActive ? 'ring-2 ring-blue-500/40' : ''}`}
-      style={{ width: baseW, height: baseH, touchAction: 'none' }}
+      style={{ width: baseW, height: baseH, touchAction: pageTouchAction }}
+      onPointerDownCapture={handleViewportPointerDown}
       onPointerMove={isPanning ? moveDraw : undefined}
       onPointerUp={isPanning ? endDraw : undefined}
+      onPointerCancel={isPanning ? endDraw : undefined}
     >
       <div
         className="absolute top-0 left-0"

@@ -10,6 +10,8 @@ import {
   Ruler,
   Download,
   Lasso,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react';
 import { PEN_COLORS, HIGHLIGHTER_COLORS } from '../mock/mock';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
@@ -48,6 +50,8 @@ const Toolbar = ({
   onRedo,
   onClear,
   writeZoom = 1,
+  onWriteZoomIn,
+  onWriteZoomOut,
   onWriteZoomReset,
   onAddInstrument,
   instrumentsActive,
@@ -169,15 +173,27 @@ const Toolbar = ({
 
         <div className="flex-1 min-w-2" />
 
-        {writeZoom !== 1 && (
-          <button
-            onClick={onWriteZoomReset}
-            className="px-2 py-1 rounded-full text-xs font-medium bg-blue-600 text-white shrink-0"
-            title="Pincez pour zoomer · Touchez pour réinitialiser"
-          >
-            {Math.round(writeZoom * 100)}%
-          </button>
-        )}
+        <ToolButton onClick={onWriteZoomOut} label="Zoom arrière (Ctrl + molette)">
+          <ZoomOut className="w-5 h-5" />
+        </ToolButton>
+        <button
+          onClick={writeZoom !== 1 ? onWriteZoomReset : onWriteZoomIn}
+          className={`px-2 py-1 rounded-full text-xs font-medium shrink-0 tabular-nums ${
+            writeZoom !== 1
+              ? 'bg-blue-600 text-white'
+              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+          title={
+            writeZoom !== 1
+              ? 'Réinitialiser le zoom · Tactile : pincez pour zoomer, 1 doigt pour déplacer'
+              : 'Zoom avant · Ordinateur : Ctrl + molette ou pincement trackpad'
+          }
+        >
+          {Math.round(writeZoom * 100)}%
+        </button>
+        <ToolButton onClick={onWriteZoomIn} label="Zoom avant (Ctrl + molette)">
+          <ZoomIn className="w-5 h-5" />
+        </ToolButton>
 
         <ToolButton onClick={onExport} label="Exporter PDF">
           <Download className="w-5 h-5" />

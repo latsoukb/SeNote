@@ -25,6 +25,8 @@ import PageLiveThumbnail from '../components/PageLiveThumbnail';
 import SettingsDialog from '../components/SettingsDialog';
 import { exportNotebookToPdf } from '../lib/exportNotebookPdf';
 import { createRuler, createSetSquare } from '../lib/instrumentSnap';
+import { clampPan, focalPan } from '../lib/inkEngine';
+import { MIN_ZOOM, MAX_ZOOM } from '../components/NoteCanvas';
 import {
   Popover,
   PopoverContent,
@@ -69,6 +71,7 @@ const NotebookEditor = () => {
   const handlePageChange = useCallback((idx) => {
     setCurrentPageIdx(idx);
     setWritePan({ x: 0, y: 0 });
+    setWriteZoom(1);
   }, []);
 
   const handleAutoAddPage = useCallback(
@@ -86,7 +89,10 @@ const NotebookEditor = () => {
   useEffect(() => {
     const blockSafariZoom = (e) => e.preventDefault();
     const blockTrackpadZoom = (e) => {
-      if (e.ctrlKey || e.metaKey) e.preventDefault();
+      if (e.defaultPrevented) return;
+      if (!(e.ctrlKey || e.metaKey)) return;
+      if (e.target?.closest?.('[data-page-viewport]')) return;
+      e.preventDefault();
     };
     document.addEventListener('gesturestart', blockSafariZoom, { passive: false });
     document.addEventListener('gesturechange', blockSafariZoom, { passive: false });
@@ -197,6 +203,23 @@ const NotebookEditor = () => {
     setWritePan({ x: 0, y: 0 });
   };
 
+  const adjustWriteZoom = (delta) => {
+    const viewport = document.querySelector('[data-page-viewport]');
+    const viewW = viewport?.clientWidth || 700;
+    const viewH = viewport?.clientHeight || 990;
+    const focalX = viewW / 2;
+    const focalY = viewH / 2;
+    const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, writeZoom + delta));
+    if (next <= 1) {
+      setWriteZoom(1);
+      setWritePan({ x: 0, y: 0 });
+      return;
+    }
+    const rawPan = focalPan(focalX, focalY, writePan, writeZoom, next);
+    setWritePan(clampPan(rawPan, next, viewW, viewH));
+    setWriteZoom(next);
+  };
+
   const instrumentsActive = (currentPage?.instruments || []).length > 0;
 
   const handleAddInstrument = (kind, sizeCm) => {
@@ -299,6 +322,8 @@ const NotebookEditor = () => {
         onRedo={handleRedo}
         onClear={handleClearPage}
         writeZoom={writeZoom}
+        onWriteZoomIn={() => adjustWriteZoom(0.2)}
+        onWriteZoomOut={() => adjustWriteZoom(-0.2)}
         onWriteZoomReset={handleWriteZoomReset}
         onAddInstrument={handleAddInstrument}
         instrumentsActive={instrumentsActive}
