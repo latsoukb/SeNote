@@ -91,7 +91,7 @@ const GoogleDriveSettings = () => {
       </p>
 
       {!isDriveConfigured() && (
-        <p className="text-xs text-amber-600 dark:text-amber-400">
+        <p className="text-xs text-slate-500 dark:text-slate-400">
           Client Google non configuré — voir{' '}
           {isNativeApp() ? 'ANDROID.md' : 'GOOGLE_DRIVE.md'} (section Google Cloud).
         </p>

@@ -3,7 +3,7 @@
 export const COVER_TEMPLATES = [
   { id: 'cover-blue', name: 'Bleu', gradient: 'linear-gradient(135deg, #3B82F6 0%, #1E40AF 100%)' },
   { id: 'cover-emerald', name: 'Émeraude', gradient: 'linear-gradient(135deg, #10B981 0%, #047857 100%)' },
-  { id: 'cover-amber', name: 'Ambre', gradient: 'linear-gradient(135deg, #F59E0B 0%, #B45309 100%)' },
+  { id: 'cover-cyan', name: 'Cyan', gradient: 'linear-gradient(135deg, #06B6D4 0%, #0E7490 100%)' },
   { id: 'cover-rose', name: 'Rose', gradient: 'linear-gradient(135deg, #F43F5E 0%, #9F1239 100%)' },
   { id: 'cover-violet', name: 'Violet', gradient: 'linear-gradient(135deg, #8B5CF6 0%, #5B21B6 100%)' },
   { id: 'cover-slate', name: 'Ardoise', gradient: 'linear-gradient(135deg, #475569 0%, #1E293B 100%)' },
@@ -12,7 +12,7 @@ export const COVER_TEMPLATES = [
 ];
 
 export const FOLDER_COLORS = [
-  '#3B82F6', '#10B981', '#F59E0B', '#F43F5E', '#8B5CF6', '#64748B', '#EC4899', '#0891B2',
+  '#3B82F6', '#10B981', '#06B6D4', '#F43F5E', '#8B5CF6', '#64748B', '#EC4899', '#0891B2',
 ];
 
 export const PAGE_TEMPLATES = [
@@ -63,7 +63,7 @@ export const initialNotebooks = [
   {
     id: 'nb-sketches',
     title: 'Croquis & idées',
-    cover: 'cover-amber',
+    cover: 'cover-cyan',
     pageTemplate: 'blank',
     folderId: 'folder-personal',
     pinned: false,
@@ -89,7 +89,7 @@ export const PEN_COLORS = [
   '#2563EB',
   '#DC2626',
   '#16A34A',
-  '#CA8A04',
+  '#6366F1',
   '#9333EA',
   '#0891B2',
   '#EC4899',
@@ -101,7 +101,7 @@ export const HIGHLIGHTER_COLORS = [
   '#00FF41', // vert néon
   '#FF2D95', // rose fluo
   '#00CFFF', // bleu cyan
-  '#FF7700', // orange
+  '#FF1493', // rose vif
   '#CCFF00', // lime
   '#FF00FF', // magenta
 ];
