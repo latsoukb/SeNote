@@ -2,5 +2,12 @@
 export const PAGE_W = 900;
 export const PAGE_H = Math.round(900 * (842 / 595)); // 1273
 
+/** Largeur / hauteur réelles de la page (format A4) */
+export const PAGE_CM_W = 21;
+export const PAGE_CM_H = 29.7;
+
+export const cmToPx = (cm) => (cm / PAGE_CM_W) * PAGE_W;
+export const pxToCm = (px) => (px / PAGE_W) * PAGE_CM_W;
+
 const base = process.env.PUBLIC_URL || '';
 export const SEYES_BG = `${base}/templates/seyes.png`;

@@ -11,16 +11,11 @@ import {
   updateShapeFromHandle,
   shapeToPoints,
 } from '../lib/shapeGeometry';
-import { snapToInstruments, projectOnRuler } from '../lib/instrumentSnap';
+import { snapToInstruments, instrumentEdgeKey } from '../lib/instrumentSnap';
 import {
   eraseStrokes,
-  eraseSelectedStrokes,
   eraseTextBoxes,
   eraseInstruments,
-  isScribbleGesture,
-  strokesUnderScribble,
-  textBoxesUnderScribble,
-  scribbleWouldChangeStrokes,
 } from '../lib/eraser';
 import TextBox from './TextBox';
 import TextBoxToolbar from './TextBoxToolbar';
@@ -66,8 +61,8 @@ const PageSheet = ({
   const [isPanning, setIsPanning] = useState(false);
   const panStartRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
   const currentStrokeRef = useRef(null);
-  const rulerStartRef = useRef(null);
-  const rulerEdgeRef = useRef(null);
+  const instrumentStartRef = useRef(null);
+  const instrumentEdgeRef = useRef(null);
   const [editingTextId, setEditingTextId] = useState(null);
   const [selectedTextId, setSelectedTextId] = useState(null);
   const [selectedStrokeId, setSelectedStrokeId] = useState(null);
@@ -273,7 +268,9 @@ const PageSheet = ({
   const scale = displayWidth / PAGE_W;
   const instruments = erasePreview?.instruments ?? page.instruments ?? [];
   const displayTextBoxes = erasePreview?.textBoxes ?? page.textBoxes ?? [];
-  const ruler = instruments.find((i) => i.type === 'ruler');
+  const hasSnapInstruments = instruments.some(
+    (i) => i.type === 'ruler' || i.type === 'setSquare'
+  );
 
   const eraserRadius = () => Math.max(10, thickness * 3.5);
 
@@ -285,7 +282,7 @@ const PageSheet = ({
       y: ((clientY - rect.top) / rect.height) * PAGE_H,
       pressure,
     };
-    if ((tool === 'pen' || tool === 'highlighter') && ruler) {
+    if ((tool === 'pen' || tool === 'highlighter') && hasSnapInstruments) {
       pos = snapToInstruments(pos, instruments);
     }
     return pos;
@@ -587,7 +584,7 @@ const PageSheet = ({
       return;
     }
 
-    if (!rulerStartRef.current) {
+    if (!instrumentStartRef.current) {
       pushUndo(cloneUndoSnapshot());
     }
     setSelectedStrokeId(null);
@@ -600,9 +597,9 @@ const PageSheet = ({
       points: [{ x: pos.x, y: pos.y }],
     };
 
-    if (pos.onRuler && ruler) {
-      rulerStartRef.current = { x: pos.x, y: pos.y };
-      rulerEdgeRef.current = pos.edge;
+    if (pos.onRuler) {
+      instrumentStartRef.current = { x: pos.x, y: pos.y };
+      instrumentEdgeRef.current = instrumentEdgeKey(pos);
     }
 
     currentStrokeRef.current = stroke;
@@ -650,14 +647,23 @@ const PageSheet = ({
       return;
     }
 
-    if (rulerStartRef.current && ruler) {
-      const hit = projectOnRuler(pos, ruler, 36);
-      if (hit && hit.edge === rulerEdgeRef.current) {
-        currentStrokeRef.current.points = [rulerStartRef.current, { x: hit.x, y: hit.y }];
-      } else if (hit) {
-        rulerStartRef.current = { x: hit.x, y: hit.y };
-        rulerEdgeRef.current = hit.edge;
-        currentStrokeRef.current.points = [rulerStartRef.current, { x: hit.x, y: hit.y }];
+    if (instrumentStartRef.current) {
+      const hit = snapToInstruments(pos, instruments, 36);
+      if (hit?.onRuler) {
+        const key = instrumentEdgeKey(hit);
+        if (key === instrumentEdgeRef.current) {
+          currentStrokeRef.current.points = [
+            instrumentStartRef.current,
+            { x: hit.x, y: hit.y },
+          ];
+        } else {
+          instrumentStartRef.current = { x: hit.x, y: hit.y };
+          instrumentEdgeRef.current = key;
+          currentStrokeRef.current.points = [
+            instrumentStartRef.current,
+            { x: hit.x, y: hit.y },
+          ];
+        }
       }
       scheduleRender();
       return;
@@ -753,8 +759,8 @@ const PageSheet = ({
 
     const stroke = currentStrokeRef.current;
     currentStrokeRef.current = null;
-    rulerStartRef.current = null;
-    rulerEdgeRef.current = null;
+    instrumentStartRef.current = null;
+    instrumentEdgeRef.current = null;
 
     if (!stroke) return;
 
@@ -763,50 +769,6 @@ const PageSheet = ({
       if (saved.points.length === 1) {
         const p = saved.points[0];
         saved = { ...saved, points: [p, { x: p.x + 0.5, y: p.y + 0.5 }] };
-      }
-
-      const scribbleRadius = Math.max(10, thickness * 2);
-      const scribbleTargets = strokesUnderScribble(
-        strokesRef.current,
-        saved.points,
-        scribbleRadius
-      );
-      const handwriting = looksLikeHandwriting(saved.points);
-      const targetIds = scribbleTargets.map((s) => s.id);
-      const wouldChange = scribbleWouldChangeStrokes(
-        strokesRef.current,
-        saved.points,
-        scribbleRadius,
-        targetIds
-      );
-      const isScribble =
-        tool === 'pen' &&
-        saved.points.length >= 24 &&
-        scribbleTargets.length > 0 &&
-        wouldChange &&
-        isScribbleGesture(saved.points) &&
-        !(handwriting && saved.points.length < 55 && scribbleTargets.length < 2);
-
-      if (isScribble) {
-        pushUndo(cloneUndoSnapshot());
-        const radius = scribbleRadius;
-        const toRemoveText = new Set(
-          textBoxesUnderScribble(page.textBoxes || [], saved.points, radius).map((t) => t.id)
-        );
-        const nextStrokes = eraseSelectedStrokes(
-          strokesRef.current,
-          targetIds,
-          saved.points,
-          radius
-        );
-        strokesRef.current = nextStrokes;
-        onChange({
-          strokes: nextStrokes,
-          textBoxes: (page.textBoxes || []).filter((t) => !toRemoveText.has(t.id)),
-        });
-        staticDirtyRef.current = true;
-        renderCanvas();
-        return;
       }
 
       const nextStrokes = [...strokesRef.current, saved];

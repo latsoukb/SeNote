@@ -49,8 +49,8 @@ const Toolbar = ({
   onClear,
   writeZoom = 1,
   onWriteZoomReset,
-  onToggleRuler,
-  rulerActive,
+  onAddInstrument,
+  instrumentsActive,
   onExport,
 }) => {
   const colors = tool === 'highlighter' ? HIGHLIGHTER_COLORS : PEN_COLORS;
@@ -68,13 +68,41 @@ const Toolbar = ({
         <ToolButton active={tool === 'eraser'} onClick={() => setTool('eraser')} label="Gomme">
           <Eraser className="w-5 h-5" />
         </ToolButton>
-        <ToolButton
-          active={tool === 'ruler' || rulerActive}
-          onClick={onToggleRuler}
-          label="Règle — tracez le long du bord pour une ligne droite"
-        >
-          <Ruler className="w-5 h-5" />
-        </ToolButton>
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              className={`p-2 rounded-lg transition-colors shrink-0 ${
+                instrumentsActive
+                  ? 'bg-blue-600 text-white'
+                  : 'text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'
+              }`}
+              aria-label="Instruments de géométrie"
+            >
+              <Ruler className="w-5 h-5" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-52 p-2" align="start" avoidCollisions={false}>
+            <p className="text-xs text-slate-500 px-2 pb-2">Dimensions réelles (A4)</p>
+            <button
+              onClick={() => onAddInstrument('ruler', 30)}
+              className="w-full text-left px-3 py-2 rounded-md text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              Règle 30 cm
+            </button>
+            <button
+              onClick={() => onAddInstrument('ruler', 10)}
+              className="w-full text-left px-3 py-2 rounded-md text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              Règle 10 cm
+            </button>
+            <button
+              onClick={() => onAddInstrument('setSquare', 10)}
+              className="w-full text-left px-3 py-2 rounded-md text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              Équerre 10 cm
+            </button>
+          </PopoverContent>
+        </Popover>
         <ToolButton active={tool === 'text'} onClick={() => setTool('text')} label="Texte">
           <Type className="w-5 h-5" />
         </ToolButton>

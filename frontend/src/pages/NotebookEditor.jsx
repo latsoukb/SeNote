@@ -24,7 +24,7 @@ import PageTemplatePreview from '../components/PageTemplatePreview';
 import PageLiveThumbnail from '../components/PageLiveThumbnail';
 import SettingsDialog from '../components/SettingsDialog';
 import { exportNotebookToPdf } from '../lib/exportNotebookPdf';
-import { defaultRuler } from '../lib/instrumentSnap';
+import { createRuler, createSetSquare } from '../lib/instrumentSnap';
 import {
   Popover,
   PopoverContent,
@@ -197,21 +197,19 @@ const NotebookEditor = () => {
     setWritePan({ x: 0, y: 0 });
   };
 
-  const rulerActive = !!(currentPage?.instruments || []).find((i) => i.type === 'ruler');
+  const instrumentsActive = (currentPage?.instruments || []).length > 0;
 
-  const handleToggleRuler = () => {
-    if (tool === 'ruler') {
-      setTool('pen');
-      return;
-    }
-    setTool('ruler');
-    if (!rulerActive) {
-      pushUndo(currentPage.id, clonePageSnapshot(currentPage));
-      handlePageUpdate(currentPage.id, {
-        instruments: [...(currentPage.instruments || []), defaultRuler()],
-      });
-      setTool('pen');
-    }
+  const handleAddInstrument = (kind, sizeCm) => {
+    pushUndo(currentPage.id, clonePageSnapshot(currentPage));
+    const existing = (currentPage.instruments || []).filter((i) => {
+      if (kind === 'ruler') return i.type !== 'ruler';
+      if (kind === 'setSquare') return i.type !== 'setSquare';
+      return true;
+    });
+    const inst =
+      kind === 'setSquare' ? createSetSquare(sizeCm) : createRuler(sizeCm);
+    handlePageUpdate(currentPage.id, { instruments: [...existing, inst] });
+    setTool('pen');
   };
 
   const handleExport = async () => {
@@ -302,8 +300,8 @@ const NotebookEditor = () => {
         onClear={handleClearPage}
         writeZoom={writeZoom}
         onWriteZoomReset={handleWriteZoomReset}
-        onToggleRuler={handleToggleRuler}
-        rulerActive={rulerActive}
+        onAddInstrument={handleAddInstrument}
+        instrumentsActive={instrumentsActive}
         onExport={handleExport}
       />
 
