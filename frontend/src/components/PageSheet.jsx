@@ -14,11 +14,13 @@ import {
 import { snapToInstruments, projectOnRuler } from '../lib/instrumentSnap';
 import {
   eraseStrokes,
+  eraseSelectedStrokes,
   eraseTextBoxes,
   eraseInstruments,
   isScribbleGesture,
   strokesUnderScribble,
   textBoxesUnderScribble,
+  scribbleWouldChangeStrokes,
 } from '../lib/eraser';
 import TextBox from './TextBox';
 import TextBoxToolbar from './TextBoxToolbar';
@@ -29,6 +31,7 @@ import {
   canDrawWithPointer,
   shouldIgnoreDrawPointer,
   isPalmTouch,
+  isFingerPointer,
 } from '../lib/pointerInput';
 import {
   getCoalescedPointerEvents,
@@ -56,6 +59,7 @@ const PageSheet = ({
   onWritePanChange,
   onWriteZoomChange,
   stylusOnly = true,
+  pageSyncRevision = 0,
 }) => {
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -79,6 +83,7 @@ const PageSheet = ({
   const rafRef = useRef(null);
   const constraintRef = useRef(false);
   const pageIdRef = useRef(page.id);
+  const lastSyncRevRef = useRef(pageSyncRevision);
   const lassoDragRef = useRef(null);
   const lassoOrigStrokeRef = useRef(null);
   const textTapRef = useRef(null);
@@ -95,27 +100,61 @@ const PageSheet = ({
   onZoomRef.current = onWriteZoomChange;
   onPanRef.current = onWritePanChange;
 
+  const strokesDataChanged = (prop, local) => {
+    if ((prop?.length ?? 0) !== (local?.length ?? 0)) return true;
+    const localIds = new Set((local || []).map((s) => s.id));
+    if ((prop || []).some((s) => !localIds.has(s.id))) return true;
+    return prop.some((s, i) => {
+      const l = local[i];
+      if (!l || s.id !== l.id) return true;
+      if ((s.points?.length ?? 0) !== (l.points?.length ?? 0)) return true;
+      if (s.shape?.type !== l.shape?.type) return true;
+      return false;
+    });
+  };
+
+  const cloneUndoSnapshot = useCallback(
+    () => ({
+      strokes: (strokesRef.current || []).map((s) => ({
+        ...s,
+        points: s.points ? s.points.map((p) => ({ ...p })) : s.points,
+        shape: s.shape ? { ...s.shape } : s.shape,
+      })),
+      textBoxes: (page.textBoxes || []).map((t) => ({ ...t })),
+      instruments: (page.instruments || []).map((i) => ({ ...i })),
+    }),
+    [page.textBoxes, page.instruments]
+  );
+
+  const applyStrokesFromProps = useCallback(() => {
+    strokesRef.current = (page.strokes || []).map((s) => ({
+      ...s,
+      points: s.points ? [...s.points] : s.points,
+      shape: s.shape ? { ...s.shape } : s.shape,
+    }));
+    staticDirtyRef.current = true;
+  }, [page.strokes]);
+
+  const syncStrokesFromProps = useCallback(() => {
+    if (isDrawing || liveStrokesRef.current || currentStrokeRef.current) return false;
+    const prop = page.strokes || [];
+    const local = strokesRef.current || [];
+    const pendingAppend =
+      local.length > prop.length && prop.every((s, i) => local[i]?.id === s.id);
+    if (strokesDataChanged(prop, local) && !pendingAppend) {
+      applyStrokesFromProps();
+      return true;
+    }
+    return false;
+  }, [page.strokes, isDrawing, applyStrokesFromProps]);
+
   useEffect(() => {
     if (page.id !== pageIdRef.current) {
       strokesRef.current = page.strokes || [];
       pageIdRef.current = page.id;
       staticDirtyRef.current = true;
-      return;
     }
-    if (isDrawing || liveStrokesRef.current || currentStrokeRef.current) return;
-    const prop = page.strokes || [];
-    const local = strokesRef.current || [];
-    const pendingSave =
-      local.length > prop.length && prop.every((s, i) => local[i]?.id === s.id);
-    if (pendingSave) return;
-    if (
-      prop.length !== local.length ||
-      prop.some((s, i) => s.id !== local[i]?.id)
-    ) {
-      strokesRef.current = prop;
-      staticDirtyRef.current = true;
-    }
-  }, [page.id, page.strokes, isDrawing]);
+  }, [page.id, page.strokes]);
 
   useEffect(() => {
     if (!isActive || !onWritePanChange || writeZoom <= 1) return;
@@ -193,6 +232,18 @@ const PageSheet = ({
     };
 
     const onWheel = (e) => {
+      if (writeZoomRef.current > 1 && onPanRef.current && !(e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        const pan = writePanRef.current;
+        const next = clampPan(
+          { x: pan.x - e.deltaX, y: pan.y - e.deltaY },
+          writeZoomRef.current,
+          el.clientWidth,
+          el.clientHeight
+        );
+        onPanRef.current(next);
+        return;
+      }
       if (!(e.ctrlKey || e.metaKey)) return;
       e.preventDefault();
       const delta = e.deltaY > 0 ? -0.08 : 0.08;
@@ -255,7 +306,7 @@ const PageSheet = ({
     const layer = ensureStaticLayer();
     const sctx = layer.getContext('2d');
     sctx.clearRect(0, 0, PAGE_W, PAGE_H);
-    const list = strokesRef.current ?? page.strokes ?? [];
+    const list = strokesRef.current ?? [];
     list.forEach((s) => drawStroke(sctx, s));
     staticDirtyRef.current = false;
   }, [ensureStaticLayer]);
@@ -300,8 +351,29 @@ const PageSheet = ({
   }, [renderCanvas]);
 
   useLayoutEffect(() => {
+    const forceFromUndo = pageSyncRevision !== lastSyncRevRef.current;
+    if (forceFromUndo) {
+      lastSyncRevRef.current = pageSyncRevision;
+      if (!isDrawing && !liveStrokesRef.current && !currentStrokeRef.current) {
+        applyStrokesFromProps();
+      }
+    } else {
+      syncStrokesFromProps();
+    }
     renderCanvas();
-  }, [renderCanvas, page.id, page.strokes, isActive, writeZoom, writePan.x, writePan.y]);
+  }, [
+    renderCanvas,
+    syncStrokesFromProps,
+    applyStrokesFromProps,
+    page.id,
+    page.strokes,
+    pageSyncRevision,
+    isActive,
+    isDrawing,
+    writeZoom,
+    writePan.x,
+    writePan.y,
+  ]);
 
   useEffect(() => {
     const onTouch = (e) => {
@@ -444,15 +516,15 @@ const PageSheet = ({
     if (!isActive) return;
     if (isPalmTouch(e)) return;
 
+    if (writeZoom > 1 && onWritePanChange && isFingerPointer(e)) {
+      startPan(e, canvasRef.current);
+      return;
+    }
+
     if (stylusOnly && shouldIgnoreDrawPointer(e, stylusOnly)) {
       if (writeZoom > 1 && onWritePanChange) {
         startPan(e, canvasRef.current);
       }
-      return;
-    }
-
-    if (tool === 'hand') {
-      startPan(e);
       return;
     }
     if (tool === 'ruler') return;
@@ -466,11 +538,7 @@ const PageSheet = ({
       if (selectTextAt(pos)) return;
       const hit = selectStrokeAt(pos);
       if (hit) {
-        pushUndo({
-          strokes: strokesRef.current,
-          textBoxes: page.textBoxes,
-          instruments: page.instruments,
-        });
+        pushUndo(cloneUndoSnapshot());
         lassoOrigStrokeRef.current = hit;
         lassoDragRef.current = { startPos: pos, moved: false };
         setIsDrawing(true);
@@ -507,11 +575,7 @@ const PageSheet = ({
     const pos = getPos(e);
 
     if (tool === 'eraser') {
-      pushUndo({
-        strokes: page.strokes,
-        textBoxes: page.textBoxes,
-        instruments: page.instruments,
-      });
+      pushUndo(cloneUndoSnapshot());
       liveStrokesRef.current = [...(strokesRef.current || [])];
       liveTextBoxesRef.current = [...(page.textBoxes || [])];
       liveInstrumentsRef.current = [...(page.instruments || [])];
@@ -524,11 +588,7 @@ const PageSheet = ({
     }
 
     if (!rulerStartRef.current) {
-      pushUndo({
-        strokes: strokesRef.current,
-        textBoxes: page.textBoxes,
-        instruments: page.instruments,
-      });
+      pushUndo(cloneUndoSnapshot());
     }
     setSelectedStrokeId(null);
 
@@ -639,7 +699,7 @@ const PageSheet = ({
           size: Math.max(16, thickness * 6),
           width: 200,
         };
-        pushUndo({ strokes: page.strokes, textBoxes: page.textBoxes, instruments });
+        pushUndo(cloneUndoSnapshot());
         onChange({ textBoxes: [...(page.textBoxes || []), newBox] });
         setEditingTextId(newBox.id);
         setSelectedTextId(newBox.id);
@@ -705,21 +765,40 @@ const PageSheet = ({
         saved = { ...saved, points: [p, { x: p.x + 0.5, y: p.y + 0.5 }] };
       }
 
+      const scribbleRadius = Math.max(10, thickness * 2);
+      const scribbleTargets = strokesUnderScribble(
+        strokesRef.current,
+        saved.points,
+        scribbleRadius
+      );
+      const handwriting = looksLikeHandwriting(saved.points);
+      const targetIds = scribbleTargets.map((s) => s.id);
+      const wouldChange = scribbleWouldChangeStrokes(
+        strokesRef.current,
+        saved.points,
+        scribbleRadius,
+        targetIds
+      );
       const isScribble =
         tool === 'pen' &&
-        saved.points.length >= 30 &&
+        saved.points.length >= 24 &&
+        scribbleTargets.length > 0 &&
+        wouldChange &&
         isScribbleGesture(saved.points) &&
-        strokesUnderScribble(strokesRef.current, saved.points, Math.max(20, thickness * 4)).length > 0;
+        !(handwriting && saved.points.length < 55 && scribbleTargets.length < 2);
 
       if (isScribble) {
-        const radius = Math.max(20, thickness * 4);
-        const toRemove = new Set(
-          strokesUnderScribble(strokesRef.current, saved.points, radius).map((s) => s.id)
-        );
+        pushUndo(cloneUndoSnapshot());
+        const radius = scribbleRadius;
         const toRemoveText = new Set(
           textBoxesUnderScribble(page.textBoxes || [], saved.points, radius).map((t) => t.id)
         );
-        const nextStrokes = strokesRef.current.filter((s) => !toRemove.has(s.id));
+        const nextStrokes = eraseSelectedStrokes(
+          strokesRef.current,
+          targetIds,
+          saved.points,
+          radius
+        );
         strokesRef.current = nextStrokes;
         onChange({
           strokes: nextStrokes,
@@ -772,9 +851,7 @@ const PageSheet = ({
       ? 'canvas-eraser'
       : tool === 'text'
         ? 'canvas-text'
-        : tool === 'hand'
-          ? 'canvas-hand'
-          : tool === 'lasso'
+        : tool === 'lasso'
             ? 'canvas-lasso'
             : 'canvas-pen';
 
@@ -811,7 +888,7 @@ const PageSheet = ({
         style={{
           touchAction: 'none',
           zIndex: 10,
-          pointerEvents: tool === 'hand' && effectiveZoom <= 1 ? 'none' : 'auto',
+          pointerEvents: 'auto',
         }}
       />
       <GeometryInstruments
@@ -848,13 +925,7 @@ const PageSheet = ({
                 setEditingTextId(null);
               }
             }}
-            onDragStart={() =>
-              pushUndo({
-                strokes: strokesRef.current,
-                textBoxes: page.textBoxes,
-                instruments: page.instruments,
-              })
-            }
+            onDragStart={() => pushUndo(cloneUndoSnapshot())}
             onEdit={() => {
               setEditingTextId(t.id);
               setSelectedTextId(t.id);
@@ -901,11 +972,8 @@ const PageSheet = ({
       ref={viewportRef}
       className={`relative bg-white overflow-hidden shadow-lg ${isActive ? 'ring-2 ring-blue-500/40' : ''}`}
       style={{ width: baseW, height: baseH, touchAction: 'none' }}
-      onPointerDown={
-        tool === 'hand' && effectiveZoom > 1 ? (e) => startPan(e) : undefined
-      }
-      onPointerMove={isPanning ? moveDraw : tool === 'hand' && effectiveZoom > 1 ? moveDraw : undefined}
-      onPointerUp={isPanning || (tool === 'hand' && effectiveZoom > 1) ? endDraw : undefined}
+      onPointerMove={isPanning ? moveDraw : undefined}
+      onPointerUp={isPanning ? endDraw : undefined}
     >
       <div
         className="absolute top-0 left-0"

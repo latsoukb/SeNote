@@ -1,56 +1,88 @@
 # Déployer SeNote en ligne
 
-## Méthode recommandée — GitHub Pages (gratuit, permanent)
+## Tester en local (sur votre Mac)
 
-URL fixe : **https://latsoukb.github.io/SeNote/**
+```bash
+chmod +x scripts/dev.sh
+./scripts/dev.sh
+```
 
-### 1. Activer GitHub Pages (une seule fois)
-
-1. Repo [latsoukb/SeNote](https://github.com/latsoukb/SeNote) → **Settings** → **Pages**
-2. **Build and deployment** → Source : **GitHub Actions**
-3. *(Optionnel)* **Settings** → **Secrets and variables** → **Actions** → New secret :
-   - Name : `REACT_APP_BETA_PIN`
-   - Value : `1234` (ou votre code)
-
-### 2. Déployer
-
-Chaque `git push` sur `main` déclenche le déploiement automatiquement.
-
-Ou manuellement : **Actions** → **Deploy GitHub Pages** → **Run workflow**.
-
-Le site est en ligne après ~2 min. Envoyez à votre ami :
-- **URL** : https://latsoukb.github.io/SeNote/
-- **Code** : celui défini dans le secret `REACT_APP_BETA_PIN`
-
-Sur iPad : Safari → URL → code → Partager → **Sur l'écran d'accueil**.
-
-> Les notes sont sauvegardées dans le navigateur (pas de backend requis).
+Ouvre **http://localhost:3000** — pas de code PIN, notes sauvegardées dans le navigateur.
 
 ---
 
-## Méthode locale — Même Wi-Fi (30 sec)
+## Repo privé ? Lisez ça d'abord
+
+GitHub affiche *« Upgrade or make this repository public »* parce que **GitHub Pages gratuit ne marche pas sur un repo privé**.
+
+| Option | Coût | Repo privé | URL permanente |
+|--------|------|------------|----------------|
+| **Rendre le repo public** | Gratuit | Non (code visible) | `latsoukb.github.io/SeNote` |
+| **GitHub Pro** | ~4 €/mois | Oui | `latsoukb.github.io/SeNote` |
+| **Vercel** (recommandé si privé) | Gratuit | Oui | `senote-xxx.vercel.app` |
+| **Wi-Fi local** | Gratuit | Oui | `http://192.168.x.x:3000` |
+
+> Même si le repo est public, l'app reste protégée par le **code PIN** (`REACT_APP_BETA_PIN`). Seul le code source est visible, pas les notes de vos utilisateurs.
+
+---
+
+## Option A — GitHub Pages (repo PUBLIC)
+
+URL : **https://latsoukb.github.io/SeNote/**
+
+### 1. Rendre le repo public
+
+[Settings → General → Danger Zone → Change visibility → Public](https://github.com/latsoukb/SeNote/settings)
+
+### 2. Activer Pages
+
+[Settings → Pages](https://github.com/latsoukb/SeNote/settings/pages) → Source : **GitHub Actions**
+
+### 3. Code PIN (optionnel)
+
+**Settings → Secrets → Actions** → secret `REACT_APP_BETA_PIN` = `1234`
+
+### 4. Pousser
 
 ```bash
-chmod +x scripts/share.sh
+git push origin main
+```
+
+Déploiement auto en ~2 min.
+
+---
+
+## Option B — Vercel (repo PRIVÉ, gratuit)
+
+```bash
+npx vercel login          # une seule fois
+./scripts/deploy.sh 1234
+```
+
+Le script **build en local** puis upload (évite le « Building… » bloqué).
+
+À la fin, copiez l'URL affichée (ex. `https://se-note.vercel.app`) et envoyez à votre ami :
+- **URL** de l'app
+- **Code** `1234`
+
+Sur iPad : Safari → URL → entrer le code → Partager → **Sur l'écran d'accueil**.
+
+> Si le terminal affiche encore « Building… » d'un ancien déploiement : `Ctrl+C`, puis relancez `./scripts/deploy.sh 1234`.
+
+---
+
+## Option C — Même Wi-Fi (30 sec)
+
+```bash
 ./scripts/share.sh 1234
 ```
 
-Envoyez l'IP affichée (`http://192.168.x.x:3000`) + le code.
-
----
-
-## Alternative — Vercel
-
-```bash
-./scripts/deploy.sh 1234
-```
+Envoyez l'IP affichée + le code. Pas d'URL permanente.
 
 ---
 
 ## Mode stylet (déjà activé)
 
-- **Stylet** → écrit
-- **Doigt** → fait défiler la page
-- **Paume** → ignorée
+- **Stylet** → écrit · **Doigt** → défile · **Paume** → ignorée
 
 Réglage : Paramètres → « Stylet uniquement pour écrire ».

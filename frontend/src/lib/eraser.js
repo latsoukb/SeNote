@@ -81,6 +81,20 @@ export const eraseStrokes = (strokes, eraserPts, radius) => {
   return out;
 };
 
+/** Efface uniquement les traits ciblés (gribouillage) — les autres restent intacts */
+export const eraseSelectedStrokes = (strokes, targetIds, eraserPts, radius) => {
+  const targets = new Set(targetIds);
+  const out = [];
+  strokes.forEach((s) => {
+    if (targets.has(s.id)) {
+      out.push(...fragmentStroke(s, eraserPts, radius));
+    } else {
+      out.push(s);
+    }
+  });
+  return out;
+};
+
 const boxHitByEraser = (box, eraserPts, radius) => {
   const w = box.width || Math.max(60, (box.text?.length || 0) * (box.size || 16) * 0.5);
   const lines = Math.max(1, (box.text || '').split('\n').length);
@@ -107,19 +121,20 @@ export const eraseInstruments = (instruments, eraserPts, radius) => {
 };
 
 export const isScribbleGesture = (points) => {
-  if (!points || points.length < 18) return false;
+  if (!points || points.length < 20) return false;
   let reversals = 0;
   let lastAngle = null;
-  const step = Math.max(2, Math.floor(points.length / 20));
+  const step = Math.max(2, Math.floor(points.length / 18));
   for (let i = step; i < points.length; i += step) {
     const dx = points[i].x - points[i - step].x;
     const dy = points[i].y - points[i - step].y;
+    if (dx * dx + dy * dy < 4) continue;
     const angle = Math.atan2(dy, dx);
     if (lastAngle !== null) {
       let diff = angle - lastAngle;
       while (diff > Math.PI) diff -= Math.PI * 2;
       while (diff < -Math.PI) diff += Math.PI * 2;
-      if (Math.abs(diff) > 1.1) reversals++;
+      if (Math.abs(diff) > 1.15) reversals++;
     }
     lastAngle = angle;
   }
@@ -135,13 +150,39 @@ export const isScribbleGesture = (points) => {
   const size = Math.max(box.maxX - box.minX, box.maxY - box.minY, 1);
   let plen = 0;
   for (let i = 1; i < points.length; i++) plen += dist(points[i - 1], points[i]);
-  return reversals >= 4 && plen > size * 2.8 && size > 30;
+  const chord = dist(points[0], points[points.length - 1]);
+  return reversals >= 4 && plen > size * 2.6 && plen > chord * 1.8 && size > 28;
 };
 
+const strokeScribbleHits = (stroke, scribblePts, radius) => {
+  const pts = sampleShapePoints(stroke);
+  if (!pts.length) return 0;
+  let hits = 0;
+  pts.forEach((p) => {
+    if (pointNearEraser(p, scribblePts, radius)) hits++;
+  });
+  return hits;
+};
+
+/** Traits réellement touchés par le gribouillage (pas les voisins) */
 export const strokesUnderScribble = (strokes, scribblePts, radius) => {
-  return strokes.filter((s) =>
-    sampleShapePoints(s).some((p) => pointNearEraser(p, scribblePts, radius * 1.2))
-  );
+  return strokes.filter((s) => {
+    const pts = sampleShapePoints(s);
+    const hits = strokeScribbleHits(s, scribblePts, radius);
+    const minHits = Math.max(3, Math.ceil(pts.length * 0.12));
+    return hits >= minHits;
+  });
+};
+
+export const scribbleWouldChangeStrokes = (strokes, scribblePts, radius, targetIds) => {
+  const targets = new Set(targetIds);
+  for (const s of strokes) {
+    if (!targets.has(s.id)) continue;
+    const frags = fragmentStroke(s, scribblePts, radius);
+    if (frags.length !== 1) return true;
+    if ((frags[0]?.points?.length ?? 0) !== (s.points?.length ?? 0)) return true;
+  }
+  return false;
 };
 
 export const textBoxesUnderScribble = (boxes, scribblePts, radius) => {

@@ -128,42 +128,58 @@
   background-size: 22px 22px;
 }
 
-/* Cahier caligraphe : trait rouge à gauche + lignes bleues */
-.paper-calligraphy {
-  background-image:
-    linear-gradient(
-      to right,
-      transparent 0,
-      transparent 69px,
-      rgba(220, 38, 38, 0.65) 69px,
-      rgba(220, 38, 38, 0.65) 71px,
-      transparent 71px
-    ),
-    repeating-linear-gradient(
-      to bottom,
-      transparent 0,
-      transparent 31px,
-      rgba(37, 99, 235, 0.4) 31px,
-      rgba(37, 99, 235, 0.4) 32px
-    );
+/* Portées musicales — 5 lignes par portée */
+.paper-music {
+  background-color: #fff;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 8px,
+    rgba(15, 23, 42, 0.55) 8px,
+    rgba(15, 23, 42, 0.55) 9px,
+    transparent 9px,
+    transparent 17px,
+    rgba(15, 23, 42, 0.55) 17px,
+    rgba(15, 23, 42, 0.55) 18px,
+    transparent 18px,
+    transparent 26px,
+    rgba(15, 23, 42, 0.55) 26px,
+    rgba(15, 23, 42, 0.55) 27px,
+    transparent 27px,
+    transparent 35px,
+    rgba(15, 23, 42, 0.55) 35px,
+    rgba(15, 23, 42, 0.55) 36px,
+    transparent 36px,
+    transparent 88px
+  );
+  background-size: 100% 88px;
+  background-position: 0 48px;
 }
-.dark .paper-calligraphy {
-  background-image:
-    linear-gradient(
-      to right,
-      transparent 0,
-      transparent 69px,
-      rgba(248, 113, 113, 0.55) 69px,
-      rgba(248, 113, 113, 0.55) 71px,
-      transparent 71px
-    ),
-    repeating-linear-gradient(
-      to bottom,
-      transparent 0,
-      transparent 31px,
-      rgba(96, 165, 250, 0.35) 31px,
-      rgba(96, 165, 250, 0.35) 32px
-    );
+.dark .paper-music {
+  background-color: #fff;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 8px,
+    rgba(15, 23, 42, 0.45) 8px,
+    rgba(15, 23, 42, 0.45) 9px,
+    transparent 9px,
+    transparent 17px,
+    rgba(15, 23, 42, 0.45) 17px,
+    rgba(15, 23, 42, 0.45) 18px,
+    transparent 18px,
+    transparent 26px,
+    rgba(15, 23, 42, 0.45) 26px,
+    rgba(15, 23, 42, 0.45) 27px,
+    transparent 27px,
+    transparent 35px,
+    rgba(15, 23, 42, 0.45) 35px,
+    rgba(15, 23, 42, 0.45) 36px,
+    transparent 36px,
+    transparent 88px
+  );
+  background-size: 100% 88px;
+  background-position: 0 48px;
 }
 
 /* Notebook cover */

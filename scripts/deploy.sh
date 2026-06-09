@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Redéploie SeNote sur Vercel (URL permanente en production)
+# Redéploie SeNote sur Vercel (build local → upload rapide)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -12,12 +12,26 @@ if [ ! -d node_modules ]; then
   npm install --legacy-peer-deps
 fi
 
-echo "→ Build + déploiement Vercel (production)…"
+echo "→ Build local (1-2 min)…"
+REACT_APP_BETA_PIN="$PIN" \
+PUBLIC_URL="" \
+REACT_APP_USE_BACKEND=false \
+CI=false \
+npm run build
+
+cp vercel.json build/vercel.json
+
+cd "$ROOT"
+echo "→ Upload Vercel (quelques secondes)…"
 echo "   Code PIN bêta : $PIN"
 echo ""
 
-REACT_APP_BETA_PIN="$PIN" npx vercel --prod
+npx vercel deploy frontend/build --prod --yes
 
 echo ""
-echo "✓ Déploiement terminé."
-echo "  Envoyez l'URL affichée ci-dessus + le code PIN à votre testeur."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  Envoyez à votre ami :"
+echo "  • URL : celle affichée ci-dessus (ou https://se-note.vercel.app)"
+echo "  • Code : $PIN"
+echo "  iPad : Safari → URL → code → Sur l'écran d'accueil"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

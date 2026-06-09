@@ -1,5 +1,5 @@
 import { PAGE_W, PAGE_H, SEYES_BG } from './pageDimensions';
-import { getTemplateBackground } from './pageTemplates';
+import { getTemplateBackground, drawTemplateBackground } from './pageTemplates';
 
 let seyesImage = null;
 const seyesLoad = new Promise((resolve) => {
@@ -65,15 +65,8 @@ export const drawPageToCanvas = (ctx, page, destW, destH) => {
   const bg = getTemplateBackground(page.template);
   if (bg.type === 'image' && seyesImage) {
     ctx.drawImage(seyesImage, 0, 0, destW, destH);
-  } else if (bg.className) {
-    // CSS templates not available on canvas — light hint only
-    ctx.strokeStyle = 'rgba(148,163,184,0.25)';
-    for (let y = 32 * sy; y < destH; y += 32 * sy) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(destW, y);
-      ctx.stroke();
-    }
+  } else {
+    drawTemplateBackground(ctx, page.template, destW, destH);
   }
 
   (page.strokes || []).forEach((s) => drawStroke(ctx, s, sx, sy));

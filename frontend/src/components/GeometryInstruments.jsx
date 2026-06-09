@@ -15,7 +15,7 @@ const GoodNotesRuler = ({ inst, scale, zoom = 1, tool, onUpdate, onRemove }) => 
   const interactionScale = scale * zoom;
   const len = inst.length || 500;
   const half = len / 2;
-  const canInteract = tool === 'hand' || tool === 'ruler' || tool === 'pen' || tool === 'highlighter';
+  const canInteract = tool === 'ruler' || tool === 'pen' || tool === 'highlighter' || tool === 'lasso';
 
   const startDrag = (e, mode) => {
     e.stopPropagation();

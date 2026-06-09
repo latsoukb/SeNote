@@ -21,6 +21,7 @@ const PdfDocumentView = ({
   writePan = { x: 0, y: 0 },
   onWritePanChange,
   stylusOnly = true,
+  pageSyncRevision = 0,
 }) => {
   const scrollRef = useRef(null);
   const pageRefs = useRef([]);
@@ -170,6 +171,7 @@ const PdfDocumentView = ({
               onWritePanChange={idx === currentPageIdx ? onWritePanChange : undefined}
               onWriteZoomChange={idx === currentPageIdx ? onWriteZoomChange : undefined}
               stylusOnly={stylusOnly}
+              pageSyncRevision={pageSyncRevision}
             />
           </div>
         ))}

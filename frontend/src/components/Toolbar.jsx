@@ -4,7 +4,6 @@ import {
   Highlighter,
   Eraser,
   Type,
-  Hand,
   Undo2,
   Redo2,
   Trash,
@@ -60,9 +59,6 @@ const Toolbar = ({
   return (
     <div className="w-full shrink-0 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 z-40">
       <div className="flex items-center gap-1 px-3 py-2 overflow-x-auto thin-scroll">
-        <ToolButton active={tool === 'hand'} onClick={() => setTool('hand')} label="Déplacer">
-          <Hand className="w-5 h-5" />
-        </ToolButton>
         <ToolButton active={tool === 'pen'} onClick={() => setTool('pen')} label="Stylo">
           <Pen className="w-5 h-5" />
         </ToolButton>

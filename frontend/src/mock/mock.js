@@ -21,7 +21,7 @@ export const PAGE_TEMPLATES = [
   { id: 'lined', name: 'Ligné' },
   { id: 'grid', name: 'Quadrillé' },
   { id: 'dotted', name: 'Pointillé' },
-  { id: 'calligraphy', name: 'Caligraphe' },
+  { id: 'music', name: 'Musique' },
 ];
 
 const makePage = (template = 'seyes') => ({

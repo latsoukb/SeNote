@@ -1,9 +1,21 @@
-import React from 'react';
-import { getTemplateBackground } from '../lib/pageTemplates';
+import React, { useState, useEffect } from 'react';
+import { renderTemplatePreviewDataUrl } from '../lib/templatePreview';
+import { normalizeTemplateId } from '../lib/pageTemplates';
 
+/** Miniature = photo pleine page redimensionnée (même rendu que la feuille) */
 const PageTemplatePreview = ({ template, selected, onClick, size = 'md' }) => {
   const isSm = size === 'sm';
-  const bg = getTemplateBackground(template.id);
+  const [previewUrl, setPreviewUrl] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    renderTemplatePreviewDataUrl(normalizeTemplateId(template.id)).then((url) => {
+      if (!cancelled) setPreviewUrl(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [template.id]);
 
   return (
     <button
@@ -20,13 +32,19 @@ const PageTemplatePreview = ({ template, selected, onClick, size = 'md' }) => {
       aria-pressed={selected}
     >
       <div
-        className={`w-full rounded bg-white dark:bg-slate-50 shadow-inner overflow-hidden border border-slate-100 dark:border-slate-200 aspect-[210/297] ${
-          bg.type === 'css' ? bg.className : ''
-        }`}
+        className="relative w-full rounded overflow-hidden border border-slate-100 dark:border-slate-200 aspect-[210/297] bg-white"
         style={{ minHeight: isSm ? 48 : 72 }}
       >
-        {bg.type === 'image' && (
-          <img src={bg.src} alt="" className="w-full h-full object-cover" draggable={false} />
+        {previewUrl ? (
+          <img
+            src={previewUrl}
+            alt=""
+            className="absolute inset-0 w-full h-full pointer-events-none select-none"
+            style={{ objectFit: 'fill' }}
+            draggable={false}
+          />
+        ) : (
+          <div className="absolute inset-0 bg-slate-100 animate-pulse" />
         )}
       </div>
       <span

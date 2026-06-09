@@ -2,4 +2,5 @@
 export const PAGE_W = 900;
 export const PAGE_H = Math.round(900 * (842 / 595)); // 1273
 
-export const SEYES_BG = `${process.env.PUBLIC_URL || ''}/templates/seyes.png`;
+const base = process.env.PUBLIC_URL || '';
+export const SEYES_BG = `${base}/templates/seyes.png`;

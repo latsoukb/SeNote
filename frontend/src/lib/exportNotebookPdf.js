@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { PAGE_W, PAGE_H, SEYES_BG } from './pageDimensions';
-import { getTemplateBackground } from './pageTemplates';
+import { getTemplateBackground, drawTemplateBackground } from './pageTemplates';
 
 const loadImage = (src) =>
   new Promise((resolve, reject) => {
@@ -61,6 +61,8 @@ const renderPageToCanvas = async (page, seyesImg) => {
   const bg = getTemplateBackground(page.template);
   if (bg.type === 'image' && seyesImg) {
     ctx.drawImage(seyesImg, 0, 0, PAGE_W, PAGE_H);
+  } else {
+    drawTemplateBackground(ctx, page.template, PAGE_W, PAGE_H);
   }
 
   (page.strokes || []).forEach((s) => drawStroke(ctx, s));

@@ -20,4 +20,5 @@ cd "$ROOT/frontend"
 export REACT_APP_BETA_PIN="$PIN"
 export REACT_APP_USE_BACKEND=false
 export HOST=0.0.0.0
+export CI=false
 npm start

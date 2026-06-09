@@ -64,6 +64,7 @@ const NotebookEditor = () => {
 
   const undoStackRef = useRef({});
   const redoStackRef = useRef({});
+  const [pageSyncRevision, setPageSyncRevision] = useState(0);
 
   const handlePageChange = useCallback((idx) => {
     setCurrentPageIdx(idx);
@@ -153,18 +154,25 @@ const NotebookEditor = () => {
     redoStackRef.current[pageId] = [];
   };
 
+  const clonePageSnapshot = (page) => ({
+    strokes: (page.strokes || []).map((s) => ({
+      ...s,
+      points: s.points ? s.points.map((p) => ({ ...p })) : s.points,
+      shape: s.shape ? { ...s.shape } : s.shape,
+    })),
+    textBoxes: (page.textBoxes || []).map((t) => ({ ...t })),
+    instruments: (page.instruments || []).map((i) => ({ ...i })),
+  });
+
   const handleUndo = () => {
     const stack = undoStackRef.current[currentPage.id] || [];
     if (stack.length === 0) return;
     const prev = stack.pop();
     const redo = redoStackRef.current[currentPage.id] || [];
-    redo.push({
-      strokes: currentPage.strokes,
-      textBoxes: currentPage.textBoxes,
-      instruments: currentPage.instruments,
-    });
+    redo.push(clonePageSnapshot(currentPage));
     redoStackRef.current[currentPage.id] = redo;
-    handlePageUpdate(currentPage.id, prev);
+    handlePageUpdate(currentPage.id, clonePageSnapshot(prev));
+    setPageSyncRevision((r) => r + 1);
   };
 
   const handleRedo = () => {
@@ -172,21 +180,14 @@ const NotebookEditor = () => {
     if (redo.length === 0) return;
     const next = redo.pop();
     const stack = undoStackRef.current[currentPage.id] || [];
-    stack.push({
-      strokes: currentPage.strokes,
-      textBoxes: currentPage.textBoxes,
-      instruments: currentPage.instruments,
-    });
+    stack.push(clonePageSnapshot(currentPage));
     undoStackRef.current[currentPage.id] = stack;
-    handlePageUpdate(currentPage.id, next);
+    handlePageUpdate(currentPage.id, clonePageSnapshot(next));
+    setPageSyncRevision((r) => r + 1);
   };
 
   const handleClearPage = () => {
-    pushUndo(currentPage.id, {
-      strokes: currentPage.strokes,
-      textBoxes: currentPage.textBoxes,
-      instruments: currentPage.instruments,
-    });
+    pushUndo(currentPage.id, clonePageSnapshot(currentPage));
     handlePageUpdate(currentPage.id, { strokes: [], textBoxes: [] });
     toast('Page effacée');
   };
@@ -205,11 +206,7 @@ const NotebookEditor = () => {
     }
     setTool('ruler');
     if (!rulerActive) {
-      pushUndo(currentPage.id, {
-        strokes: currentPage.strokes,
-        textBoxes: currentPage.textBoxes,
-        instruments: currentPage.instruments,
-      });
+      pushUndo(currentPage.id, clonePageSnapshot(currentPage));
       handlePageUpdate(currentPage.id, {
         instruments: [...(currentPage.instruments || []), defaultRuler()],
       });
@@ -463,6 +460,7 @@ const NotebookEditor = () => {
             writePan={writePan}
             onWritePanChange={setWritePan}
             stylusOnly={settings.stylusOnly !== false}
+            pageSyncRevision={pageSyncRevision}
           />
         </div>
       </div>
