@@ -1,16 +1,17 @@
-import { Capacitor } from '@capacitor/core';
-import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { isNativeApp } from './platform';
 
 export const STORAGE_KEY = 'senote-data-v3';
 const LEGACY_KEYS = ['senote-data-v2', 'senote-data-v1'];
 const NATIVE_PATH = 'senote/workspace.json';
 
-const isNative = () => {
-  try {
-    return Capacitor.isNativePlatform();
-  } catch {
-    return false;
+let fsModule = null;
+
+const getFilesystem = async () => {
+  if (!isNativeApp()) return null;
+  if (!fsModule) {
+    fsModule = await import('@capacitor/filesystem');
   }
+  return fsModule;
 };
 
 const readWebStorage = () => {
@@ -36,10 +37,12 @@ const writeWebStorage = (payload) => {
 };
 
 const ensureNativeDir = async () => {
+  const fs = await getFilesystem();
+  if (!fs) return;
   try {
-    await Filesystem.mkdir({
+    await fs.Filesystem.mkdir({
       path: 'senote',
-      directory: Directory.Data,
+      directory: fs.Directory.Data,
       recursive: true,
     });
   } catch {
@@ -48,11 +51,13 @@ const ensureNativeDir = async () => {
 };
 
 const readNativeStorage = async () => {
+  const fs = await getFilesystem();
+  if (!fs) return null;
   try {
-    const result = await Filesystem.readFile({
+    const result = await fs.Filesystem.readFile({
       path: NATIVE_PATH,
-      directory: Directory.Data,
-      encoding: Encoding.UTF8,
+      directory: fs.Directory.Data,
+      encoding: fs.Encoding.UTF8,
     });
     return JSON.parse(result.data);
   } catch {
@@ -61,11 +66,13 @@ const readNativeStorage = async () => {
 };
 
 const writeNativeStorage = async (payload) => {
+  const fs = await getFilesystem();
+  if (!fs) return;
   await ensureNativeDir();
-  await Filesystem.writeFile({
+  await fs.Filesystem.writeFile({
     path: NATIVE_PATH,
-    directory: Directory.Data,
-    encoding: Encoding.UTF8,
+    directory: fs.Directory.Data,
+    encoding: fs.Encoding.UTF8,
     data: JSON.stringify(payload),
   });
 };
@@ -93,7 +100,7 @@ export const unwrapWorkspace = (payload) => {
 };
 
 export const loadWorkspace = async () => {
-  if (isNative()) {
+  if (isNativeApp()) {
     let data = await readNativeStorage();
     if (!data) {
       const legacy = readWebStorage();
@@ -109,7 +116,7 @@ export const loadWorkspace = async () => {
 
 export const saveWorkspace = async (data) => {
   const payload = wrapWorkspace(data);
-  if (isNative()) {
+  if (isNativeApp()) {
     await writeNativeStorage(payload);
   } else {
     writeWebStorage(payload);
@@ -118,4 +125,4 @@ export const saveWorkspace = async (data) => {
 };
 
 export const getStorageLabel = () =>
-  isNative() ? 'Mémoire interne de la tablette' : 'Navigateur (local)';
+  isNativeApp() ? 'Mémoire interne de la tablette' : 'Navigateur (local)';

@@ -43,21 +43,13 @@ const GoogleDriveSettings = () => {
     refresh();
   }, [driveSyncing]);
 
-  if (!isNativeApp()) {
-    return (
-      <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-slate-800">
-        <Label>Sauvegarde</Label>
-        <p className="text-xs text-slate-500">
-          Stockage actuel : <strong>{storageLabel}</strong>. La sync Google Drive est disponible
-          sur l&apos;APK Android installé sur la tablette.
-        </p>
-      </div>
-    );
-  }
-
   const handleConnect = async () => {
     if (!isDriveConfigured()) {
-      toast.error('Configurez REACT_APP_GOOGLE_CLIENT_ID avant de build l\'APK (voir ANDROID.md)');
+      toast.error(
+        isNativeApp()
+          ? 'Configurez REACT_APP_GOOGLE_CLIENT_ID (voir ANDROID.md)'
+          : 'Configurez REACT_APP_GOOGLE_WEB_CLIENT_ID (voir GOOGLE_DRIVE.md)'
+      );
       return;
     }
     try {
@@ -95,11 +87,13 @@ const GoogleDriveSettings = () => {
       <p className="text-xs text-slate-500">
         Stockage local : <strong>{storageLabel}</strong> (toujours actif). Drive = copie cloud
         gratuite (15 Go par compte Google).
+        {!isNativeApp() && ' Testable sur Mac via un client OAuth Web.'}
       </p>
 
       {!isDriveConfigured() && (
         <p className="text-xs text-amber-600 dark:text-amber-400">
-          Client Google non configuré — voir ANDROID.md section « Google Cloud ».
+          Client Google non configuré — voir{' '}
+          {isNativeApp() ? 'ANDROID.md' : 'GOOGLE_DRIVE.md'} (section Google Cloud).
         </p>
       )}
 
@@ -145,7 +139,7 @@ const GoogleDriveSettings = () => {
       <div className="flex items-center justify-between gap-4">
         <div className="space-y-0.5">
           <Label htmlFor="drive-auto">Sync automatique</Label>
-          <p className="text-xs text-slate-500">Toutes les 60 s + à la fermeture de l&apos;app</p>
+          <p className="text-xs text-slate-500">Toutes les 60 s quand l&apos;app est ouverte</p>
         </div>
         <Switch
           id="drive-auto"

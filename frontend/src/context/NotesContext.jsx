@@ -55,12 +55,12 @@ export const NotesProvider = ({ children }) => {
     (async () => {
       let data = (await loadWorkspace()) || defaultData();
 
-      if (isNativeApp()) {
-        const status = await getDriveStatus();
-        if (status.connected) {
-          data = await mergeWithGoogleDrive(data);
-        }
-      } else {
+      const driveStatus = await getDriveStatus();
+      if (driveStatus.connected) {
+        data = await mergeWithGoogleDrive(data);
+      }
+
+      if (!isNativeApp()) {
         const online = await checkBackend();
         if (online && !cancelled) {
           try {
@@ -141,7 +141,7 @@ export const NotesProvider = ({ children }) => {
   }, [folders, notebooks, trash, ready, persist]);
 
   useEffect(() => {
-    if (!ready || !isNativeApp()) return;
+    if (!ready) return;
 
     const isAutoSyncEnabled = () => {
       try {

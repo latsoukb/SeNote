@@ -19,17 +19,17 @@ Ouvre **http://localhost:3000**
 ./scripts/share.sh
 ```
 
-Ouvre l’adresse affichée (ex. `http://192.168.1.x:3000`) sur la tablette.
+Ouvre l'adresse affichée (ex. `http://192.168.1.x:3000`) sur la tablette.
 
 ---
 
 ## Option 2 — APK Android (vraie app tablette)
 
-### Télécharger l’APK (build automatique GitHub)
+### Télécharger l'APK (build automatique GitHub)
 
 1. Va sur [Actions → Build APK Android](https://github.com/latsoukb/SeNote/actions/workflows/build-apk.yml)
 2. Clique **Run workflow** (ou attends le build après un push)
-3. Quand c’est vert → clique le run → section **Artifacts** → télécharge **SeNote-tablet-apk**
+3. Quand c'est vert → clique le run → section **Artifacts** → télécharge **SeNote-tablet-apk**
 
 ### Installer sur la tablette
 
@@ -52,7 +52,7 @@ adb install -r ~/Downloads/app-debug.apk
 
 **https://latsoukb.github.io/SeNote/**
 
-> Stockage navigateur uniquement — l’APK est mieux pour une tablette dédiée.
+> Stockage navigateur uniquement — l'APK est mieux pour une tablette dédiée.
 
 ---
 
@@ -62,12 +62,16 @@ adb install -r ~/Downloads/app-debug.apk
 - [ ] Écrire au stylet / doigt
 - [ ] Zoom (pincer ou boutons + / −)
 - [ ] Défiler entre les pages (1 doigt, zoom à 100 %)
-- [ ] Règle 30 cm dans la barre d’outils
+- [ ] Règle 30 cm dans la barre d'outils
 - [ ] Export PDF
 - [ ] Fermer et rouvrir → les notes sont toujours là
 
 ---
 
-## Google Drive (optionnel, après config)
+## Google Drive (optionnel, tester sur Mac)
 
-Voir [ANDROID.md](./ANDROID.md) section Google Cloud, puis dans l’app : **Paramètres → Connecter Google Drive**.
+1. Suivre [GOOGLE_DRIVE.md](./GOOGLE_DRIVE.md) (Google Cloud + `REACT_APP_GOOGLE_WEB_CLIENT_ID` dans `frontend/.env`)
+2. Relancer `npm start`
+3. Dans l'app : **Paramètres → Connecter Google Drive**
+
+Pour l'APK tablette : voir [ANDROID.md](./ANDROID.md).

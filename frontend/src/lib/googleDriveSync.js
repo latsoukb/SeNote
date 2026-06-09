@@ -1,4 +1,3 @@
-import { Preferences } from '@capacitor/preferences';
 import { isNativeApp } from './platform';
 import { wrapWorkspace, unwrapWorkspace } from './dataStore';
 
@@ -7,6 +6,8 @@ const PREFS = {
   FOLDER_ID: 'senote_drive_folder_id',
   EMAIL: 'senote_drive_email',
   LAST_SYNC: 'senote_drive_last_sync',
+  TOKEN: 'senote_drive_token',
+  TOKEN_EXPIRY: 'senote_drive_token_expiry',
 };
 
 const FOLDER_NAME = 'SeNote';
@@ -14,10 +15,42 @@ const WORKSPACE_NAME = 'senote-workspace.json';
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
 const DRIVE_API = 'https://www.googleapis.com/drive/v3';
 
-const getGoogleClientId = () =>
-  process.env.REACT_APP_GOOGLE_CLIENT_ID ||
-  process.env.REACT_APP_GOOGLE_WEB_CLIENT_ID ||
-  '';
+const getWebClientId = () => process.env.REACT_APP_GOOGLE_WEB_CLIENT_ID || '';
+const getNativeClientId = () => process.env.REACT_APP_GOOGLE_CLIENT_ID || '';
+
+export const isDriveConfigured = () =>
+  isNativeApp() ? Boolean(getNativeClientId()) : Boolean(getWebClientId());
+
+const PREF_PREFIX = 'senote-pref-';
+
+const prefGet = async (key) => {
+  if (isNativeApp()) {
+    const { Preferences } = await import('@capacitor/preferences');
+    const { value } = await Preferences.get({ key });
+    return value;
+  }
+  return localStorage.getItem(PREF_PREFIX + key);
+};
+
+const prefSet = async (key, value) => {
+  if (isNativeApp()) {
+    const { Preferences } = await import('@capacitor/preferences');
+    await Preferences.set({ key, value });
+    return;
+  }
+  localStorage.setItem(PREF_PREFIX + key, value);
+};
+
+const prefRemove = async (key) => {
+  if (isNativeApp()) {
+    const { Preferences } = await import('@capacitor/preferences');
+    await Preferences.remove({ key });
+    return;
+  }
+  localStorage.removeItem(PREF_PREFIX + key);
+};
+
+/* ── Native (APK Android) ── */
 
 let authModule = null;
 
@@ -27,7 +60,7 @@ const loadGoogleAuth = async () => {
   try {
     const mod = await import('@codetrix-studio/capacitor-google-auth');
     authModule = mod.GoogleAuth;
-    const clientId = getGoogleClientId();
+    const clientId = getNativeClientId();
     if (clientId) {
       await authModule.initialize({
         clientId,
@@ -42,18 +75,150 @@ const loadGoogleAuth = async () => {
   }
 };
 
-const prefGet = async (key) => {
-  const { value } = await Preferences.get({ key });
-  return value;
+const signInNativeGoogleDrive = async () => {
+  const GoogleAuth = await loadGoogleAuth();
+  if (!GoogleAuth) {
+    throw new Error(
+      'Google Drive indisponible — vérifiez REACT_APP_GOOGLE_CLIENT_ID (voir ANDROID.md).'
+    );
+  }
+  const result = await GoogleAuth.signIn();
+  const token = result?.authentication?.accessToken;
+  if (!token) throw new Error('Connexion Google échouée');
+  await prefSet(PREFS.EMAIL, result.email || 'compte Google');
+  return token;
 };
 
-const prefSet = async (key, value) => {
-  await Preferences.set({ key, value });
+const signOutNativeGoogleDrive = async () => {
+  try {
+    const GoogleAuth = await loadGoogleAuth();
+    if (GoogleAuth) await GoogleAuth.signOut();
+  } catch {
+    /* ignore */
+  }
 };
 
-const prefRemove = async (key) => {
-  await Preferences.remove({ key });
+const getNativeAccessToken = async () => {
+  const GoogleAuth = await loadGoogleAuth();
+  if (!GoogleAuth) return null;
+  try {
+    const auth = await GoogleAuth.refresh();
+    return auth?.accessToken || null;
+  } catch {
+    return null;
+  }
 };
+
+/* ── Web (Mac / navigateur) — Google Identity Services ── */
+
+let gsiPromise = null;
+
+const loadGoogleGsi = () => {
+  if (typeof window === 'undefined') {
+    return Promise.reject(new Error('Google Auth indisponible hors navigateur'));
+  }
+  if (window.google?.accounts?.oauth2) {
+    return Promise.resolve(window.google);
+  }
+  if (gsiPromise) return gsiPromise;
+  gsiPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.onload = () => {
+      if (window.google?.accounts?.oauth2) resolve(window.google);
+      else reject(new Error('Google Identity Services non chargé'));
+    };
+    script.onerror = () => reject(new Error('Impossible de charger Google Identity Services'));
+    document.head.appendChild(script);
+  });
+  return gsiPromise;
+};
+
+const fetchGoogleEmail = async (token) => {
+  try {
+    const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return 'compte Google';
+    const data = await res.json();
+    return data.email || 'compte Google';
+  } catch {
+    return 'compte Google';
+  }
+};
+
+const requestWebAccessToken = async (prompt = '') =>
+  new Promise((resolve, reject) => {
+    const clientId = getWebClientId();
+    if (!clientId) {
+      reject(new Error('REACT_APP_GOOGLE_WEB_CLIENT_ID manquant (voir GOOGLE_DRIVE.md)'));
+      return;
+    }
+    loadGoogleGsi()
+      .then((google) => {
+        const client = google.accounts.oauth2.initTokenClient({
+          client_id: clientId,
+          scope: DRIVE_SCOPE,
+          callback: (response) => {
+            if (response.error) {
+              reject(new Error(response.error_description || response.error));
+              return;
+            }
+            resolve(response);
+          },
+        });
+        client.requestAccessToken(prompt ? { prompt } : {});
+      })
+      .catch(reject);
+  });
+
+const storeWebToken = async (response) => {
+  await prefSet(PREFS.TOKEN, response.access_token);
+  const expiresIn = response.expires_in || 3600;
+  await prefSet(PREFS.TOKEN_EXPIRY, String(Date.now() + expiresIn * 1000));
+  return response.access_token;
+};
+
+const signInWebGoogleDrive = async () => {
+  const response = await requestWebAccessToken('consent');
+  const token = await storeWebToken(response);
+  const email = await fetchGoogleEmail(token);
+  await prefSet(PREFS.EMAIL, email);
+  return token;
+};
+
+const signOutWebGoogleDrive = async () => {
+  const token = await prefGet(PREFS.TOKEN);
+  if (token) {
+    try {
+      await fetch(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(token)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      });
+    } catch {
+      /* ignore */
+    }
+  }
+};
+
+const getWebAccessToken = async () => {
+  const token = await prefGet(PREFS.TOKEN);
+  const expiry = Number((await prefGet(PREFS.TOKEN_EXPIRY)) || 0);
+  if (token && Date.now() < expiry - 60_000) return token;
+
+  const email = await prefGet(PREFS.EMAIL);
+  if (!email) return null;
+
+  try {
+    const response = await requestWebAccessToken('');
+    return storeWebToken(response);
+  } catch {
+    return null;
+  }
+};
+
+/* ── API Drive (commun web + native) ── */
 
 const driveFetch = async (path, token, options = {}) => {
   const res = await fetch(`${DRIVE_API}${path}`, {
@@ -113,8 +278,6 @@ const findWorkspaceFile = async (token, folderId) => {
   return null;
 };
 
-export const isDriveConfigured = () => Boolean(getGoogleClientId());
-
 export const getDriveStatus = async () => {
   const email = await prefGet(PREFS.EMAIL);
   const lastSync = await prefGet(PREFS.LAST_SYNC);
@@ -123,43 +286,24 @@ export const getDriveStatus = async () => {
     email: email || null,
     lastSync: lastSync ? Number(lastSync) : null,
     configured: isDriveConfigured(),
-    available: isNativeApp() && isDriveConfigured(),
+    available: isDriveConfigured(),
   };
 };
 
 export const signInGoogleDrive = async () => {
-  const GoogleAuth = await loadGoogleAuth();
-  if (!GoogleAuth) {
-    throw new Error(
-      'Google Drive disponible uniquement sur l\'APK Android avec REACT_APP_GOOGLE_CLIENT_ID configuré.'
-    );
-  }
-  const result = await GoogleAuth.signIn();
-  const token = result?.authentication?.accessToken;
-  if (!token) throw new Error('Connexion Google échouée');
-  await prefSet(PREFS.EMAIL, result.email || 'compte Google');
-  return token;
+  if (isNativeApp()) return signInNativeGoogleDrive();
+  return signInWebGoogleDrive();
 };
 
 export const signOutGoogleDrive = async () => {
-  try {
-    const GoogleAuth = await loadGoogleAuth();
-    if (GoogleAuth) await GoogleAuth.signOut();
-  } catch {
-    /* ignore */
-  }
+  if (isNativeApp()) await signOutNativeGoogleDrive();
+  else await signOutWebGoogleDrive();
   await Promise.all(Object.values(PREFS).map((k) => prefRemove(k)));
 };
 
 const getAccessToken = async () => {
-  const GoogleAuth = await loadGoogleAuth();
-  if (!GoogleAuth) return null;
-  try {
-    const auth = await GoogleAuth.refresh();
-    return auth?.accessToken || null;
-  } catch {
-    return null;
-  }
+  if (isNativeApp()) return getNativeAccessToken();
+  return getWebAccessToken();
 };
 
 export const uploadToGoogleDrive = async (workspaceData) => {

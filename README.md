@@ -1,67 +1,55 @@
 # SeNote
 
-Application de prise de notes manuscrites (style cahier numérique).
+Application de prise de notes manuscrites (style cahier numérique) pour tablettes et navigateur.
 
-## Lancer l'application
-
-### Backend (API + sauvegarde)
+## Démarrage rapide (Mac)
 
 ```bash
-cd backend
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn server:app --reload --port 8000
+chmod +x scripts/dev.sh
+./scripts/dev.sh
 ```
 
-Les données sont stockées dans `backend/data/` (fichiers JSON par espace de travail).
+Ouvre **http://localhost:3000** — notes sauvegardées dans le navigateur.
 
-### Frontend
+Guide de test complet : [TEST.md](./TEST.md)
 
-```bash
-cd frontend
-npm install --legacy-peer-deps
-npm start
-```
+## Tablette Android (APK — sans Play Store)
 
-Puis ouvrez **http://localhost:3000** dans votre navigateur.
+Pour une tablette dédiée à la prise de notes (projet éducatif Sénégal) :
 
-Le frontend synchronise automatiquement avec l'API sur `http://localhost:8000`. En cas d'absence du backend, le mode local (localStorage) reste actif.
-
-> Si le terminal affiche `Compiled successfully!` et `Local: http://localhost:3000`, l'app est prête — ouvrez cette adresse dans Chrome ou Safari.
-
-## Tablette Android dédiée (APK — sans Play Store)
-
-Pour une tablette qui ne sert **qu'à noter** (projet éducatif Sénégal) :
-
-- Stockage **mémoire interne** de la tablette (64 Go)
+- Stockage **mémoire interne** de la tablette
 - Sync **Google Drive** gratuite (optionnelle)
 - Installation directe de l'APK
 
-**Guide complet : [ANDROID.md](./ANDROID.md)**
+**Guide : [ANDROID.md](./ANDROID.md)**
 
 ```bash
 ./scripts/build-apk.sh
 adb install -r SeNote-tablet.apk
 ```
 
-## Tester sur tablette (navigateur)
+## Google Drive (test sur Mac)
 
-1. Assurez-vous que la tablette est sur le **même réseau Wi‑Fi** que votre Mac.
-2. Au démarrage, le terminal affiche aussi une adresse du type `http://172.x.x.x:3000`.
-3. Ouvrez cette adresse dans le navigateur de la tablette.
+1. Configurer OAuth Web : [GOOGLE_DRIVE.md](./GOOGLE_DRIVE.md)
+2. Renseigner `REACT_APP_GOOGLE_WEB_CLIENT_ID` dans `frontend/.env`
+3. Paramètres → **Connecter Google Drive**
+
+## Déploiement en ligne
+
+**GitHub Pages** : https://latsoukb.github.io/SeNote/ — voir [DEPLOY.md](./DEPLOY.md)
+
+## Tester sur tablette (même Wi-Fi)
+
+```bash
+./scripts/share.sh
+```
+
+Ouvrez l'adresse affichée (ex. `http://192.168.1.x:3000`) sur la tablette.
 
 ## Fonctionnalités
 
-- Modèles de page : Vierge, Ligné, Quadrillé, Pointillé, **Caligraphe** (trait rouge + lignes bleues)
+- Modèles de page : Vierge, Ligné, Quadrillé, Pointillé, **Seyès**, **Musique**
 - Écriture au stylet avec prise en charge de la pression
-- **Mode GoodNotes** : stylet pour écrire, doigt pour faire défiler, paume ignorée (Paramètres)
-- Zoom pour écrire précisément (comme GoodNotes), puis dézoomer pour voir le résultat final
-
-## Partager avec un ami (tablette)
-
-```bash
-./scripts/share.sh 1234
-```
-
-Voir [DEPLOY.md](./DEPLOY.md) — 30 secondes en Wi-Fi, ou 1 commande Vercel pour une URL en ligne.
+- **Mode GoodNotes** : stylet pour écrire, doigt pour faire défiler
+- Zoom, règles et équerre en cm réels
+- Export PDF

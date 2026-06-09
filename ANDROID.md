@@ -43,7 +43,7 @@ export PATH="$ANDROID_HOME/platform-tools:$PATH"
    - Copiez le **Client ID** Android
 5. Créez aussi un client **Web** (pour le plugin Google Auth) — copiez son Client ID
 
-6. Dans `frontend/.env` :
+6. Copiez `frontend/.env.example` vers `frontend/.env`, puis remplissez :
 
 ```bash
 REACT_APP_KIOSK_MODE=true

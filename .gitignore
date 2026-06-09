@@ -51,8 +51,7 @@ __pycache__/
 *pyc*
 venv/
 .venv/
-backend/data/*.json
-backend/.env
+frontend/.env
 
 # Development tools
 chainlit.md
