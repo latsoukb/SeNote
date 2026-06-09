@@ -28,6 +28,12 @@ URL : **https://latsoukb.github.io/SeNote/**
 
 Chaque `git push` sur `main` redéploie automatiquement.
 
+### Messagerie prof (JokkoNote → SeNote)
+
+1. Déployer le serveur sync (Render, 1 clic) — voir [JokkoNote/DEPLOY.md](https://github.com/latsoukb/JokkoNote/blob/main/DEPLOY.md)
+2. Secret GitHub `REACT_APP_JOKKO_SYNC_URL` = URL Render (script `configure-sync.sh` dans JokkoNote)
+3. Les élèves voient les envois dans **Réception**
+
 ### iPad / iPhone
 
 Safari → URL → code PIN → Partager → **Sur l'écran d'accueil**.

@@ -36,6 +36,7 @@ jobs:
           PUBLIC_URL: /SeNote
           REACT_APP_USE_BACKEND: 'false'
           REACT_APP_BETA_PIN: ${{ secrets.REACT_APP_BETA_PIN }}
+          REACT_APP_JOKKO_SYNC_URL: ${{ secrets.REACT_APP_JOKKO_SYNC_URL }}
           CI: false
         run: npm run build
 

@@ -17,6 +17,10 @@ import {
   Trash,
   PanelLeft,
   FileUp,
+  Inbox,
+  RefreshCw,
+  Bell,
+  LogOut,
 } from 'lucide-react';
 import {
   Sheet,
@@ -52,6 +56,9 @@ import { COVER_TEMPLATES, PAGE_TEMPLATES, FOLDER_COLORS } from '../mock/mock';
 import Logo from '../components/Logo';
 import PageTemplatePreview from '../components/PageTemplatePreview';
 import SettingsDialog from '../components/SettingsDialog';
+import StudentInbox from '../components/StudentInbox';
+import StudentLogin from '../components/StudentLogin';
+import { useStudentClass } from '../context/StudentClassContext';
 import { toast } from 'sonner';
 import { parsePdfFile } from '../lib/pdfImport';
 
@@ -165,6 +172,9 @@ const navBtnClass = (active) =>
   }`;
 
 const LibrarySidebar = ({
+  mainView,
+  setMainView,
+  newCount,
   selectedFolder,
   setSelectedFolder,
   folders,
@@ -181,35 +191,58 @@ const LibrarySidebar = ({
   className = '',
 }) => (
   <div className={`space-y-1 ${className}`}>
+    <p className="text-xs uppercase tracking-wide font-medium text-slate-500 px-2 mb-2">
+      JokkoNote
+    </p>
+    <button
+      type="button"
+      onClick={() => {
+        setMainView('inbox');
+        onNavigate?.();
+      }}
+      className={`${navBtnClass(mainView === 'inbox')} justify-between`}
+    >
+      <span className="flex items-center gap-2">
+        <Inbox className="w-4 h-4 shrink-0" />
+        Réception
+      </span>
+      {newCount > 0 && (
+        <span className="text-xs bg-blue-600 text-white px-1.5 py-0.5 rounded-full">{newCount}</span>
+      )}
+    </button>
+    <div className="h-px bg-slate-200 dark:bg-slate-800 my-3" />
     <p className="text-xs uppercase tracking-wide font-medium text-slate-500 px-2 mb-3">
       Organisation
     </p>
     <button
       onClick={() => {
+        setMainView('library');
         setSelectedFolder('all');
         onNavigate?.();
       }}
-      className={navBtnClass(selectedFolder === 'all')}
+      className={navBtnClass(mainView === 'library' && selectedFolder === 'all')}
     >
       <BookOpen className="w-4 h-4 shrink-0" />
       Tous les cahiers
     </button>
     <button
       onClick={() => {
+        setMainView('library');
         setSelectedFolder('pinned');
         onNavigate?.();
       }}
-      className={navBtnClass(selectedFolder === 'pinned')}
+      className={navBtnClass(mainView === 'library' && selectedFolder === 'pinned')}
     >
       <Pin className="w-4 h-4 shrink-0" />
       Raccourcis
     </button>
     <button
       onClick={() => {
+        setMainView('library');
         setSelectedFolder('none');
         onNavigate?.();
       }}
-      className={navBtnClass(selectedFolder === 'none')}
+      className={navBtnClass(mainView === 'library' && selectedFolder === 'none')}
     >
       <Folder className="w-4 h-4 shrink-0 opacity-50" />
       Sans dossier
@@ -217,10 +250,11 @@ const LibrarySidebar = ({
     <div className="h-px bg-slate-200 dark:bg-slate-800 my-3" />
     <button
       onClick={() => {
+        setMainView('library');
         setSelectedFolder('trash');
         onNavigate?.();
       }}
-      className={`${navBtnClass(selectedFolder === 'trash')} justify-between`}
+      className={`${navBtnClass(mainView === 'library' && selectedFolder === 'trash')} justify-between`}
     >
       <span className="flex items-center gap-2">
         <Trash className="w-4 h-4 shrink-0" />
@@ -240,10 +274,11 @@ const LibrarySidebar = ({
       <div key={f.id} className="group flex items-center">
         <button
           onClick={() => {
+            setMainView('library');
             setSelectedFolder(f.id);
             onNavigate?.();
           }}
-          className={`flex-1 flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors truncate ${navBtnClass(selectedFolder === f.id)}`}
+          className={`flex-1 flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors truncate ${navBtnClass(mainView === 'library' && selectedFolder === f.id)}`}
         >
           <span className="w-3 h-3 rounded-sm shrink-0" style={{ background: f.color }} />
           <span className="truncate">{f.name}</span>
@@ -317,6 +352,13 @@ const Library = () => {
   const pdfInputRef = useRef(null);
   const { theme, toggleTheme } = useTheme();
   const {
+    session: currentStudent,
+    newCount,
+    syncing,
+    syncNow,
+    logoutStudent,
+  } = useStudentClass();
+  const {
     folders,
     notebooks,
     trash,
@@ -334,6 +376,12 @@ const Library = () => {
     emptyTrash,
   } = useNotes();
   const [searchParams, setSearchParams] = useSearchParams();
+  const mainView = searchParams.get('view') === 'reception' ? 'inbox' : 'library';
+
+  const setMainView = (view) => {
+    if (view === 'inbox') setSearchParams({ view: 'reception' }, { replace: true });
+    else setSearchParams({}, { replace: true });
+  };
 
   const [search, setSearch] = useState('');
   const [selectedFolder, setSelectedFolder] = useState('all');
@@ -350,9 +398,39 @@ const Library = () => {
   useEffect(() => {
     if (searchParams.get('action') === 'new') {
       setDialogOpen(true);
-      setSearchParams({}, { replace: true });
+      const next = {};
+      if (searchParams.get('view') === 'reception') next.view = 'reception';
+      setSearchParams(next, { replace: true });
     }
   }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
+    const onNew = (e) => {
+      const items = e.detail?.items || [];
+      if (items.length) setSearchParams({ view: 'reception' }, { replace: true });
+      items.forEach((item) => {
+        toast('Nouveau du prof', {
+          description: `${item.teacherName} — ${item.title || item.body?.slice(0, 40)}`,
+          duration: 10000,
+          icon: <Bell className="w-4 h-4 text-blue-600" />,
+        });
+      });
+    };
+    window.addEventListener('senote:new-communications', onNew);
+    return () => window.removeEventListener('senote:new-communications', onNew);
+  }, [setSearchParams]);
+
+  const handleSync = async () => {
+    const { ok, newItems } = await syncNow();
+    if (ok && newItems?.length) {
+      setMainView('inbox');
+      newItems.forEach((item) => {
+        toast('Nouveau du prof', { description: `${item.teacherName} — ${item.title}` });
+      });
+    } else if (ok) {
+      toast.success('Boîte à jour');
+    }
+  };
 
   const getCoverGradient = (coverId) =>
     COVER_TEMPLATES.find((c) => c.id === coverId)?.gradient || COVER_TEMPLATES[0].gradient;
@@ -451,6 +529,9 @@ const Library = () => {
   };
 
   const sidebarProps = {
+    mainView,
+    setMainView,
+    newCount,
     selectedFolder,
     setSelectedFolder,
     folders,
@@ -501,6 +582,35 @@ const Library = () => {
             />
           </div>
           <div className="flex items-center gap-1 sm:gap-2 ml-auto shrink-0">
+            {currentStudent && (
+              <>
+                <span className="hidden md:inline text-xs text-slate-500 max-w-[120px] truncate">
+                  {currentStudent.displayName}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="relative rounded-full"
+                  onClick={handleSync}
+                  disabled={syncing}
+                  aria-label="Synchroniser"
+                >
+                  <RefreshCw className={`w-5 h-5 ${syncing ? 'animate-spin' : ''}`} />
+                  {newCount > 0 && (
+                    <span className="absolute top-1 right-1 w-2 h-2 bg-blue-600 rounded-full" />
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={logoutStudent}
+                  className="rounded-full"
+                  aria-label="Déconnexion"
+                >
+                  <LogOut className="w-5 h-5" />
+                </Button>
+              </>
+            )}
             <Button
               variant="ghost"
               size="icon"
@@ -525,7 +635,20 @@ const Library = () => {
           </div>
         </div>
         <div className="md:hidden px-4 pb-3 flex gap-2 overflow-x-auto thin-scroll">
-          {[
+          <button
+            type="button"
+            onClick={() => setMainView('inbox')}
+            className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+              mainView === 'inbox'
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'
+            }`}
+          >
+            <Inbox className="w-3.5 h-3.5" />
+            Réception
+            {newCount > 0 && <span className="bg-white/20 px-1 rounded text-[10px]">{newCount}</span>}
+          </button>
+          {mainView === 'library' && [
             { id: 'all', label: 'Tous', icon: BookOpen },
             { id: 'pinned', label: 'Raccourcis', icon: Pin },
             { id: 'trash', label: 'Corbeille', icon: Trash },
@@ -546,7 +669,7 @@ const Library = () => {
               )}
             </button>
           ))}
-          {folders.map((f) => (
+          {mainView === 'library' && folders.map((f) => (
             <button
               key={f.id}
               onClick={() => setSelectedFolder(f.id)}
@@ -568,8 +691,16 @@ const Library = () => {
           <LibrarySidebar {...sidebarProps} />
         </aside>
 
-        <main className="flex-1 px-4 sm:px-6 py-6 sm:py-10 min-w-0">
-          {selectedFolder === 'trash' ? (
+        <main className="flex-1 px-4 sm:px-6 py-6 sm:py-10 min-w-0 flex flex-col min-h-0">
+          {mainView === 'inbox' ? (
+            !currentStudent ? (
+              <StudentLogin />
+            ) : (
+              <div className="flex flex-col flex-1 min-h-0 -mx-4 sm:-mx-6 -my-6 sm:-my-10">
+                <StudentInbox />
+              </div>
+            )
+          ) : selectedFolder === 'trash' ? (
             <>
               <div className="flex items-end justify-between mb-8 gap-4 flex-wrap">
                 <div>

@@ -21,5 +21,6 @@ echo ""
 # Écrase .env.local pour le dev local
 REACT_APP_BETA_PIN= \
 REACT_APP_USE_BACKEND=false \
+REACT_APP_JOKKO_SYNC_URL=${REACT_APP_JOKKO_SYNC_URL:-http://localhost:8787} \
 CI=false \
 npm start
