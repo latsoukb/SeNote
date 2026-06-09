@@ -17,6 +17,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useNotes } from '../context/NotesContext';
 import { useSettings } from '../context/SettingsContext';
 import { PAGE_TEMPLATES, COVER_TEMPLATES } from '../mock/mock';
+import { isPdfPage } from '../lib/pageTemplates';
 import Logo from '../components/Logo';
 import Toolbar from '../components/Toolbar';
 import PdfDocumentView from '../components/PdfDocumentView';
@@ -26,7 +27,7 @@ import SettingsDialog from '../components/SettingsDialog';
 import { exportNotebookToPdf } from '../lib/exportNotebookPdf';
 import { createRuler, createSetSquare } from '../lib/instrumentSnap';
 import { clampPan, focalPan } from '../lib/inkEngine';
-import { MIN_ZOOM, MAX_ZOOM } from '../components/NoteCanvas';
+import { MIN_ZOOM, MAX_ZOOM, DEFAULT_WRITE_ZOOM } from '../components/NoteCanvas';
 import {
   Popover,
   PopoverContent,
@@ -43,6 +44,7 @@ const NotebookEditor = () => {
     getNotebook,
     updateNotebook,
     addPage,
+    insertPageAt,
     deletePage,
     updatePage,
     setPageTemplate,
@@ -55,23 +57,37 @@ const NotebookEditor = () => {
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
   const [addPageOpen, setAddPageOpen] = useState(false);
+  const [addPageMode, setAddPageMode] = useState('after'); // end | before | after
   const [notebookTemplateOpen, setNotebookTemplateOpen] = useState(false);
   const [pageTemplateOpen, setPageTemplateOpen] = useState(null);
 
   const [tool, setTool] = useState('pen');
   const [color, setColor] = useState('#0F172A');
   const [thickness, setThickness] = useState(2.5);
-  const [writeZoom, setWriteZoom] = useState(1);
+  const [writeZoom, setWriteZoom] = useState(DEFAULT_WRITE_ZOOM);
   const [writePan, setWritePan] = useState({ x: 0, y: 0 });
 
   const undoStackRef = useRef({});
   const redoStackRef = useRef({});
   const [pageSyncRevision, setPageSyncRevision] = useState(0);
 
-  const handlePageChange = useCallback((idx) => {
+  const scrollToPageRef = useRef(null);
+
+  /** Changement auto (scroll, stylet, ou passage au bord en zoom) */
+  const handlePageChange = useCallback((idx, options = {}) => {
     setCurrentPageIdx(idx);
     setWritePan({ x: 0, y: 0 });
-    setWriteZoom(1);
+    if (options.resetZoom) {
+      setWriteZoom(MIN_ZOOM);
+    }
+  }, []);
+
+  /** Clic miniature sidebar — scroll vers la page */
+  const handleSidebarPage = useCallback((idx) => {
+    setCurrentPageIdx(idx);
+    setWritePan({ x: 0, y: 0 });
+    setWriteZoom(DEFAULT_WRITE_ZOOM);
+    scrollToPageRef.current?.(idx);
   }, []);
 
   const handleAutoAddPage = useCallback(
@@ -131,11 +147,31 @@ const NotebookEditor = () => {
   };
 
   const handleAddPage = (template) => {
-    const tpl = template || currentPage?.template || notebook.pageTemplate;
-    addPage(notebook.id, tpl);
-    setCurrentPageIdx(notebook.pages.length);
+    const tpl =
+      template ||
+      (isPdfPage(currentPage) ? 'blank' : currentPage?.template) ||
+      notebook.pageTemplate ||
+      'blank';
+
+    if (addPageMode === 'end') {
+      addPage(notebook.id, tpl);
+      setCurrentPageIdx(notebook.pages.length);
+    } else if (addPageMode === 'before') {
+      insertPageAt(notebook.id, currentPageIdx, tpl);
+      setCurrentPageIdx(currentPageIdx);
+    } else {
+      insertPageAt(notebook.id, currentPageIdx + 1, tpl);
+      setCurrentPageIdx(currentPageIdx + 1);
+    }
+
     setAddPageOpen(false);
-    toast.success('Page ajoutée');
+    toast.success(
+      addPageMode === 'before'
+        ? 'Page ajoutée avant'
+        : addPageMode === 'after'
+          ? 'Page ajoutée après'
+          : 'Page ajoutée'
+    );
   };
 
   const handleDeletePage = (pageId) => {
@@ -199,7 +235,7 @@ const NotebookEditor = () => {
   };
 
   const handleWriteZoomReset = () => {
-    setWriteZoom(1);
+    setWriteZoom(DEFAULT_WRITE_ZOOM);
     setWritePan({ x: 0, y: 0 });
   };
 
@@ -210,8 +246,8 @@ const NotebookEditor = () => {
     const focalX = viewW / 2;
     const focalY = viewH / 2;
     const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, writeZoom + delta));
-    if (next <= 1) {
-      setWriteZoom(1);
+    if (next <= MIN_ZOOM) {
+      setWriteZoom(MIN_ZOOM);
       setWritePan({ x: 0, y: 0 });
       return;
     }
@@ -295,6 +331,53 @@ const NotebookEditor = () => {
             )}
             {scrollLabel}
           </span>
+          <Popover open={addPageOpen} onOpenChange={setAddPageOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 gap-1 text-xs hidden sm:flex">
+                <Plus className="w-3.5 h-3.5" />
+                Page
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-80 max-h-[70vh] overflow-y-auto">
+              <p className="text-xs font-medium text-slate-500 mb-2">Position</p>
+              <div className="flex gap-1 mb-3">
+                {[
+                  { id: 'before', label: 'Avant' },
+                  { id: 'after', label: 'Après' },
+                  { id: 'end', label: 'À la fin' },
+                ].map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setAddPageMode(m.id)}
+                    className={`flex-1 text-xs py-1.5 rounded-md border transition-colors ${
+                      addPageMode === m.id
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-slate-500 mb-3">
+                {addPageMode === 'before' && `Insérer avant la page ${currentPageIdx + 1}`}
+                {addPageMode === 'after' && `Insérer après la page ${currentPageIdx + 1}`}
+                {addPageMode === 'end' && 'Ajouter à la fin du cahier'}
+              </p>
+              <p className="text-xs font-medium text-slate-500 mb-2">Modèle vierge</p>
+              <div className="grid grid-cols-3 gap-2">
+                {PAGE_TEMPLATES.map((t) => (
+                  <PageTemplatePreview
+                    key={t.id}
+                    template={t}
+                    size="sm"
+                    onClick={() => handleAddPage(t.id)}
+                  />
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
           <span className="text-xs text-slate-500 dark:text-slate-400">
             {currentPageIdx + 1} / {notebook.pages.length}
           </span>
@@ -375,36 +458,21 @@ const NotebookEditor = () => {
                   </div>
                 </PopoverContent>
               </Popover>
-              <Popover open={addPageOpen} onOpenChange={setAddPageOpen}>
-                <PopoverTrigger asChild>
-                  <button
-                    className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800"
-                    aria-label="Ajouter une page"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent align="end" className="w-80 max-h-[70vh] overflow-y-auto">
-                  <p className="text-xs font-medium text-slate-500 mb-3">Choisir un modèle</p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {PAGE_TEMPLATES.map((t) => (
-                      <PageTemplatePreview
-                        key={t.id}
-                        template={t}
-                        size="sm"
-                        onClick={() => handleAddPage(t.id)}
-                      />
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
+              <button
+                type="button"
+                className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800"
+                aria-label="Ajouter une page"
+                onClick={() => setAddPageOpen(true)}
+              >
+                <Plus className="w-4 h-4" />
+              </button>
               </div>
             </div>
             <div className="flex-1 overflow-y-auto thin-scroll p-3 space-y-3">
               {notebook.pages.map((p, idx) => (
                 <div key={p.id} className="group relative">
                   <button
-                    onClick={() => handlePageChange(idx)}
+                    onClick={() => handleSidebarPage(idx)}
                     className={`w-full aspect-[3/4] rounded-md bg-white dark:bg-slate-100 border-2 transition-all overflow-hidden ${
                       idx === currentPageIdx
                         ? 'border-blue-600 shadow-md'
@@ -415,6 +483,11 @@ const NotebookEditor = () => {
                   </button>
                   <p className="text-[11px] text-center mt-1 text-slate-500">{idx + 1}</p>
                   <div className="absolute top-1 right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {isPdfPage(p) ? (
+                      <span className="px-1.5 py-0.5 rounded bg-blue-600/90 text-white text-[9px] font-medium">
+                        PDF
+                      </span>
+                    ) : (
                     <Popover
                       open={pageTemplateOpen === p.id}
                       onOpenChange={(open) => setPageTemplateOpen(open ? p.id : null)}
@@ -448,6 +521,7 @@ const NotebookEditor = () => {
                         </div>
                       </PopoverContent>
                     </Popover>
+                    )}
                     {notebook.pages.length > 1 && (
                       <button
                         onClick={() => handleDeletePage(p.id)}
@@ -470,6 +544,9 @@ const NotebookEditor = () => {
             pages={notebook.pages}
             currentPageIdx={currentPageIdx}
             onPageChange={handlePageChange}
+            onRegisterScrollToPage={(fn) => {
+              scrollToPageRef.current = fn;
+            }}
             scrollDirection={settings.scrollDirection}
             autoAddPage={settings.autoAddPage}
             onAutoAddPage={handleAutoAddPage}

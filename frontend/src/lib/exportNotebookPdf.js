@@ -1,11 +1,10 @@
 import { jsPDF } from 'jspdf';
 import { PAGE_W, PAGE_H, SEYES_BG } from './pageDimensions';
-import { getTemplateBackground, drawTemplateBackground } from './pageTemplates';
+import { getPageBackground, drawTemplateBackground } from './pageTemplates';
 
 const loadImage = (src) =>
   new Promise((resolve, reject) => {
     const img = new Image();
-    img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
     img.onerror = reject;
     img.src = src;
@@ -40,7 +39,11 @@ const drawStroke = (ctx, s) => {
   ctx.lineWidth = s.thickness;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
-  if (s.type === 'highlighter') ctx.globalAlpha = 0.35;
+  if (s.type === 'highlighter') {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 0.45;
+    ctx.lineCap = 'butt';
+  }
   ctx.beginPath();
   ctx.moveTo(s.points[0].x, s.points[0].y);
   for (let i = 1; i < s.points.length; i++) {
@@ -50,7 +53,7 @@ const drawStroke = (ctx, s) => {
   ctx.restore();
 };
 
-const renderPageToCanvas = async (page, seyesImg) => {
+const renderPageToCanvas = async (page, imageCache) => {
   const canvas = document.createElement('canvas');
   canvas.width = PAGE_W;
   canvas.height = PAGE_H;
@@ -58,9 +61,14 @@ const renderPageToCanvas = async (page, seyesImg) => {
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, PAGE_W, PAGE_H);
 
-  const bg = getTemplateBackground(page.template);
-  if (bg.type === 'image' && seyesImg) {
-    ctx.drawImage(seyesImg, 0, 0, PAGE_W, PAGE_H);
+  const bg = getPageBackground(page);
+  if (bg.type === 'image') {
+    let img = imageCache.get(bg.src);
+    if (!img) {
+      img = await loadImage(bg.src);
+      imageCache.set(bg.src, img);
+    }
+    ctx.drawImage(img, 0, 0, PAGE_W, PAGE_H);
   } else {
     drawTemplateBackground(ctx, page.template, PAGE_W, PAGE_H);
   }
@@ -86,16 +94,16 @@ export const exportNotebookToPdf = async (notebook) => {
     format: 'a4',
   });
 
-  let seyesImg = null;
+  const imageCache = new Map();
   try {
-    seyesImg = await loadImage(SEYES_BG);
+    imageCache.set(SEYES_BG, await loadImage(SEYES_BG));
   } catch {
     /* optional */
   }
 
   for (let i = 0; i < notebook.pages.length; i++) {
     if (i > 0) pdf.addPage();
-    const canvas = await renderPageToCanvas(notebook.pages[i], seyesImg);
+    const canvas = await renderPageToCanvas(notebook.pages[i], imageCache);
     const data = canvas.toDataURL('image/jpeg', 0.92);
     pdf.addImage(data, 'JPEG', 0, 0, 595, 842);
   }

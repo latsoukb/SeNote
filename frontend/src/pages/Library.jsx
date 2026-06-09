@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Plus,
   Moon,
@@ -16,6 +16,7 @@ import {
   ArchiveRestore,
   Trash,
   PanelLeft,
+  FileUp,
 } from 'lucide-react';
 import {
   Sheet,
@@ -52,6 +53,7 @@ import Logo from '../components/Logo';
 import PageTemplatePreview from '../components/PageTemplatePreview';
 import SettingsDialog from '../components/SettingsDialog';
 import { toast } from 'sonner';
+import { parsePdfFile } from '../lib/pdfImport';
 
 const formatDate = (ts) => {
   const d = new Date(ts);
@@ -311,12 +313,15 @@ const LibrarySidebar = ({
 );
 
 const Library = () => {
+  const navigate = useNavigate();
+  const pdfInputRef = useRef(null);
   const { theme, toggleTheme } = useTheme();
   const {
     folders,
     notebooks,
     trash,
     addNotebook,
+    importPdfNotebook,
     deleteNotebook,
     moveNotebookToFolder,
     togglePinNotebook,
@@ -340,6 +345,7 @@ const Library = () => {
   const [newFolderName, setNewFolderName] = useState('');
   const [newFolderColor, setNewFolderColor] = useState(FOLDER_COLORS[0]);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [pdfImporting, setPdfImporting] = useState(false);
 
   useEffect(() => {
     if (searchParams.get('action') === 'new') {
@@ -363,6 +369,32 @@ const Library = () => {
     .filter((n) => n.title.toLowerCase().includes(search.toLowerCase()));
 
   const pinnedNotebooks = notebooks.filter((n) => n.pinned);
+
+  const handlePdfImport = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    setPdfImporting(true);
+    const toastId = toast.loading('Import du PDF…', { description: file.name });
+    try {
+      const { title, backgrounds } = await parsePdfFile(file);
+      const folderId =
+        selectedFolder !== 'all' && selectedFolder !== 'pinned' && selectedFolder !== 'none'
+          ? selectedFolder
+          : null;
+      const nb = importPdfNotebook(title, backgrounds, 'cover-paper', folderId);
+      toast.success('PDF importé', {
+        id: toastId,
+        description: `${backgrounds.length} page${backgrounds.length > 1 ? 's' : ''} — écrivez par-dessus`,
+      });
+      navigate(`/notebook/${nb.id}`);
+    } catch (err) {
+      toast.error(err.message || 'Import impossible', { id: toastId });
+    } finally {
+      setPdfImporting(false);
+    }
+  };
 
   const handleCreate = () => {
     const title = newTitle.trim() || 'Sans titre';
@@ -677,6 +709,22 @@ const Library = () => {
               </p>
             </div>
 
+            <input
+              ref={pdfInputRef}
+              type="file"
+              accept="application/pdf,.pdf"
+              className="hidden"
+              onChange={handlePdfImport}
+            />
+            <Button
+              variant="outline"
+              className="rounded-full px-5 h-11 gap-2"
+              disabled={pdfImporting}
+              onClick={() => pdfInputRef.current?.click()}
+            >
+              <FileUp className="w-4 h-4" />
+              Importer PDF
+            </Button>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-5 h-11 gap-2">

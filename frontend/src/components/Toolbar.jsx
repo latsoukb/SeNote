@@ -14,6 +14,7 @@ import {
   ZoomOut,
 } from 'lucide-react';
 import { PEN_COLORS, HIGHLIGHTER_COLORS } from '../mock/mock';
+import { DEFAULT_WRITE_ZOOM } from './NoteCanvas';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Slider } from './ui/slider';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
@@ -58,7 +59,12 @@ const Toolbar = ({
   onExport,
 }) => {
   const colors = tool === 'highlighter' ? HIGHLIGHTER_COLORS : PEN_COLORS;
-  const drawTools = ['pen', 'highlighter', 'eraser'];
+  const zoomCustom = Math.abs(writeZoom - DEFAULT_WRITE_ZOOM) > 0.08;
+
+  const selectEraser = () => {
+    setTool('eraser');
+    if (thickness < 8) setThickness(16);
+  };
 
   return (
     <div className="w-full shrink-0 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 z-40">
@@ -69,7 +75,7 @@ const Toolbar = ({
         <ToolButton active={tool === 'highlighter'} onClick={() => setTool('highlighter')} label="Surligneur">
           <Highlighter className="w-5 h-5" />
         </ToolButton>
-        <ToolButton active={tool === 'eraser'} onClick={() => setTool('eraser')} label="Gomme">
+        <ToolButton active={tool === 'eraser'} onClick={selectEraser} label="Gomme">
           <Eraser className="w-5 h-5" />
         </ToolButton>
         <Popover>
@@ -116,9 +122,100 @@ const Toolbar = ({
 
         <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 mx-0.5 shrink-0" />
 
-        {(drawTools.includes(tool) || tool === 'text') && (
+        {tool === 'eraser' && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-sm bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/50 shrink-0"
+                aria-label="Taille de la gomme"
+              >
+                <Eraser className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                <span className="text-xs font-medium text-rose-800 dark:text-rose-300 hidden sm:inline">
+                  Taille
+                </span>
+                <div className="w-6 h-6 flex items-center justify-center shrink-0">
+                  <div
+                    className="rounded-full bg-rose-200/90 dark:bg-rose-300/80 border border-rose-300/60"
+                    style={{
+                      width: Math.min(24, Math.max(6, thickness * 1.2)),
+                      height: Math.min(24, Math.max(6, thickness * 1.2)),
+                    }}
+                  />
+                </div>
+                <span className="text-xs tabular-nums font-medium text-rose-900 dark:text-rose-200 w-8">
+                  {thickness.toFixed(1)}
+                </span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56" avoidCollisions={false}>
+              <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-3">
+                Taille de la gomme
+              </p>
+              <Slider
+                value={[thickness]}
+                onValueChange={(v) => setThickness(v[0])}
+                min={4}
+                max={40}
+                step={1}
+              />
+              <p className="text-[10px] text-slate-400 mt-2">Glissez pour agrandir la zone d&apos;effacement</p>
+            </PopoverContent>
+          </Popover>
+        )}
+
+        {(tool === 'pen' || tool === 'highlighter') && (
+          <>
+            <div className="flex items-center gap-1 shrink-0">
+              {colors.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setColor(c)}
+                  className={`w-6 h-6 rounded-full border-2 shrink-0 ${
+                    color === c ? 'border-blue-600 ring-2 ring-blue-300' : 'border-white dark:border-slate-700'
+                  }`}
+                  style={{ background: c }}
+                  aria-label={`Couleur ${c}`}
+                />
+              ))}
+            </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-sm hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
+                  aria-label={tool === 'highlighter' ? 'Épaisseur du surligneur' : 'Épaisseur du stylo'}
+                >
+                  <div className="w-6 h-6 flex items-center justify-center shrink-0">
+                    <div
+                      className="rounded-full"
+                      style={{
+                        background: color,
+                        width: Math.min(22, Math.max(4, thickness * 1.5)),
+                        height: Math.min(22, Math.max(4, thickness * 1.5)),
+                      }}
+                    />
+                  </div>
+                  <span className="text-xs tabular-nums w-7">{thickness.toFixed(1)}</span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-52" avoidCollisions={false}>
+                <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-3">
+                  {tool === 'highlighter' ? 'Épaisseur du surligneur' : 'Épaisseur du stylo'}
+                </p>
+                <Slider
+                  value={[thickness]}
+                  onValueChange={(v) => setThickness(v[0])}
+                  min={1}
+                  max={tool === 'highlighter' ? 30 : 12}
+                  step={0.5}
+                />
+              </PopoverContent>
+            </Popover>
+          </>
+        )}
+
+        {tool === 'text' && (
           <div className="flex items-center gap-1 shrink-0">
-            {colors.map((c) => (
+            {PEN_COLORS.map((c) => (
               <button
                 key={c}
                 onClick={() => setColor(c)}
@@ -126,37 +223,10 @@ const Toolbar = ({
                   color === c ? 'border-blue-600 ring-2 ring-blue-300' : 'border-white dark:border-slate-700'
                 }`}
                 style={{ background: c }}
+                aria-label={`Couleur ${c}`}
               />
             ))}
           </div>
-        )}
-
-        {drawTools.includes(tool) && (
-          <Popover>
-            <PopoverTrigger asChild>
-              <button className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-sm hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0">
-                <div className="w-6 h-6 flex items-center justify-center shrink-0">
-                  <div
-                    className="rounded-full bg-slate-800 dark:bg-slate-200"
-                    style={{
-                      width: Math.min(22, Math.max(4, thickness * 1.5)),
-                      height: Math.min(22, Math.max(4, thickness * 1.5)),
-                    }}
-                  />
-                </div>
-                <span className="text-xs tabular-nums w-7">{thickness.toFixed(1)}</span>
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-52" avoidCollisions={false}>
-              <Slider
-                value={[thickness]}
-                onValueChange={(v) => setThickness(v[0])}
-                min={1}
-                max={tool === 'highlighter' ? 30 : tool === 'eraser' ? 40 : 12}
-                step={0.5}
-              />
-            </PopoverContent>
-          </Popover>
         )}
 
         <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 mx-0.5 shrink-0" />
@@ -177,15 +247,15 @@ const Toolbar = ({
           <ZoomOut className="w-5 h-5" />
         </ToolButton>
         <button
-          onClick={writeZoom !== 1 ? onWriteZoomReset : onWriteZoomIn}
+          onClick={zoomCustom ? onWriteZoomReset : onWriteZoomIn}
           className={`px-2 py-1 rounded-full text-xs font-medium shrink-0 tabular-nums ${
-            writeZoom !== 1
+            zoomCustom
               ? 'bg-blue-600 text-white'
               : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
           title={
-            writeZoom !== 1
-              ? 'Réinitialiser le zoom · Tactile : pincez pour zoomer, 1 doigt pour déplacer'
+            zoomCustom
+              ? 'Réinitialiser le zoom (150 %) · Tactile : pincez pour zoomer, 1 doigt pour déplacer'
               : 'Zoom avant · Ordinateur : Ctrl + molette ou pincement trackpad'
           }
         >

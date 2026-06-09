@@ -48,11 +48,16 @@ adb install -r ~/Downloads/app-debug.apk
 
 ---
 
-## Option 3 — Site en ligne (déjà déployé)
+## Option 3 — Site en ligne (iPad / iPhone — pour tester avec un ami)
 
 **https://latsoukb.github.io/SeNote/**
 
-> Stockage navigateur uniquement — l'APK est mieux pour une tablette dédiée.
+1. Ouvre ce lien dans **Safari** sur l'iPad
+2. Mode stylet activé par défaut (stylet écrit, doigt défile)
+3. Pas de code PIN si `REACT_APP_BETA_PIN` n'est pas configuré sur GitHub
+4. Après chaque `git push` sur `main`, le site se met à jour en ~2 min
+
+> Stockage navigateur — pour une tablette dédiée sans navigateur, préférer l'APK Android.
 
 ---
 

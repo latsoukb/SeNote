@@ -4,6 +4,7 @@ import {
   initialFolders,
   newNotebook as createNotebook,
   newPage as createPage,
+  newPdfPage as createPdfPage,
   newFolder as createFolder,
 } from '../mock/mock';
 import { checkBackend, fetchWorkspace, saveWorkspace as saveWorkspaceApi } from '../lib/api';
@@ -285,6 +286,39 @@ export const NotesProvider = ({ children }) => {
     return page;
   }, []);
 
+  const insertPageAt = useCallback((notebookId, index, template = 'blank') => {
+    const page = createPage(template);
+    setNotebooks((prev) =>
+      prev.map((n) => {
+        if (n.id !== notebookId) return n;
+        const pages = [...n.pages];
+        pages.splice(Math.max(0, Math.min(index, pages.length)), 0, page);
+        return { ...n, pages, updatedAt: Date.now() };
+      })
+    );
+    return page;
+  }, []);
+
+  const importPdfNotebook = useCallback(
+    (title, pdfBackgrounds, cover = 'cover-paper', folderId = null) => {
+      const nb = {
+        id: `nb-${Math.random().toString(36).slice(2, 10)}`,
+        title: title || 'Document PDF',
+        cover,
+        pageTemplate: 'blank',
+        sourceType: 'pdf',
+        folderId,
+        pinned: false,
+        pages: pdfBackgrounds.map((bg) => createPdfPage(bg)),
+        updatedAt: Date.now(),
+        createdAt: Date.now(),
+      };
+      setNotebooks((prev) => [nb, ...prev]);
+      return nb;
+    },
+    []
+  );
+
   const movePageToTrash = useCallback((notebookId, pageId) => {
     let entry = null;
     setNotebooks((prev) => {
@@ -362,7 +396,7 @@ export const NotesProvider = ({ children }) => {
   }, []);
 
   const setPageTemplate = useCallback((notebookId, pageId, template) => {
-    updatePage(notebookId, pageId, { template });
+    updatePage(notebookId, pageId, { template, pdfBackground: undefined });
   }, [updatePage]);
 
   const setNotebookTemplate = useCallback((notebookId, template) => {
@@ -372,7 +406,11 @@ export const NotesProvider = ({ children }) => {
           ? {
               ...n,
               pageTemplate: template,
-              pages: n.pages.map((p) => ({ ...p, template })),
+              pages: n.pages.map((p) =>
+                p.pdfBackground
+                  ? p
+                  : { ...p, template, pdfBackground: undefined }
+              ),
               updatedAt: Date.now(),
             }
           : n
@@ -415,6 +453,8 @@ export const NotesProvider = ({ children }) => {
         updateFolder,
         deleteFolder,
         addPage,
+        insertPageAt,
+        importPdfNotebook,
         deletePage,
         movePageToTrash,
         restorePageFromTrash,

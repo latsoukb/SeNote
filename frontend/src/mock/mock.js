@@ -97,15 +97,25 @@ export const PEN_COLORS = [
 ];
 
 export const HIGHLIGHTER_COLORS = [
-  '#FDE047',
-  '#86EFAC',
-  '#FCA5A5',
-  '#93C5FD',
-  '#F0ABFC',
-  '#FDBA74',
+  '#FFF700', // jaune fluo
+  '#00FF41', // vert néon
+  '#FF2D95', // rose fluo
+  '#00CFFF', // bleu cyan
+  '#FF7700', // orange
+  '#CCFF00', // lime
+  '#FF00FF', // magenta
 ];
 
 export const newPage = makePage;
+
+export const newPdfPage = (pdfBackground) => ({
+  id: `page-${Math.random().toString(36).slice(2, 10)}`,
+  template: 'pdf',
+  pdfBackground,
+  strokes: [],
+  textBoxes: [],
+  createdAt: Date.now(),
+});
 
 export const newFolder = (name = 'Nouveau dossier', color = FOLDER_COLORS[0]) => ({
   id: `folder-${Math.random().toString(36).slice(2, 10)}`,

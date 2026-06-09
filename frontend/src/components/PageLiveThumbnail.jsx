@@ -11,10 +11,12 @@ const PageLiveThumbnail = ({ page, className = '' }) => {
     const w = canvas.width;
     const h = canvas.height;
 
-    const render = () => drawPageToCanvas(ctx, page, w, h);
+    const render = async () => {
+      await drawPageToCanvas(ctx, page, w, h);
+    };
     render();
     seyesLoad.then(render);
-  }, [page.strokes, page.template, page.textBoxes, page]);
+  }, [page.strokes, page.template, page.textBoxes, page.pdfBackground, page]);
 
   return (
     <canvas

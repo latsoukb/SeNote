@@ -29,7 +29,8 @@ export const drawStroke = (ctx, s) => {
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   if (s.type === 'highlighter') {
-    ctx.globalAlpha = 0.35;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 0.45;
     ctx.lineCap = 'butt';
   }
   drawStrokePath(ctx, s);

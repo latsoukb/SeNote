@@ -1,13 +1,38 @@
 /** Moteur d'encre — points coalescés, lissage, zoom focal */
 
+export const getPanLimits = (zoom, viewW, viewH) => {
+  if (zoom <= 1) return { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+  return {
+    minX: viewW - viewW * zoom,
+    minY: viewH - viewH * zoom,
+    maxX: 0,
+    maxY: 0,
+  };
+};
+
 export const clampPan = (pan, zoom, viewW, viewH) => {
   if (zoom <= 1) return { x: 0, y: 0 };
-  const minX = viewW - viewW * zoom;
-  const minY = viewH - viewH * zoom;
+  const { minX, minY } = getPanLimits(zoom, viewW, viewH);
   return {
     x: Math.min(0, Math.max(minX, pan.x)),
     y: Math.min(0, Math.max(minY, pan.y)),
   };
+};
+
+const EDGE_EPS = 4;
+
+/** Bord atteint + geste qui continue dans la même direction → page suivante/précédente */
+export const getPanEdgeOverflow = (pan, zoom, viewW, viewH, deltaX, deltaY, vertical) => {
+  if (zoom <= 1.01) return null;
+  const { minX, minY } = getPanLimits(zoom, viewW, viewH);
+  if (vertical) {
+    if (pan.y <= minY + EDGE_EPS && deltaY < 0) return 'next';
+    if (pan.y >= -EDGE_EPS && deltaY > 0) return 'prev';
+  } else {
+    if (pan.x <= minX + EDGE_EPS && deltaX < 0) return 'next';
+    if (pan.x >= -EDGE_EPS && deltaX > 0) return 'prev';
+  }
+  return null;
 };
 
 /** Zoom centré sur un point (coordonnées viewport) — modèle GoodNotes */

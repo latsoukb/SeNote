@@ -1,7 +1,7 @@
 import React, { useRef, useLayoutEffect, useState, useCallback, useEffect } from 'react';
 import { makeId } from '../lib/id';
 import { PAGE_W, PAGE_H } from '../lib/pageDimensions';
-import { getTemplateBackground } from '../lib/pageTemplates';
+import { getPageBackground } from '../lib/pageTemplates';
 import { detectShape, shapeToStroke, looksLikeHandwriting } from '../lib/shapeDetection';
 import {
   drawShape,
@@ -27,6 +27,9 @@ import {
   shouldIgnoreDrawPointer,
   isPalmTouch,
   isFingerPointer,
+  beginPenSession,
+  endPenSession,
+  isPenSessionActive,
 } from '../lib/pointerInput';
 import {
   getCoalescedPointerEvents,
@@ -34,6 +37,7 @@ import {
   pressureWidth,
   clampPan,
   focalPan,
+  getPanEdgeOverflow,
 } from '../lib/inkEngine';
 import { drawStroke, createStaticLayer } from '../lib/strokeRenderer';
 import { MIN_ZOOM, MAX_ZOOM } from './NoteCanvas';
@@ -56,6 +60,10 @@ const PageSheet = ({
   stylusOnly = true,
   pageSyncRevision = 0,
   scrollDirection = 'vertical',
+  onPenActiveChange,
+  penLock = false,
+  onRequestActivate,
+  onScrollChain,
 }) => {
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -93,6 +101,11 @@ const PageSheet = ({
   const onZoomRef = useRef(onWriteZoomChange);
   const onPanRef = useRef(onWritePanChange);
   const stylusOnlyRef = useRef(stylusOnly);
+  const penPointerRef = useRef(false);
+  const onScrollChainRef = useRef(onScrollChain);
+  const scrollDirRef = useRef(scrollDirection);
+  onScrollChainRef.current = onScrollChain;
+  scrollDirRef.current = scrollDirection;
   writeZoomRef.current = writeZoom;
   writePanRef.current = writePan;
   stylusOnlyRef.current = stylusOnly;
@@ -201,6 +214,10 @@ const PageSheet = ({
     };
 
     const onTouchStart = (e) => {
+      if (isPenSessionActive()) {
+        e.preventDefault();
+        return;
+      }
       if (e.touches.length === 2) {
         touchPanRef.current = null;
         const [t0, t1] = e.touches;
@@ -214,9 +231,9 @@ const PageSheet = ({
       }
       if (
         e.touches.length === 1 &&
-        writeZoomRef.current > 1 &&
+        writeZoomRef.current > 1.01 &&
         onPanRef.current &&
-        stylusOnlyRef.current
+        !isPenSessionActive()
       ) {
         const t = e.touches[0];
         touchPanRef.current = {
@@ -229,19 +246,47 @@ const PageSheet = ({
     };
 
     const onTouchMove = (e) => {
-      if (e.touches.length === 1 && touchPanRef.current && writeZoomRef.current > 1) {
+      if (isPenSessionActive()) {
+        e.preventDefault();
+        return;
+      }
+      if (e.touches.length === 1 && touchPanRef.current && writeZoomRef.current > 1.01) {
         e.preventDefault();
         const t = e.touches[0];
-        const next = clampPan(
-          {
-            x: touchPanRef.current.panX + (t.clientX - touchPanRef.current.x),
-            y: touchPanRef.current.panY + (t.clientY - touchPanRef.current.y),
-          },
-          writeZoomRef.current,
-          el.clientWidth,
-          el.clientHeight
-        );
+        const dx = t.clientX - touchPanRef.current.x;
+        const dy = t.clientY - touchPanRef.current.y;
+        const vertical = scrollDirRef.current !== 'horizontal';
+        const pan = writePanRef.current;
+        const zoom = writeZoomRef.current;
+        const w = el.clientWidth;
+        const h = el.clientHeight;
+        const raw = {
+          x: touchPanRef.current.panX + dx,
+          y: touchPanRef.current.panY + dy,
+        };
+        const next = clampPan(raw, zoom, w, h);
+        const unchanged =
+          Math.abs(next.x - pan.x) < 0.5 && Math.abs(next.y - pan.y) < 0.5;
+        if (unchanged && (Math.abs(dx) > 1 || Math.abs(dy) > 1)) {
+          const overflow = getPanEdgeOverflow(pan, zoom, w, h, dx, dy, vertical);
+          if (overflow && onScrollChainRef.current) {
+            onScrollChainRef.current(dx, dy);
+            touchPanRef.current = {
+              x: t.clientX,
+              y: t.clientY,
+              panX: pan.x,
+              panY: pan.y,
+            };
+            return;
+          }
+        }
         onPanRef.current?.(next);
+        touchPanRef.current = {
+          x: t.clientX,
+          y: t.clientY,
+          panX: next.x,
+          panY: next.y,
+        };
         return;
       }
       if (e.touches.length !== 2 || !pinchRef.current) return;
@@ -267,16 +312,33 @@ const PageSheet = ({
     const wantsZoom = (e) => e.ctrlKey || e.metaKey || e.altKey;
 
     const onWheel = (e) => {
-      if (writeZoomRef.current > 1 && onPanRef.current && !wantsZoom(e)) {
+      if (writeZoomRef.current > 1.01 && onPanRef.current && !wantsZoom(e)) {
         e.preventDefault();
         e.stopPropagation();
         const pan = writePanRef.current;
-        const next = clampPan(
-          { x: pan.x - e.deltaX, y: pan.y - e.deltaY },
-          writeZoomRef.current,
-          el.clientWidth,
-          el.clientHeight
-        );
+        const zoom = writeZoomRef.current;
+        const w = el.clientWidth;
+        const h = el.clientHeight;
+        const vertical = scrollDirRef.current !== 'horizontal';
+        const raw = { x: pan.x - e.deltaX, y: pan.y - e.deltaY };
+        const next = clampPan(raw, zoom, w, h);
+        const unchanged =
+          Math.abs(next.x - pan.x) < 0.5 && Math.abs(next.y - pan.y) < 0.5;
+        if (unchanged && (Math.abs(e.deltaX) > 1 || Math.abs(e.deltaY) > 1)) {
+          const overflow = getPanEdgeOverflow(
+            pan,
+            zoom,
+            w,
+            h,
+            -e.deltaX,
+            -e.deltaY,
+            vertical
+          );
+          if (overflow && onScrollChainRef.current) {
+            onScrollChainRef.current(-e.deltaX, -e.deltaY);
+            return;
+          }
+        }
         onPanRef.current(next);
         return;
       }
@@ -291,7 +353,7 @@ const PageSheet = ({
       applyZoom(next, e.clientX, e.clientY, false);
     };
 
-    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchstart', onTouchStart, { passive: false });
     el.addEventListener('touchmove', onTouchMove, { passive: false });
     el.addEventListener('touchend', onTouchEnd, { passive: true });
     el.addEventListener('touchcancel', onTouchEnd, { passive: true });
@@ -305,6 +367,17 @@ const PageSheet = ({
       el.removeEventListener('wheel', onWheel, { capture: true });
     };
   }, [isActive]);
+
+  useEffect(
+    () => () => {
+      if (penPointerRef.current) {
+        penPointerRef.current = false;
+        endPenSession();
+        onPenActiveChange?.(false);
+      }
+    },
+    [onPenActiveChange]
+  );
 
   const displayHeight = displayWidth * (PAGE_H / PAGE_W);
   const scale = displayWidth / PAGE_W;
@@ -553,36 +626,38 @@ const PageSheet = ({
     target?.setPointerCapture?.(e.pointerId);
   };
 
-  const handleViewportPointerDown = (e) => {
-    if (!isActive || writeZoom <= 1 || !onWritePanChange || isPanning) return;
-    if (e.pointerType === 'pen') return;
-    if (stylusOnly && isFingerPointer(e)) {
-      startPan(e, viewportRef.current);
+  const setPenActive = (active, pointerType) => {
+    if (pointerType !== 'pen') return;
+    if (active && !penPointerRef.current) {
+      penPointerRef.current = true;
+      beginPenSession();
+      onPenActiveChange?.(true);
+    } else if (!active && penPointerRef.current) {
+      penPointerRef.current = false;
+      endPenSession();
+      onPenActiveChange?.(false);
     }
   };
 
   const startDraw = (e) => {
-    if (!isActive) return;
     if (isPalmTouch(e)) return;
 
-    if (writeZoom > 1 && onWritePanChange && isFingerPointer(e)) {
-      startPan(e, canvasRef.current);
-      return;
+    // Doigt / paume : scroll natif (même sur une page non « courante »)
+    if (stylusOnly && shouldIgnoreDrawPointer(e, stylusOnly)) return;
+
+    // Stylet sur une autre page visible → activation automatique
+    if (!isActive) {
+      if (!stylusOnly || !canDrawWithPointer(e, stylusOnly)) return;
+      onRequestActivate?.();
     }
 
-    if (stylusOnly && shouldIgnoreDrawPointer(e, stylusOnly)) {
-      if (writeZoom > 1 && onWritePanChange) {
-        startPan(e, canvasRef.current);
-      }
-      return;
-    }
     if (tool === 'ruler') return;
-
     if (stylusOnly && !canDrawWithPointer(e, stylusOnly)) return;
 
     if (tool === 'lasso') {
       e.preventDefault();
       canvasRef.current?.setPointerCapture(e.pointerId);
+      setPenActive(true, e.pointerType);
       const pos = getPos(e);
       if (selectTextAt(pos)) return;
       const hit = selectStrokeAt(pos);
@@ -617,6 +692,7 @@ const PageSheet = ({
 
     e.preventDefault();
     canvasRef.current?.setPointerCapture(e.pointerId);
+    setPenActive(true, e.pointerType);
 
     clearShapeTimer();
     constraintRef.current = false;
@@ -768,11 +844,13 @@ const PageSheet = ({
     if (isPanning) {
       setIsPanning(false);
       e?.currentTarget?.releasePointerCapture?.(e.pointerId);
+      setPenActive(false, e?.pointerType);
       return;
     }
     if (tool === 'lasso' && lassoDragRef.current) {
       setIsDrawing(false);
       canvasRef.current?.releasePointerCapture?.(e?.pointerId);
+      setPenActive(false, e?.pointerType);
       if (lassoDragRef.current.moved) {
         commitStrokes(strokesRef.current || []);
       }
@@ -784,6 +862,7 @@ const PageSheet = ({
     if (!isDrawing) return;
     setIsDrawing(false);
     canvasRef.current?.releasePointerCapture?.(e?.pointerId);
+    setPenActive(false, e?.pointerType);
 
     if (tool === 'eraser') {
       const radius = eraserRadius();
@@ -859,7 +938,7 @@ const PageSheet = ({
     });
   };
 
-  const bg = getTemplateBackground(page.template);
+  const bg = getPageBackground(page);
   const cursorClass =
     tool === 'eraser'
       ? 'canvas-eraser'
@@ -875,12 +954,14 @@ const PageSheet = ({
   const contentScale = scale;
   const panX = isActive && effectiveZoom > 1 ? writePan.x : 0;
   const panY = isActive && effectiveZoom > 1 ? writePan.y : 0;
-  const pageLocked = isActive && writeZoom > 1;
-  const pageTouchAction = pageLocked
-    ? 'none'
-    : scrollDirection === 'horizontal'
-      ? 'pan-x'
-      : 'pan-y';
+  const isZoomedForPan = isActive && writeZoom > 1.01;
+  // Zoomé : pan au doigt en JS + passage auto à la page suivante au bord
+  const pageTouchAction =
+    penLock || isPenSessionActive() || isZoomedForPan
+      ? 'none'
+      : scrollDirection === 'horizontal'
+        ? 'pan-x'
+        : 'pan-y';
   const selectionBounds = tool === 'lasso' && selectedStroke ? getStrokeBounds(selectedStroke) : null;
 
   const pageContent = (
@@ -993,7 +1074,6 @@ const PageSheet = ({
       data-page-viewport
       className={`relative bg-white overflow-hidden shadow-lg ${isActive ? 'ring-2 ring-blue-500/40' : ''}`}
       style={{ width: baseW, height: baseH, touchAction: pageTouchAction }}
-      onPointerDownCapture={handleViewportPointerDown}
       onPointerMove={isPanning ? moveDraw : undefined}
       onPointerUp={isPanning ? endDraw : undefined}
       onPointerCancel={isPanning ? endDraw : undefined}

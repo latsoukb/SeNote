@@ -5,6 +5,8 @@ export const normalizeTemplateId = (templateId) => {
   return templateId;
 };
 
+export const isPdfPage = (page) => Boolean(page?.pdfBackground);
+
 export const getPaperClass = (templateId) => {
   const id = normalizeTemplateId(templateId);
   const map = {
@@ -25,6 +27,14 @@ export const getTemplateBackground = (templateId) => {
     return { type: 'css', className: 'bg-white' };
   }
   return { type: 'css', className: getPaperClass(id) };
+};
+
+/** Fond d'une page (modèle ou PDF importé) */
+export const getPageBackground = (page) => {
+  if (page?.pdfBackground) {
+    return { type: 'image', src: page.pdfBackground };
+  }
+  return getTemplateBackground(page?.template || 'seyes');
 };
 
 /** Dessine le fond page sur canvas (pleine résolution) */

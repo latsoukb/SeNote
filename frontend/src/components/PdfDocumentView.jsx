@@ -1,7 +1,49 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import PageSheet from './PageSheet';
 import { PAGE_W, PAGE_H } from '../lib/pageDimensions';
+
 const GAP = 16;
+
+/** Page la plus visible dans le viewport (gère 2 pages partiellement à l'écran) */
+const pickVisiblePageIndex = (root, pageEls, isVertical) => {
+  const rootRect = root.getBoundingClientRect();
+  const viewportCenter = isVertical
+    ? rootRect.top + rootRect.height / 2
+    : rootRect.left + rootRect.width / 2;
+
+  let bestIdx = 0;
+  let bestScore = -1;
+
+  pageEls.forEach((el, idx) => {
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const span = isVertical ? rect.height : rect.width;
+    if (span <= 0) return;
+
+    const visibleStart = isVertical
+      ? Math.max(rect.top, rootRect.top)
+      : Math.max(rect.left, rootRect.left);
+    const visibleEnd = isVertical
+      ? Math.min(rect.bottom, rootRect.bottom)
+      : Math.min(rect.right, rootRect.right);
+    const visible = Math.max(0, visibleEnd - visibleStart);
+    const ratio = visible / span;
+
+    const pageCenter = isVertical
+      ? rect.top + rect.height / 2
+      : rect.left + rect.width / 2;
+    const centerDist = Math.abs(pageCenter - viewportCenter);
+    const centerWeight = 1 / (1 + centerDist / 200);
+    const score = ratio * 0.7 + centerWeight * 0.3;
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestIdx = idx;
+    }
+  });
+
+  return bestIdx;
+};
 
 const PdfDocumentView = ({
   notebook,
@@ -22,20 +64,60 @@ const PdfDocumentView = ({
   onWritePanChange,
   stylusOnly = true,
   pageSyncRevision = 0,
+  onRegisterScrollToPage,
 }) => {
   const scrollRef = useRef(null);
   const pageRefs = useRef([]);
   const addingRef = useRef(false);
   const wasAtEndRef = useRef(false);
+  const scrollSyncRef = useRef(false);
+  const currentPageIdxRef = useRef(currentPageIdx);
+  const writeZoomRef = useRef(writeZoom);
   const [pageWidth, setPageWidth] = useState(700);
+  const [penLock, setPenLock] = useState(false);
   const isVertical = scrollDirection !== 'horizontal';
+
+  currentPageIdxRef.current = currentPageIdx;
+  writeZoomRef.current = writeZoom;
+
+  const scrollToPage = useCallback((idx, smooth = true) => {
+    const el = pageRefs.current[idx];
+    if (el) {
+      el.scrollIntoView({
+        behavior: smooth ? 'smooth' : 'instant',
+        block: 'start',
+        inline: 'start',
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    onRegisterScrollToPage?.(scrollToPage);
+  }, [onRegisterScrollToPage, scrollToPage]);
+
+  useEffect(() => {
+    const root = scrollRef.current;
+    if (!root || !penLock) return;
+    const blockTouch = (e) => {
+      if (e.cancelable) e.preventDefault();
+    };
+    root.addEventListener('touchmove', blockTouch, { passive: false, capture: true });
+    root.addEventListener('touchstart', blockTouch, { passive: false, capture: true });
+    return () => {
+      root.removeEventListener('touchmove', blockTouch, { capture: true });
+      root.removeEventListener('touchstart', blockTouch, { capture: true });
+    };
+  }, [penLock]);
 
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     const update = () => {
-      const w = el.clientWidth - 48;
-      setPageWidth(Math.min(820, Math.max(320, w)));
+      const w = el.clientWidth - 32;
+      const isTablet = window.innerWidth >= 768 || navigator.maxTouchPoints > 1;
+      const maxW = isTablet ? 960 : 820;
+      const minW = isTablet ? 480 : 320;
+      setPageWidth(Math.min(maxW, Math.max(minW, w)));
     };
     update();
     const ro = new ResizeObserver(update);
@@ -43,61 +125,46 @@ const PdfDocumentView = ({
     return () => ro.disconnect();
   }, []);
 
-  const scrollToPage = useCallback(
-    (idx, smooth = true) => {
-      const el = pageRefs.current[idx];
-      if (el) {
-        el.scrollIntoView({
-          behavior: smooth ? 'smooth' : 'instant',
-          block: 'start',
-          inline: 'start',
-        });
-      }
+  const syncPageFromViewport = useCallback(() => {
+    const root = scrollRef.current;
+    if (!root || scrollSyncRef.current) return;
+
+    const bestIdx = pickVisiblePageIndex(root, pageRefs.current, isVertical);
+    if (bestIdx !== currentPageIdxRef.current) {
+      scrollSyncRef.current = true;
+      onPageChange(bestIdx, {
+        resetZoom: writeZoomRef.current > 1.01,
+      });
+      requestAnimationFrame(() => {
+        scrollSyncRef.current = false;
+      });
+    }
+  }, [isVertical, onPageChange]);
+
+  const handleScrollChain = useCallback(
+    (dx, dy) => {
+      const root = scrollRef.current;
+      if (!root) return;
+      if (isVertical) root.scrollTop -= dy;
+      else root.scrollLeft -= dx;
+      syncPageFromViewport();
     },
-    []
+    [isVertical, syncPageFromViewport]
   );
 
-  // Ne scroll que quand on clique une miniature (pas à chaque détection auto)
-  const prevIdxRef = useRef(currentPageIdx);
-  useEffect(() => {
-    if (prevIdxRef.current !== currentPageIdx && pages.length > prevIdxRef.current + 1) {
-      scrollToPage(currentPageIdx);
-    }
-    prevIdxRef.current = currentPageIdx;
-  }, [currentPageIdx, pages.length, scrollToPage]);
-
-  // Détection de la page visible au scroll (sans créer de page)
+  // Détection automatique au scroll + IntersectionObserver
   useEffect(() => {
     const root = scrollRef.current;
     if (!root) return;
 
     const onScroll = () => {
-      if (writeZoom > 1) return;
+      syncPageFromViewport();
 
       const scrollPos = isVertical ? root.scrollTop : root.scrollLeft;
       const clientSize = isVertical ? root.clientHeight : root.clientWidth;
       const scrollSize = isVertical ? root.scrollHeight : root.scrollWidth;
+      const bestIdx = currentPageIdxRef.current;
 
-      // Détection page courante
-      let bestIdx = currentPageIdx;
-      let bestDist = Infinity;
-      pageRefs.current.forEach((el, idx) => {
-        if (!el) return;
-        const rect = el.getBoundingClientRect();
-        const rootRect = root.getBoundingClientRect();
-        const dist = isVertical
-          ? Math.abs(rect.top - rootRect.top - 40)
-          : Math.abs(rect.left - rootRect.left - 40);
-        if (dist < bestDist) {
-          bestDist = dist;
-          bestIdx = idx;
-        }
-      });
-      if (bestIdx !== currentPageIdx) {
-        onPageChange(bestIdx);
-      }
-
-      // Ajout auto UNIQUEMENT si l'utilisateur a scrollé vers le bas/fin
       if (!autoAddPage || bestIdx !== pages.length - 1) {
         wasAtEndRef.current = false;
         return;
@@ -120,16 +187,29 @@ const PdfDocumentView = ({
     };
 
     root.addEventListener('scroll', onScroll, { passive: true });
-    return () => root.removeEventListener('scroll', onScroll);
+
+    const observer = new IntersectionObserver(
+      () => syncPageFromViewport(),
+      { root, threshold: [0, 0.15, 0.35, 0.5, 0.65, 0.85, 1] }
+    );
+
+    pageRefs.current.forEach((el) => {
+      if (el) observer.observe(el);
+    });
+
+    syncPageFromViewport();
+
+    return () => {
+      root.removeEventListener('scroll', onScroll);
+      observer.disconnect();
+    };
   }, [
     autoAddPage,
-    currentPageIdx,
-    pages,
+    pages.length,
     notebook.pageTemplate,
     onAutoAddPage,
-    onPageChange,
     isVertical,
-    writeZoom,
+    syncPageFromViewport,
   ]);
 
   return (
@@ -139,7 +219,8 @@ const PdfDocumentView = ({
         isVertical ? 'overflow-y-auto overflow-x-hidden' : 'overflow-x-auto overflow-y-hidden'
       }`}
       style={{
-        touchAction: isVertical ? 'pan-y' : 'pan-x',
+        touchAction: penLock ? 'none' : isVertical ? 'pan-y' : 'pan-x',
+        overflow: penLock ? 'hidden' : undefined,
       }}
     >
       <div
@@ -173,6 +254,12 @@ const PdfDocumentView = ({
               stylusOnly={stylusOnly}
               pageSyncRevision={pageSyncRevision}
               scrollDirection={scrollDirection}
+              onPenActiveChange={setPenLock}
+              penLock={penLock}
+              onRequestActivate={() => {
+                if (idx !== currentPageIdxRef.current) onPageChange(idx);
+              }}
+              onScrollChain={idx === currentPageIdx ? handleScrollChain : undefined}
             />
           </div>
         ))}

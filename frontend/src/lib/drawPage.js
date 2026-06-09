@@ -1,5 +1,5 @@
 import { PAGE_W, PAGE_H, SEYES_BG } from './pageDimensions';
-import { getTemplateBackground, drawTemplateBackground } from './pageTemplates';
+import { getPageBackground, drawTemplateBackground } from './pageTemplates';
 
 let seyesImage = null;
 const seyesLoad = new Promise((resolve) => {
@@ -12,6 +12,21 @@ const seyesLoad = new Promise((resolve) => {
   img.src = SEYES_BG;
 });
 
+const imageCache = new Map();
+
+const loadBgImage = (src) => {
+  if (src === SEYES_BG) return Promise.resolve(seyesImage);
+  if (imageCache.has(src)) return imageCache.get(src);
+  const p = new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+  imageCache.set(src, p);
+  return p;
+};
+
 const drawStroke = (ctx, s, sx, sy) => {
   ctx.save();
   ctx.strokeStyle = s.color;
@@ -19,7 +34,8 @@ const drawStroke = (ctx, s, sx, sy) => {
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   if (s.type === 'highlighter') {
-    ctx.globalAlpha = 0.35;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 0.45;
     ctx.lineCap = 'butt';
   }
   ctx.beginPath();
@@ -56,15 +72,16 @@ const drawStroke = (ctx, s, sx, sy) => {
   ctx.restore();
 };
 
-export const drawPageToCanvas = (ctx, page, destW, destH) => {
+export const drawPageToCanvas = async (ctx, page, destW, destH) => {
   const sx = destW / PAGE_W;
   const sy = destH / PAGE_H;
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, destW, destH);
 
-  const bg = getTemplateBackground(page.template);
-  if (bg.type === 'image' && seyesImage) {
-    ctx.drawImage(seyesImage, 0, 0, destW, destH);
+  const bg = getPageBackground(page);
+  if (bg.type === 'image') {
+    const img = await loadBgImage(bg.src);
+    if (img) ctx.drawImage(img, 0, 0, destW, destH);
   } else {
     drawTemplateBackground(ctx, page.template, destW, destH);
   }
