@@ -23,7 +23,6 @@ import PdfDocumentView from '../components/PdfDocumentView';
 import PageTemplatePreview from '../components/PageTemplatePreview';
 import PageLiveThumbnail from '../components/PageLiveThumbnail';
 import SettingsDialog from '../components/SettingsDialog';
-import NotebookTabs from '../components/NotebookTabs';
 import OpenNotebookTabBar from '../components/OpenNotebookTabBar';
 import { useOpenNotebooks } from '../context/OpenNotebooksContext';
 import { getNotebookSections } from '../lib/notebookSections';
@@ -58,9 +57,6 @@ const NotebookEditor = () => {
     updatePage,
     setPageTemplate,
     setNotebookTemplate,
-    addSection,
-    updateSection,
-    deleteSection,
   } = useNotes();
 
   const { openNotebook } = useOpenNotebooks();
@@ -70,9 +66,7 @@ const NotebookEditor = () => {
   useEffect(() => {
     if (id) openNotebook(id);
   }, [id, openNotebook]);
-  const [currentSectionId, setCurrentSectionId] = useState(null);
   const [currentPageIdx, setCurrentPageIdx] = useState(0);
-  const pageIdxMemoryRef = useRef({});
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
@@ -114,58 +108,8 @@ const NotebookEditor = () => {
 
   const scrollToPageRef = useRef(null);
 
-  const currentSection =
-    sections.find((s) => s.id === currentSectionId) || sections[0] || null;
+  const currentSection = sections[0] || null;
   const pages = currentSection?.pages || [];
-
-  useEffect(() => {
-    if (!notebook || sections.length === 0) return;
-    if (!currentSectionId || !sections.some((s) => s.id === currentSectionId)) {
-      setCurrentSectionId(sections[0].id);
-      setCurrentPageIdx(pageIdxMemoryRef.current[sections[0].id] ?? 0);
-    }
-  }, [notebook, sections, currentSectionId]);
-
-  const switchSection = useCallback(
-    (sectionId) => {
-      if (currentSectionId) {
-        pageIdxMemoryRef.current[currentSectionId] = currentPageIdx;
-      }
-      setCurrentSectionId(sectionId);
-      setCurrentPageIdx(pageIdxMemoryRef.current[sectionId] ?? 0);
-      setWritePan({ x: 0, y: 0 });
-    },
-    [currentSectionId, currentPageIdx]
-  );
-
-  const handleAddSection = useCallback(() => {
-    if (!notebook) return;
-    const n = sections.length + 1;
-    const section = addSection(notebook.id, `Onglet ${n}`);
-    switchSection(section.id);
-    toast.success('Nouvel onglet créé');
-  }, [addSection, notebook, sections.length, switchSection]);
-
-  const handleRenameSection = useCallback(
-    (sectionId, title) => {
-      if (!notebook) return;
-      updateSection(notebook.id, sectionId, { title });
-    },
-    [notebook, updateSection]
-  );
-
-  const handleDeleteSection = useCallback(
-    (sectionId) => {
-      if (!notebook || sections.length <= 1) return;
-      deleteSection(notebook.id, sectionId);
-      if (currentSectionId === sectionId) {
-        const next = sections.find((s) => s.id !== sectionId);
-        if (next) switchSection(next.id);
-      }
-      toast('Onglet supprimé');
-    },
-    [notebook, sections, currentSectionId, deleteSection, switchSection]
-  );
 
   /** Changement auto (scroll, stylet, ou passage au bord en zoom) */
   const handlePageChange = useCallback((idx, options = {}) => {
@@ -459,7 +403,7 @@ const NotebookEditor = () => {
               <p className="text-xs text-slate-500 mb-3">
                 {addPageMode === 'before' && `Insérer avant la page ${currentPageIdx + 1}`}
                 {addPageMode === 'after' && `Insérer après la page ${currentPageIdx + 1}`}
-                {addPageMode === 'end' && `Ajouter à la fin de « ${currentSection?.title || 'l\'onglet'} »`}
+                {addPageMode === 'end' && 'Ajouter à la fin du cahier'}
               </p>
               <p className="text-xs font-medium text-slate-500 mb-2">Modèle vierge</p>
               <div className="grid grid-cols-3 gap-2">
@@ -521,8 +465,8 @@ const NotebookEditor = () => {
               </div>
             </div>
             <div className="flex items-center justify-between px-3 py-2 border-b border-slate-200 dark:border-slate-800 gap-1">
-              <span className="text-xs uppercase tracking-wide font-medium text-slate-500 truncate">
-                {currentSection?.title || 'Pages'}
+              <span className="text-xs uppercase tracking-wide font-medium text-slate-500">
+                Pages
               </span>
               <div className="flex items-center gap-0.5">
               <Popover open={notebookTemplateOpen} onOpenChange={setNotebookTemplateOpen}>
@@ -635,16 +579,6 @@ const NotebookEditor = () => {
         )}
 
         <div className="flex-1 flex flex-col bg-slate-100 dark:bg-slate-900 min-w-0 min-h-0">
-          {sections.length > 0 && currentSectionId && (
-            <NotebookTabs
-              sections={sections}
-              activeSectionId={currentSectionId}
-              onSelect={switchSection}
-              onAdd={handleAddSection}
-              onRename={handleRenameSection}
-              onDelete={handleDeleteSection}
-            />
-          )}
           <PdfDocumentView
             notebook={notebook}
             pages={pages}
