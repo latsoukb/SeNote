@@ -179,6 +179,7 @@ const LibrarySidebar = ({
   mainView,
   setMainView,
   newCount,
+  studentEnrolled,
   selectedFolder,
   setSelectedFolder,
   folders,
@@ -219,6 +220,11 @@ const LibrarySidebar = ({
         <span className="text-xs bg-red-600 text-white px-1.5 py-0.5 rounded-full font-bold">{newCount}</span>
       )}
     </button>
+    {studentEnrolled && (
+      <div className="mt-2 mb-1 px-1">
+        <StudentDeviceCode />
+      </div>
+    )}
     <div className="h-px bg-slate-200 dark:bg-slate-800 my-3" />
     <p className="text-xs uppercase tracking-wide font-medium text-slate-500 px-2 mb-3">
       Organisation
@@ -522,6 +528,7 @@ const Library = () => {
     mainView,
     setMainView,
     newCount,
+    studentEnrolled: Boolean(currentStudent && enrolled),
     selectedFolder,
     setSelectedFolder,
     folders,
@@ -686,6 +693,11 @@ const Library = () => {
         </aside>
 
         <main className="flex-1 px-4 sm:px-6 py-6 sm:py-10 min-w-0 flex flex-col min-h-0">
+          {currentStudent && enrolled && mainView === 'library' && (
+            <div className="mb-4 md:hidden">
+              <StudentDeviceCode />
+            </div>
+          )}
           {mainView === 'inbox' ? (
             !currentStudent ? (
               <StudentLogin />

@@ -5,7 +5,7 @@ import { useStudentClass } from '../context/StudentClassContext';
 import { toast } from 'sonner';
 
 /** Code appareil 8 car. — visible même une fois inscrit (autre prof). */
-const StudentDeviceCode = ({ variant = 'bar' }) => {
+const StudentDeviceCode = ({ variant = 'bar', className = '' }) => {
   const { deviceCode } = useStudentClass();
 
   const copy = async () => {
@@ -22,7 +22,7 @@ const StudentDeviceCode = ({ variant = 'bar' }) => {
       <button
         type="button"
         onClick={copy}
-        className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/50 px-2.5 py-1 text-xs font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+        className={`inline-flex items-center gap-1.5 rounded-full border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/50 px-2.5 py-1 text-xs font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors ${className}`}
         title="Copier le code pour un autre professeur"
       >
         <span className="text-slate-500 font-normal">Code</span>
@@ -32,8 +32,29 @@ const StudentDeviceCode = ({ variant = 'bar' }) => {
     );
   }
 
+  if (variant === 'settings') {
+    return (
+      <div className={`space-y-3 rounded-xl border-2 border-dashed border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/40 p-4 ${className}`}>
+        <div>
+          <p className="text-sm font-medium">Mon code tablette</p>
+          <p className="text-xs text-slate-500 mt-1">
+            Donne ce code à un autre professeur pour rejoindre une autre classe sur le même
+            appareil.
+          </p>
+        </div>
+        <p className="text-3xl font-bold tracking-[0.2em] text-center text-blue-600 py-2">
+          {deviceCode}
+        </p>
+        <Button type="button" variant="outline" onClick={copy} className="w-full gap-2">
+          <Copy className="w-4 h-4" />
+          Copier le code
+        </Button>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/80 dark:bg-blue-950/40 px-3 py-2">
+    <div className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/80 dark:bg-blue-950/40 px-3 py-2 ${className}`}>
       <div className="min-w-0 text-left">
         <p className="text-[11px] text-slate-500">Code tablette (autre prof)</p>
         <p className="text-lg font-bold tracking-widest text-blue-600">{deviceCode}</p>

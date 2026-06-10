@@ -11,12 +11,15 @@ import { Label } from './ui/label';
 import { Switch } from './ui/switch';
 import { Settings, Download, ArrowDown, ArrowLeft } from 'lucide-react';
 import { useSettings } from '../context/SettingsContext';
+import { useStudentClass } from '../context/StudentClassContext';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import GoogleDriveSettings from './GoogleDriveSettings';
+import StudentDeviceCode from './StudentDeviceCode';
 import { isNativeApp } from '../lib/platform';
 
 const SettingsDialog = ({ trigger }) => {
   const { settings, updateSettings } = useSettings();
+  const { session: studentSession } = useStudentClass();
   const { canInstall, isInstalled, install } = usePWAInstall();
   const [open, setOpen] = React.useState(false);
 
@@ -39,6 +42,8 @@ const SettingsDialog = ({ trigger }) => {
           <DialogTitle>Paramètres</DialogTitle>
         </DialogHeader>
         <div className="space-y-6 py-2">
+          {studentSession && <StudentDeviceCode variant="settings" />}
+
           <div className="space-y-3">
             <Label>Défilement des pages</Label>
             <div className="grid grid-cols-2 gap-2">
