@@ -59,6 +59,7 @@ import StudentInbox from '../components/StudentInbox';
 import StudentLogin from '../components/StudentLogin';
 import StudentWaiting from '../components/StudentWaiting';
 import DeadlineHomeBlocks from '../components/DeadlineHomeBlocks';
+import OpenNotebookTabBar from '../components/OpenNotebookTabBar';
 import { useStudentClass } from '../context/StudentClassContext';
 import { toast } from 'sonner';
 import { parsePdfFile } from '../lib/pdfImport';
@@ -536,6 +537,7 @@ const Library = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <OpenNotebookTabBar activeId={null} />
       <header className="sticky top-0 z-30 backdrop-blur-md bg-white/80 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center gap-2 sm:gap-4">
           <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>

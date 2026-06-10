@@ -1,7 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
-  ArrowLeft,
   Plus,
   Trash2,
   Moon,
@@ -25,6 +24,8 @@ import PageTemplatePreview from '../components/PageTemplatePreview';
 import PageLiveThumbnail from '../components/PageLiveThumbnail';
 import SettingsDialog from '../components/SettingsDialog';
 import NotebookTabs from '../components/NotebookTabs';
+import OpenNotebookTabBar from '../components/OpenNotebookTabBar';
+import { useOpenNotebooks } from '../context/OpenNotebooksContext';
 import { getNotebookSections } from '../lib/notebookSections';
 import { exportNotebookToPdf } from '../lib/exportNotebookPdf';
 import { createRuler, createSetSquare } from '../lib/instrumentSnap';
@@ -62,8 +63,13 @@ const NotebookEditor = () => {
     deleteSection,
   } = useNotes();
 
+  const { openNotebook } = useOpenNotebooks();
   const notebook = getNotebook(id);
   const sections = notebook ? getNotebookSections(notebook) : [];
+
+  useEffect(() => {
+    if (id) openNotebook(id);
+  }, [id, openNotebook]);
   const [currentSectionId, setCurrentSectionId] = useState(null);
   const [currentPageIdx, setCurrentPageIdx] = useState(0);
   const pageIdxMemoryRef = useRef({});
@@ -381,11 +387,9 @@ const NotebookEditor = () => {
 
   return (
     <div className="h-dvh flex flex-col overflow-hidden">
+      <OpenNotebookTabBar activeId={id} />
       <header className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 z-40">
         <div className="flex items-center gap-3 min-w-0">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/')} aria-label="Retour">
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
           <Button
             variant="ghost"
             size="icon"
