@@ -54,6 +54,7 @@ export const StudentClassProvider = ({ children }) => {
   const [communications, setCommunications] = useState([]);
   const [syncing, setSyncing] = useState(false);
   const [lastSyncAt, setLastSyncAt] = useState(null);
+  const [syncError, setSyncError] = useState(null);
   const [seenMap, setSeenMap] = useState(loadSeen);
   const knownIdsRef = useRef(new Set());
 
@@ -86,13 +87,15 @@ export const StudentClassProvider = ({ children }) => {
       items.forEach((c) => knownIdsRef.current.add(c.id));
       setCommunications(items);
       setLastSyncAt(Date.now());
+      setSyncError(null);
       if (newItems.length) {
         window.dispatchEvent(
           new CustomEvent('senote:new-communications', { detail: { items: newItems } }),
         );
       }
       return { ok: true, newItems };
-    } catch {
+    } catch (err) {
+      setSyncError(err?.message || 'Sync impossible');
       return { ok: false, newItems: [] };
     } finally {
       setSyncing(false);
@@ -176,6 +179,7 @@ export const StudentClassProvider = ({ children }) => {
       enrolled,
       syncing,
       lastSyncAt,
+      syncError,
       syncConfigured: isSyncConfigured(),
       setupStudent,
       logoutStudent,
@@ -194,6 +198,7 @@ export const StudentClassProvider = ({ children }) => {
       enrolled,
       syncing,
       lastSyncAt,
+      syncError,
       setupStudent,
       logoutStudent,
       syncNow,

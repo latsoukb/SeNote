@@ -13,6 +13,27 @@ const NAME_KEY = 'senote-student-name';
 
 const syncBase = () => (process.env.REACT_APP_JOKKO_SYNC_URL || '').replace(/\/$/, '');
 
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export const fetchWithRetry = async (url, options = {}, retries = 3) => {
+  let lastError;
+  for (let attempt = 0; attempt < retries; attempt += 1) {
+    try {
+      const res = await fetch(url, options);
+      if (res.ok) return res;
+      if (res.status >= 500 && attempt < retries - 1) {
+        await wait(800 * (attempt + 1));
+        continue;
+      }
+      throw new Error(`HTTP ${res.status}`);
+    } catch (err) {
+      lastError = err;
+      if (attempt < retries - 1) await wait(800 * (attempt + 1));
+    }
+  }
+  throw lastError || new Error('Sync impossible');
+};
+
 export const getOrCreateDeviceId = () => {
   try {
     let id = localStorage.getItem(DEVICE_KEY);
@@ -73,20 +94,18 @@ export const fileToAttachment = async (file) => {
 export const fetchStudentInbox = async (deviceId) => {
   const base = syncBase();
   if (!base) return { enrolled: false, classIds: [], communications: [] };
-  const res = await fetch(
+  const res = await fetchWithRetry(
     `${base}/students/${encodeURIComponent(deviceId)}/inbox?lite=1`,
   );
-  if (!res.ok) throw new Error('Sync impossible');
   return res.json();
 };
 
 export const fetchCommunicationDetail = async (classId, commId) => {
   const base = syncBase();
   if (!base) throw new Error('Sync non configuré');
-  const res = await fetch(
+  const res = await fetchWithRetry(
     `${base}/classes/${encodeURIComponent(classId)}/communications/${encodeURIComponent(commId)}`,
   );
-  if (!res.ok) throw new Error('Message introuvable');
   return res.json();
 };
 

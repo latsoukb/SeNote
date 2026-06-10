@@ -31,6 +31,7 @@ const StudentInbox = () => {
     markCommunicationSeen,
     isCommUnread,
     syncConfigured,
+    syncError,
   } = useStudentClass();
   const [filter, setFilter] = useState('all');
   const [importComm, setImportComm] = useState(null);
@@ -101,6 +102,11 @@ const StudentInbox = () => {
         {!syncConfigured && (
           <p className="text-sm text-slate-500 text-center py-8">
             Configurez le serveur de sync pour recevoir les envois du prof.
+          </p>
+        )}
+        {syncConfigured && syncError && (
+          <p className="text-sm text-amber-600 dark:text-amber-400 text-center py-4 px-4 rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40">
+            Connexion au serveur difficile — nouvel essai automatique… ({syncError})
           </p>
         )}
         {syncConfigured && filtered.length === 0 && (

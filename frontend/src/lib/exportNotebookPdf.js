@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import { PAGE_W, PAGE_H, SEYES_BG } from './pageDimensions';
 import { getPageBackground, drawTemplateBackground } from './pageTemplates';
+import { drawStrokesLayered } from './strokeRenderer';
 
 const loadImage = (src) =>
   new Promise((resolve, reject) => {
@@ -9,49 +10,6 @@ const loadImage = (src) =>
     img.onerror = reject;
     img.src = src;
   });
-
-const drawStroke = (ctx, s) => {
-  if (s.shape) {
-    const sh = s.shape;
-    ctx.save();
-    ctx.strokeStyle = s.color;
-    ctx.lineWidth = s.thickness;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.beginPath();
-    if (sh.type === 'line') {
-      ctx.moveTo(sh.x1, sh.y1);
-      ctx.lineTo(sh.x2, sh.y2);
-    } else if (sh.type === 'circle') {
-      ctx.arc(sh.cx, sh.cy, sh.r, 0, Math.PI * 2);
-    } else if (sh.type === 'rect') {
-      ctx.rect(sh.x, sh.y, sh.w, sh.h);
-    } else if (sh.type === 'arc') {
-      ctx.arc(sh.cx, sh.cy, sh.r, sh.startAngle, sh.endAngle);
-    }
-    ctx.stroke();
-    ctx.restore();
-    return;
-  }
-  if (!s.points?.length) return;
-  ctx.save();
-  ctx.strokeStyle = s.color;
-  ctx.lineWidth = s.thickness;
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  if (s.type === 'highlighter') {
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = 0.45;
-    ctx.lineCap = 'butt';
-  }
-  ctx.beginPath();
-  ctx.moveTo(s.points[0].x, s.points[0].y);
-  for (let i = 1; i < s.points.length; i++) {
-    ctx.lineTo(s.points[i].x, s.points[i].y);
-  }
-  ctx.stroke();
-  ctx.restore();
-};
 
 const renderPageToCanvas = async (page, imageCache) => {
   const canvas = document.createElement('canvas');
@@ -73,7 +31,7 @@ const renderPageToCanvas = async (page, imageCache) => {
     drawTemplateBackground(ctx, page.template, PAGE_W, PAGE_H);
   }
 
-  (page.strokes || []).forEach((s) => drawStroke(ctx, s));
+  drawStrokesLayered(ctx, page.strokes || []);
 
   (page.textBoxes || []).forEach((t) => {
     ctx.fillStyle = t.color || '#0F172A';

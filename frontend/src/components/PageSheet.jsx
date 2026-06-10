@@ -39,7 +39,7 @@ import {
   focalPan,
   getPanEdgeOverflow,
 } from '../lib/inkEngine';
-import { drawStroke, createStaticLayer } from '../lib/strokeRenderer';
+import { drawStroke, drawStrokesLayered, createStaticLayer } from '../lib/strokeRenderer';
 import { MIN_ZOOM, MAX_ZOOM } from './NoteCanvas';
 
 const SHAPE_DELAY_MS = 650;
@@ -91,7 +91,8 @@ const PageSheet = ({
   const lassoDragRef = useRef(null);
   const lassoOrigStrokeRef = useRef(null);
   const textTapRef = useRef(null);
-  const staticLayerRef = useRef(null);
+  const highlightLayerRef = useRef(null);
+  const inkLayerRef = useRef(null);
   const staticDirtyRef = useRef(true);
   const viewportRef = useRef(null);
   const pinchRef = useRef(null);
@@ -405,23 +406,31 @@ const PageSheet = ({
 
   const getPos = (e) => getPosFromClient(e.clientX, e.clientY, e.pressure > 0 ? e.pressure : 0.5);
 
-  const ensureStaticLayer = useCallback(() => {
-    if (!staticLayerRef.current) {
-      staticLayerRef.current = createStaticLayer();
-      staticLayerRef.current.width = PAGE_W;
-      staticLayerRef.current.height = PAGE_H;
+  const ensureStrokeLayers = useCallback(() => {
+    if (!highlightLayerRef.current) {
+      highlightLayerRef.current = createStaticLayer();
+      highlightLayerRef.current.width = PAGE_W;
+      highlightLayerRef.current.height = PAGE_H;
     }
-    return staticLayerRef.current;
+    if (!inkLayerRef.current) {
+      inkLayerRef.current = createStaticLayer();
+      inkLayerRef.current.width = PAGE_W;
+      inkLayerRef.current.height = PAGE_H;
+    }
+    return { highlight: highlightLayerRef.current, ink: inkLayerRef.current };
   }, []);
 
   const rebuildStaticLayer = useCallback(() => {
-    const layer = ensureStaticLayer();
-    const sctx = layer.getContext('2d');
-    sctx.clearRect(0, 0, PAGE_W, PAGE_H);
+    const { highlight, ink } = ensureStrokeLayers();
+    const hctx = highlight.getContext('2d');
+    const ictx = ink.getContext('2d');
+    hctx.clearRect(0, 0, PAGE_W, PAGE_H);
+    ictx.clearRect(0, 0, PAGE_W, PAGE_H);
     const list = strokesRef.current ?? [];
-    list.forEach((s) => drawStroke(sctx, s));
+    list.filter((s) => s.type === 'highlighter').forEach((s) => drawStroke(hctx, s));
+    list.filter((s) => s.type !== 'highlighter').forEach((s) => drawStroke(ictx, s));
     staticDirtyRef.current = false;
-  }, [ensureStaticLayer]);
+  }, [ensureStrokeLayers]);
 
   const renderCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -430,15 +439,19 @@ const PageSheet = ({
     ctx.clearRect(0, 0, PAGE_W, PAGE_H);
 
     const isErasing = tool === 'eraser' && liveStrokesRef.current;
+    const current = currentStrokeRef.current;
+
     if (isErasing) {
-      liveStrokesRef.current.forEach((s) => drawStroke(ctx, s));
+      drawStrokesLayered(ctx, liveStrokesRef.current);
     } else {
       if (staticDirtyRef.current) rebuildStaticLayer();
-      const layer = staticLayerRef.current;
-      if (layer) ctx.drawImage(layer, 0, 0);
+      const hLayer = highlightLayerRef.current;
+      const iLayer = inkLayerRef.current;
+      if (hLayer) ctx.drawImage(hLayer, 0, 0);
+      if (current?.type === 'highlighter') drawStroke(ctx, current);
+      if (iLayer) ctx.drawImage(iLayer, 0, 0);
+      if (current && current.type !== 'highlighter') drawStroke(ctx, current);
     }
-
-    if (currentStrokeRef.current) drawStroke(ctx, currentStrokeRef.current);
 
     if (tool === 'eraser' && isDrawing && eraserPathRef.current.length) {
       const last = eraserPathRef.current[eraserPathRef.current.length - 1];

@@ -34,8 +34,8 @@ const drawStroke = (ctx, s, sx, sy) => {
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   if (s.type === 'highlighter') {
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = 0.45;
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.globalAlpha = 0.5;
     ctx.lineCap = 'butt';
   }
   ctx.beginPath();
@@ -86,7 +86,9 @@ export const drawPageToCanvas = async (ctx, page, destW, destH) => {
     drawTemplateBackground(ctx, page.template, destW, destH);
   }
 
-  (page.strokes || []).forEach((s) => drawStroke(ctx, s, sx, sy));
+  const strokes = page.strokes || [];
+  strokes.filter((s) => s.type === 'highlighter').forEach((s) => drawStroke(ctx, s, sx, sy));
+  strokes.filter((s) => s.type !== 'highlighter').forEach((s) => drawStroke(ctx, s, sx, sy));
 };
 
 export { seyesLoad };

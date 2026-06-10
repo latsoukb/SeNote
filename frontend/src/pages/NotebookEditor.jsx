@@ -27,6 +27,11 @@ import SettingsDialog from '../components/SettingsDialog';
 import { exportNotebookToPdf } from '../lib/exportNotebookPdf';
 import { createRuler, createSetSquare } from '../lib/instrumentSnap';
 import { clampPan, focalPan } from '../lib/inkEngine';
+import {
+  loadToolThickness,
+  saveToolThickness,
+  thicknessForTool,
+} from '../lib/toolThickness';
 import { MIN_ZOOM, MAX_ZOOM, DEFAULT_WRITE_ZOOM } from '../components/NoteCanvas';
 import {
   Popover,
@@ -63,7 +68,17 @@ const NotebookEditor = () => {
 
   const [tool, setTool] = useState('pen');
   const [color, setColor] = useState('#0F172A');
-  const [thickness, setThickness] = useState(2.5);
+  const [toolThickness, setToolThickness] = useState(loadToolThickness);
+
+  const setThicknessForActiveTool = useCallback((value) => {
+    setToolThickness((prev) => {
+      const next = { ...prev, [tool]: value };
+      saveToolThickness(next);
+      return next;
+    });
+  }, [tool]);
+
+  const thickness = thicknessForTool(toolThickness, tool);
   const [writeZoom, setWriteZoom] = useState(DEFAULT_WRITE_ZOOM);
   const [writePan, setWritePan] = useState({ x: 0, y: 0 });
 
@@ -399,8 +414,8 @@ const NotebookEditor = () => {
         setTool={setTool}
         color={color}
         setColor={setColor}
-        thickness={thickness}
-        setThickness={setThickness}
+        toolThickness={toolThickness}
+        setThicknessForActiveTool={setThicknessForActiveTool}
         onUndo={handleUndo}
         onRedo={handleRedo}
         onClear={handleClearPage}

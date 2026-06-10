@@ -29,12 +29,21 @@ export const drawStroke = (ctx, s) => {
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   if (s.type === 'highlighter') {
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = 0.45;
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.globalAlpha = 0.5;
     ctx.lineCap = 'butt';
   }
   drawStrokePath(ctx, s);
   ctx.restore();
+};
+
+/** Surligneur en arrière-plan, encre (stylo) au-dessus — texte et traits plus lisibles. */
+export const drawStrokesLayered = (ctx, strokes, liveStroke = null) => {
+  const list = strokes || [];
+  list.filter((s) => s.type === 'highlighter').forEach((s) => drawStroke(ctx, s));
+  if (liveStroke?.type === 'highlighter') drawStroke(ctx, liveStroke);
+  list.filter((s) => s.type !== 'highlighter').forEach((s) => drawStroke(ctx, s));
+  if (liveStroke && liveStroke.type !== 'highlighter') drawStroke(ctx, liveStroke);
 };
 
 export const createStaticLayer = () => {

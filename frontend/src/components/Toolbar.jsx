@@ -45,8 +45,8 @@ const Toolbar = ({
   setTool,
   color,
   setColor,
-  thickness,
-  setThickness,
+  toolThickness,
+  setThicknessForActiveTool,
   onUndo,
   onRedo,
   onClear,
@@ -61,10 +61,7 @@ const Toolbar = ({
   const colors = tool === 'highlighter' ? HIGHLIGHTER_COLORS : PEN_COLORS;
   const zoomCustom = Math.abs(writeZoom - DEFAULT_WRITE_ZOOM) > 0.08;
 
-  const selectEraser = () => {
-    setTool('eraser');
-    if (thickness < 8) setThickness(16);
-  };
+  const thickness = toolThickness[tool] ?? toolThickness.pen ?? 2.5;
 
   return (
     <div className="w-full shrink-0 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 z-40">
@@ -75,7 +72,7 @@ const Toolbar = ({
         <ToolButton active={tool === 'highlighter'} onClick={() => setTool('highlighter')} label="Surligneur">
           <Highlighter className="w-5 h-5" />
         </ToolButton>
-        <ToolButton active={tool === 'eraser'} onClick={selectEraser} label="Gomme">
+        <ToolButton active={tool === 'eraser'} onClick={() => setTool('eraser')} label="Gomme">
           <Eraser className="w-5 h-5" />
         </ToolButton>
         <Popover>
@@ -153,7 +150,7 @@ const Toolbar = ({
               </p>
               <Slider
                 value={[thickness]}
-                onValueChange={(v) => setThickness(v[0])}
+                onValueChange={(v) => setThicknessForActiveTool(v[0])}
                 min={4}
                 max={40}
                 step={1}
@@ -203,7 +200,7 @@ const Toolbar = ({
                 </p>
                 <Slider
                   value={[thickness]}
-                  onValueChange={(v) => setThickness(v[0])}
+                  onValueChange={(v) => setThicknessForActiveTool(v[0])}
                   min={1}
                   max={tool === 'highlighter' ? 30 : 12}
                   step={0.5}
