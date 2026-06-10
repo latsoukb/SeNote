@@ -58,6 +58,8 @@ import PageTemplatePreview from '../components/PageTemplatePreview';
 import SettingsDialog from '../components/SettingsDialog';
 import StudentInbox from '../components/StudentInbox';
 import StudentLogin from '../components/StudentLogin';
+import StudentWaiting from '../components/StudentWaiting';
+import NewCommBanner from '../components/NewCommBanner';
 import { useStudentClass } from '../context/StudentClassContext';
 import { toast } from 'sonner';
 import { parsePdfFile } from '../lib/pdfImport';
@@ -191,8 +193,13 @@ const LibrarySidebar = ({
   className = '',
 }) => (
   <div className={`space-y-1 ${className}`}>
-    <p className="text-xs uppercase tracking-wide font-medium text-slate-500 px-2 mb-2">
-      JokkoNote
+    <p className="text-xs uppercase tracking-wide font-medium text-slate-500 px-2 mb-2 flex items-center justify-between gap-2">
+      <span>JokkoNote</span>
+      {newCount > 0 && (
+        <span className="bg-red-600 text-white text-[10px] font-bold min-w-[1.25rem] h-5 px-1.5 rounded-full flex items-center justify-center">
+          {newCount}
+        </span>
+      )}
     </p>
     <button
       type="button"
@@ -207,7 +214,7 @@ const LibrarySidebar = ({
         Réception
       </span>
       {newCount > 0 && (
-        <span className="text-xs bg-blue-600 text-white px-1.5 py-0.5 rounded-full">{newCount}</span>
+        <span className="text-xs bg-red-600 text-white px-1.5 py-0.5 rounded-full font-bold">{newCount}</span>
       )}
     </button>
     <div className="h-px bg-slate-200 dark:bg-slate-800 my-3" />
@@ -353,6 +360,7 @@ const Library = () => {
   const { theme, toggleTheme } = useTheme();
   const {
     session: currentStudent,
+    enrolled,
     newCount,
     syncing,
     syncNow,
@@ -394,6 +402,17 @@ const Library = () => {
   const [newFolderColor, setNewFolderColor] = useState(FOLDER_COLORS[0]);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [pdfImporting, setPdfImporting] = useState(false);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+  const prevNewCountRef = useRef(newCount);
+
+  useEffect(() => {
+    if (newCount > prevNewCountRef.current) setBannerDismissed(false);
+    prevNewCountRef.current = newCount;
+  }, [newCount]);
+
+  useEffect(() => {
+    if (mainView === 'inbox' || newCount === 0) setBannerDismissed(true);
+  }, [mainView, newCount]);
 
   useEffect(() => {
     if (searchParams.get('action') === 'new') {
@@ -407,26 +426,27 @@ const Library = () => {
   useEffect(() => {
     const onNew = (e) => {
       const items = e.detail?.items || [];
-      if (items.length) setSearchParams({ view: 'reception' }, { replace: true });
-      items.forEach((item) => {
-        toast('Nouveau du prof', {
-          description: `${item.teacherName} — ${item.title || item.body?.slice(0, 40)}`,
-          duration: 10000,
-          icon: <Bell className="w-4 h-4 text-blue-600" />,
-        });
+      if (!items.length) return;
+      setBannerDismissed(false);
+      const first = items[0];
+      toast('Nouveau message de votre professeur', {
+        description: `${first.teacherName} — ${first.title || first.body?.slice(0, 40)}`,
+        duration: 10000,
+        icon: <Bell className="w-4 h-4 text-blue-600" />,
+        action: {
+          label: 'Voir',
+          onClick: () => setMainView('inbox'),
+        },
       });
     };
     window.addEventListener('senote:new-communications', onNew);
     return () => window.removeEventListener('senote:new-communications', onNew);
-  }, [setSearchParams]);
+  }, []);
 
   const handleSync = async () => {
     const { ok, newItems } = await syncNow();
     if (ok && newItems?.length) {
       setMainView('inbox');
-      newItems.forEach((item) => {
-        toast('Nouveau du prof', { description: `${item.teacherName} — ${item.title}` });
-      });
     } else if (ok) {
       toast.success('Boîte à jour');
     }
@@ -548,6 +568,13 @@ const Library = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
+      {currentStudent && !bannerDismissed && newCount > 0 && (
+        <NewCommBanner
+          count={newCount}
+          onOpen={() => setMainView('inbox')}
+          onDismiss={() => setBannerDismissed(true)}
+        />
+      )}
       <header className="sticky top-0 z-30 backdrop-blur-md bg-white/80 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center gap-2 sm:gap-4">
           <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
@@ -597,7 +624,7 @@ const Library = () => {
                 >
                   <RefreshCw className={`w-5 h-5 ${syncing ? 'animate-spin' : ''}`} />
                   {newCount > 0 && (
-                    <span className="absolute top-1 right-1 w-2 h-2 bg-blue-600 rounded-full" />
+                    <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-600 rounded-full" />
                   )}
                 </Button>
                 <Button
@@ -646,7 +673,9 @@ const Library = () => {
           >
             <Inbox className="w-3.5 h-3.5" />
             Réception
-            {newCount > 0 && <span className="bg-white/20 px-1 rounded text-[10px]">{newCount}</span>}
+              {newCount > 0 && (
+                <span className="bg-red-600 text-white px-1.5 rounded-full text-[10px] font-bold">{newCount}</span>
+              )}
           </button>
           {mainView === 'library' && [
             { id: 'all', label: 'Tous', icon: BookOpen },
@@ -695,6 +724,8 @@ const Library = () => {
           {mainView === 'inbox' ? (
             !currentStudent ? (
               <StudentLogin />
+            ) : !enrolled ? (
+              <StudentWaiting />
             ) : (
               <div className="flex flex-col flex-1 min-h-0 -mx-4 sm:-mx-6 -my-6 sm:-my-10">
                 <StudentInbox />

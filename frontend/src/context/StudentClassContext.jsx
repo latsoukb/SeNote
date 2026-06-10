@@ -1,19 +1,36 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   COMM_TYPES,
-  fetchClassCommunications,
+  fetchStudentInbox,
+  getDeviceCode,
+  getOrCreateDeviceId,
+  getStoredStudentName,
   isSyncConfigured,
   markCommunicationSeen,
+  saveStoredStudentName,
 } from '../lib/classSync';
 
-const SESSION_KEY = 'senote-student-session';
 const SEEN_KEY = 'senote-seen-comms';
 
 const StudentClassContext = createContext(null);
 
 const loadSeen = () => {
   try {
-    return JSON.parse(localStorage.getItem(SEEN_KEY) || '{}');
+    const raw = JSON.parse(localStorage.getItem(SEEN_KEY) || '{}');
+    const migrated = {};
+    Object.entries(raw).forEach(([k, v]) => {
+      const id = k.includes(':') ? k.split(':').pop() : k;
+      if (id) migrated[id] = migrated[id] || v;
+    });
+    return migrated;
   } catch {
     return {};
   }
@@ -27,54 +44,46 @@ const saveSeen = (map) => {
   }
 };
 
+const seenKey = (commId) => commId;
+
 export const StudentClassProvider = ({ children }) => {
-  const [session, setSession] = useState(() => {
-    try {
-      const raw = sessionStorage.getItem(SESSION_KEY);
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  });
+  const deviceId = useMemo(() => getOrCreateDeviceId(), []);
+  const [displayName, setDisplayName] = useState(getStoredStudentName);
+  const [enrolled, setEnrolled] = useState(false);
+  const [classIds, setClassIds] = useState([]);
   const [communications, setCommunications] = useState([]);
   const [syncing, setSyncing] = useState(false);
   const [lastSyncAt, setLastSyncAt] = useState(null);
   const [seenMap, setSeenMap] = useState(loadSeen);
+  const knownIdsRef = useRef(new Set());
 
-  const persistSession = useCallback((next) => {
-    setSession(next);
-    try {
-      if (next) sessionStorage.setItem(SESSION_KEY, JSON.stringify(next));
-      else sessionStorage.removeItem(SESSION_KEY);
-    } catch {
-      /* ignore */
-    }
+  const setupStudent = useCallback((name) => {
+    const trimmed = name.trim() || 'Élève';
+    setDisplayName(trimmed);
+    saveStoredStudentName(trimmed);
   }, []);
 
-  const loginStudent = useCallback(({ displayName, classId }) => {
-    const trimmedClass = classId.trim().toUpperCase();
-    const id = `stu-${Math.random().toString(36).slice(2, 10)}`;
-    persistSession({
-      id,
-      displayName: displayName.trim() || 'Élève',
-      classId: trimmedClass,
-    });
-  }, [persistSession]);
-
   const logoutStudent = useCallback(() => {
-    persistSession(null);
+    setDisplayName('');
+    saveStoredStudentName('');
     setCommunications([]);
-  }, [persistSession]);
+    setEnrolled(false);
+    setClassIds([]);
+    knownIdsRef.current = new Set();
+  }, []);
 
   const syncNow = useCallback(async () => {
-    if (!session?.classId || !isSyncConfigured()) {
+    if (!deviceId || !isSyncConfigured()) {
       return { ok: false, newItems: [] };
     }
     setSyncing(true);
     try {
-      const items = await fetchClassCommunications(session.classId);
-      const prevIds = new Set(communications.map((c) => c.id));
-      const newItems = items.filter((c) => !prevIds.has(c.id));
+      const data = await fetchStudentInbox(deviceId);
+      setEnrolled(data.enrolled);
+      setClassIds(data.classIds || []);
+      const items = data.communications || [];
+      const newItems = items.filter((c) => !knownIdsRef.current.has(c.id));
+      items.forEach((c) => knownIdsRef.current.add(c.id));
       setCommunications(items);
       setLastSyncAt(Date.now());
       if (newItems.length) {
@@ -88,68 +97,87 @@ export const StudentClassProvider = ({ children }) => {
     } finally {
       setSyncing(false);
     }
-  }, [session?.classId, communications]);
+  }, [deviceId]);
 
   useEffect(() => {
-    if (!session?.classId || !isSyncConfigured()) return undefined;
+    if (!displayName || !isSyncConfigured()) return undefined;
     syncNow();
     const id = setInterval(syncNow, 30_000);
     return () => clearInterval(id);
-  }, [session?.classId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [displayName, syncNow]);
 
   const markSeen = useCallback(
-    async (commId) => {
-      if (!session) return;
-      const key = `${session.classId}:${commId}`;
+    async (comm) => {
+      if (!comm?.id) return;
+      const key = seenKey(comm.id);
       if (seenMap[key]) return;
       const next = { ...seenMap, [key]: Date.now() };
       setSeenMap(next);
       saveSeen(next);
       try {
-        await markCommunicationSeen(session.classId, commId, session.id);
+        await markCommunicationSeen(comm.classId, comm.id, {
+          deviceId,
+          displayName: displayName || 'Élève',
+        });
       } catch {
         /* offline ok */
       }
     },
-    [session, seenMap],
+    [deviceId, displayName, seenMap],
   );
 
-  const newCount = useMemo(() => {
-    if (!session) return 0;
-    return communications.filter((c) => !seenMap[`${session.classId}:${c.id}`]).length;
-  }, [communications, seenMap, session]);
+  const newCount = useMemo(
+    () => communications.filter((c) => !seenMap[seenKey(c.id)]).length,
+    [communications, seenMap],
+  );
 
   const getCommunicationById = useCallback(
     (id) => communications.find((c) => c.id === id),
     [communications],
   );
 
+  const isCommUnread = useCallback(
+    (commId) => !seenMap[seenKey(commId)],
+    [seenMap],
+  );
+
+  const session = displayName
+    ? { deviceId, displayName, deviceCode: getDeviceCode(deviceId), enrolled, classIds }
+    : null;
+
   const value = useMemo(
     () => ({
       session,
       currentStudent: session,
+      deviceId,
+      deviceCode: getDeviceCode(deviceId),
       communications,
       newCount,
+      enrolled,
       syncing,
       lastSyncAt,
       syncConfigured: isSyncConfigured(),
-      loginStudent,
+      setupStudent,
       logoutStudent,
       syncNow,
       markCommunicationSeen: markSeen,
+      isCommUnread,
       getCommunicationById,
       COMM_TYPES,
     }),
     [
       session,
+      deviceId,
       communications,
       newCount,
+      enrolled,
       syncing,
       lastSyncAt,
-      loginStudent,
+      setupStudent,
       logoutStudent,
       syncNow,
       markSeen,
+      isCommUnread,
       getCommunicationById,
     ],
   );

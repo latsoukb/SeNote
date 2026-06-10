@@ -1,9 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Download } from 'lucide-react';
+import { ArrowLeft, Download, BookPlus } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { useStudentClass } from '../context/StudentClassContext';
 import { COMM_TYPES } from '../lib/classSync';
+import { canImportComm } from '../lib/commImport';
+import CommImportDialog from '../components/CommImportDialog';
 import Logo from '../components/Logo';
 
 const CommViewer = () => {
@@ -11,9 +13,10 @@ const CommViewer = () => {
   const navigate = useNavigate();
   const { getCommunicationById, markCommunicationSeen } = useStudentClass();
   const comm = getCommunicationById(id);
+  const [importOpen, setImportOpen] = useState(false);
 
   useEffect(() => {
-    if (comm) markCommunicationSeen(comm.id);
+    if (comm) markCommunicationSeen(comm);
   }, [comm, markCommunicationSeen]);
 
   if (!comm) {
@@ -46,12 +49,25 @@ const CommViewer = () => {
           <p className="font-medium truncate">{comm.title}</p>
           <p className="text-xs text-slate-500">{comm.teacherName}</p>
         </div>
-        {comm.attachment?.dataUrl && (
-          <Button variant="outline" size="sm" onClick={download} className="gap-2">
-            <Download className="w-4 h-4" />
-            Télécharger
-          </Button>
-        )}
+        <div className="flex gap-2 shrink-0">
+          {canImportComm(comm) && (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setImportOpen(true)}
+              className="gap-2 bg-blue-600 hover:bg-blue-700"
+            >
+              <BookPlus className="w-4 h-4" />
+              <span className="hidden sm:inline">Importer</span>
+            </Button>
+          )}
+          {comm.attachment?.dataUrl && (
+            <Button variant="outline" size="sm" onClick={download} className="gap-2">
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">Télécharger</span>
+            </Button>
+          )}
+        </div>
       </header>
 
       <main className="flex-1 p-4 sm:p-8 max-w-3xl mx-auto w-full">
@@ -76,6 +92,8 @@ const CommViewer = () => {
           <p className="text-slate-500 italic">Message sans texte.</p>
         )}
       </main>
+
+      <CommImportDialog comm={comm} open={importOpen} onOpenChange={setImportOpen} />
     </div>
   );
 };

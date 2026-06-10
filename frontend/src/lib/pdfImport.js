@@ -36,6 +36,10 @@ export const parsePdfFile = async (file) => {
   }
 
   const buffer = await file.arrayBuffer();
+  return parsePdfBuffer(buffer, (file.name || 'Document').replace(/\.pdf$/i, '').trim() || 'Document PDF');
+};
+
+const parsePdfBuffer = async (buffer, defaultTitle = 'Document PDF') => {
   const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
   const pageCount = pdf.numPages;
 
@@ -49,7 +53,12 @@ export const parsePdfFile = async (file) => {
     backgrounds.push(await renderPdfPageToDataUrl(page));
   }
 
-  const baseName = (file.name || 'Document').replace(/\.pdf$/i, '').trim() || 'Document PDF';
+  return { title: defaultTitle, backgrounds };
+};
 
-  return { title: baseName, backgrounds };
+/** Importe un PDF depuis une data URL (envoi prof JokkoNote). */
+export const parsePdfDataUrl = async (dataUrl, title = 'Document PDF') => {
+  const res = await fetch(dataUrl);
+  const buffer = await res.arrayBuffer();
+  return parsePdfBuffer(buffer, title);
 };

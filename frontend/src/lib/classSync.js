@@ -1,6 +1,5 @@
 /**
  * Sync prof → élève entre JokkoNote (prof) et SeNote (élève).
- * Backend : REACT_APP_JOKKO_SYNC_URL (serveur dans repo JokkoNote).
  */
 
 export const COMM_TYPES = {
@@ -9,7 +8,49 @@ export const COMM_TYPES = {
   IMAGE: 'image',
 };
 
+const DEVICE_KEY = 'senote-device-id';
+const NAME_KEY = 'senote-student-name';
+
 const syncBase = () => (process.env.REACT_APP_JOKKO_SYNC_URL || '').replace(/\/$/, '');
+
+export const getOrCreateDeviceId = () => {
+  try {
+    let id = localStorage.getItem(DEVICE_KEY);
+    if (!id) {
+      id = `dev-${crypto.randomUUID()}`;
+      localStorage.setItem(DEVICE_KEY, id);
+    }
+    return id;
+  } catch {
+    return `dev-${Date.now()}`;
+  }
+};
+
+export const getDeviceCode = (deviceId) =>
+  (deviceId || '').replace(/^dev-/, '').toUpperCase();
+
+export const normalizeDeviceId = (input) => {
+  const raw = (input || '').trim();
+  if (!raw) return '';
+  if (raw.startsWith('dev-')) return raw;
+  return `dev-${raw.toUpperCase()}`;
+};
+
+export const getStoredStudentName = () => {
+  try {
+    return localStorage.getItem(NAME_KEY) || '';
+  } catch {
+    return '';
+  }
+};
+
+export const saveStoredStudentName = (name) => {
+  try {
+    localStorage.setItem(NAME_KEY, name.trim());
+  } catch {
+    /* ignore */
+  }
+};
 
 const readFile = async (file) =>
   new Promise((resolve, reject) => {
@@ -29,13 +70,40 @@ export const fileToAttachment = async (file) => {
   return { type, dataUrl, fileName: file.name, mimeType: file.type };
 };
 
-export const fetchClassCommunications = async (classId) => {
+export const fetchStudentInbox = async (deviceId) => {
   const base = syncBase();
-  if (!base) return [];
-  const res = await fetch(`${base}/classes/${encodeURIComponent(classId)}/communications`);
+  if (!base) return { enrolled: false, classIds: [], communications: [] };
+  const res = await fetch(`${base}/students/${encodeURIComponent(deviceId)}/inbox`);
   if (!res.ok) throw new Error('Sync impossible');
-  const data = await res.json();
-  return data.communications || [];
+  return res.json();
+};
+
+export const fetchClassDetails = async (classId) => {
+  const base = syncBase();
+  if (!base) throw new Error('Sync non configuré');
+  const res = await fetch(`${base}/classes/${encodeURIComponent(classId)}`);
+  if (!res.ok) throw new Error('Classe introuvable');
+  return res.json();
+};
+
+export const enrollStudent = async (classId, deviceId, displayName) => {
+  const base = syncBase();
+  if (!base) throw new Error('Sync non configuré');
+  const res = await fetch(`${base}/classes/${encodeURIComponent(classId)}/students`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ deviceId, displayName }),
+  });
+  if (!res.ok) throw new Error('Inscription impossible');
+  return res.json();
+};
+
+export const removeStudent = async (classId, deviceId) => {
+  const base = syncBase();
+  if (!base) return;
+  await fetch(`${base}/classes/${encodeURIComponent(classId)}/students/${encodeURIComponent(deviceId)}`, {
+    method: 'DELETE',
+  });
 };
 
 export const pushClassCommunication = async (classId, payload) => {
@@ -50,7 +118,7 @@ export const pushClassCommunication = async (classId, payload) => {
   return res.json();
 };
 
-export const markCommunicationSeen = async (classId, commId, studentId) => {
+export const markCommunicationSeen = async (classId, commId, { deviceId, displayName }) => {
   const base = syncBase();
   if (!base) return;
   await fetch(
@@ -58,7 +126,7 @@ export const markCommunicationSeen = async (classId, commId, studentId) => {
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ studentId }),
+      body: JSON.stringify({ deviceId, displayName }),
     },
   );
 };

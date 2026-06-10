@@ -319,6 +319,18 @@ export const NotesProvider = ({ children }) => {
     []
   );
 
+  const appendPdfPagesToNotebook = useCallback((notebookId, pdfBackgrounds) => {
+    const pages = pdfBackgrounds.map((bg) => createPdfPage(bg));
+    setNotebooks((prev) =>
+      prev.map((n) =>
+        n.id === notebookId
+          ? { ...n, pages: [...n.pages, ...pages], updatedAt: Date.now() }
+          : n
+      )
+    );
+    return pages;
+  }, []);
+
   const movePageToTrash = useCallback((notebookId, pageId) => {
     let entry = null;
     setNotebooks((prev) => {
@@ -455,6 +467,7 @@ export const NotesProvider = ({ children }) => {
         addPage,
         insertPageAt,
         importPdfNotebook,
+        appendPdfPagesToNotebook,
         deletePage,
         movePageToTrash,
         restorePageFromTrash,
