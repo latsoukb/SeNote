@@ -114,11 +114,12 @@ const PdfDocumentView = ({
     const el = scrollRef.current;
     if (!el) return;
     const update = () => {
-      const w = el.clientWidth - 32;
+      const w = el.clientWidth;
       const isTablet = window.innerWidth >= 768 || navigator.maxTouchPoints > 1;
-      const maxW = isTablet ? 960 : 820;
-      const minW = isTablet ? 480 : 320;
-      setPageWidth(Math.min(maxW, Math.max(minW, w)));
+      // Tablette : pleine largeur (style GoodNotes). Téléphone : petite marge.
+      const pad = isTablet ? 0 : 16;
+      const minW = isTablet ? 280 : 280;
+      setPageWidth(Math.max(minW, w - pad));
     };
     update();
     const ro = new ResizeObserver(update);
@@ -243,8 +244,8 @@ const PdfDocumentView = ({
       }}
     >
       <div
-        className={`mx-auto py-6 px-4 ${
-          isVertical ? 'flex flex-col items-center' : 'flex flex-row items-start h-full'
+        className={`mx-auto py-2 px-0 sm:py-3 ${
+          isVertical ? 'flex flex-col items-stretch w-full' : 'flex flex-row items-start h-full'
         }`}
         style={{ gap: GAP }}
       >
@@ -255,7 +256,7 @@ const PdfDocumentView = ({
               pageRefs.current[idx] = el;
             }}
             data-page-idx={idx}
-            className="shrink-0 shadow-lg"
+            className="shrink-0 shadow-lg w-full flex justify-center"
           >
             <PageSheet
               page={page}

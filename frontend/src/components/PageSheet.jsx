@@ -40,6 +40,7 @@ import {
   getPanEdgeOverflow,
 } from '../lib/inkEngine';
 import { drawStroke, drawStrokesLayered, createStaticLayer } from '../lib/strokeRenderer';
+import { configureCanvas2d, getCanvasPixelScale } from '../lib/canvasResolution';
 import { MIN_ZOOM, MAX_ZOOM } from './NoteCanvas';
 
 const SHAPE_DELAY_MS = 650;
@@ -94,6 +95,7 @@ const PageSheet = ({
   const highlightLayerRef = useRef(null);
   const inkLayerRef = useRef(null);
   const staticDirtyRef = useRef(true);
+  const pixelScaleRef = useRef(1);
   const viewportRef = useRef(null);
   const pinchRef = useRef(null);
   const touchPanRef = useRef(null);
@@ -406,24 +408,37 @@ const PageSheet = ({
 
   const getPos = (e) => getPosFromClient(e.clientX, e.clientY, e.pressure > 0 ? e.pressure : 0.5);
 
-  const ensureStrokeLayers = useCallback(() => {
+  const syncCanvasResolution = useCallback((effectiveZoom) => {
+    const pixelScale = getCanvasPixelScale(effectiveZoom);
+    if (pixelScaleRef.current !== pixelScale) {
+      pixelScaleRef.current = pixelScale;
+      staticDirtyRef.current = true;
+      highlightLayerRef.current = null;
+      inkLayerRef.current = null;
+    }
+    const canvas = canvasRef.current;
+    if (canvas) configureCanvas2d(canvas, pixelScale);
+    return pixelScale;
+  }, []);
+
+  const ensureStrokeLayers = useCallback((pixelScale) => {
     if (!highlightLayerRef.current) {
       highlightLayerRef.current = createStaticLayer();
-      highlightLayerRef.current.width = PAGE_W;
-      highlightLayerRef.current.height = PAGE_H;
+      configureCanvas2d(highlightLayerRef.current, pixelScale);
     }
     if (!inkLayerRef.current) {
       inkLayerRef.current = createStaticLayer();
-      inkLayerRef.current.width = PAGE_W;
-      inkLayerRef.current.height = PAGE_H;
+      configureCanvas2d(inkLayerRef.current, pixelScale);
     }
     return { highlight: highlightLayerRef.current, ink: inkLayerRef.current };
   }, []);
 
-  const rebuildStaticLayer = useCallback(() => {
-    const { highlight, ink } = ensureStrokeLayers();
+  const rebuildStaticLayer = useCallback((pixelScale) => {
+    const { highlight, ink } = ensureStrokeLayers(pixelScale);
     const hctx = highlight.getContext('2d');
     const ictx = ink.getContext('2d');
+    hctx.setTransform(pixelScale, 0, 0, pixelScale, 0, 0);
+    ictx.setTransform(pixelScale, 0, 0, pixelScale, 0, 0);
     hctx.clearRect(0, 0, PAGE_W, PAGE_H);
     ictx.clearRect(0, 0, PAGE_W, PAGE_H);
     const list = strokesRef.current ?? [];
@@ -435,7 +450,10 @@ const PageSheet = ({
   const renderCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    const effectiveZoom = isActive ? writeZoom : 1;
+    const pixelScale = syncCanvasResolution(effectiveZoom);
     const ctx = canvas.getContext('2d');
+    ctx.setTransform(pixelScale, 0, 0, pixelScale, 0, 0);
     ctx.clearRect(0, 0, PAGE_W, PAGE_H);
 
     const isErasing = tool === 'eraser' && liveStrokesRef.current;
@@ -444,12 +462,12 @@ const PageSheet = ({
     if (isErasing) {
       drawStrokesLayered(ctx, liveStrokesRef.current);
     } else {
-      if (staticDirtyRef.current) rebuildStaticLayer();
+      if (staticDirtyRef.current) rebuildStaticLayer(pixelScale);
       const hLayer = highlightLayerRef.current;
       const iLayer = inkLayerRef.current;
-      if (hLayer) ctx.drawImage(hLayer, 0, 0);
+      if (hLayer) ctx.drawImage(hLayer, 0, 0, PAGE_W, PAGE_H);
       if (current?.type === 'highlighter') drawStroke(ctx, current);
-      if (iLayer) ctx.drawImage(iLayer, 0, 0);
+      if (iLayer) ctx.drawImage(iLayer, 0, 0, PAGE_W, PAGE_H);
       if (current && current.type !== 'highlighter') drawStroke(ctx, current);
     }
 
@@ -465,7 +483,7 @@ const PageSheet = ({
       ctx.stroke();
       ctx.restore();
     }
-  }, [tool, isDrawing, thickness, rebuildStaticLayer]);
+  }, [tool, isDrawing, thickness, rebuildStaticLayer, syncCanvasResolution, isActive, writeZoom]);
 
   const scheduleRender = useCallback(() => {
     if (rafRef.current) return;
@@ -992,8 +1010,6 @@ const PageSheet = ({
       )}
       <canvas
         ref={canvasRef}
-        width={PAGE_W}
-        height={PAGE_H}
         onPointerDown={startDraw}
         onPointerMove={moveDraw}
         onPointerUp={endDraw}
