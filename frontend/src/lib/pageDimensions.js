@@ -10,4 +10,27 @@ export const cmToPx = (cm) => (cm / PAGE_CM_W) * PAGE_W;
 export const pxToCm = (px) => (px / PAGE_W) * PAGE_CM_W;
 
 const base = process.env.PUBLIC_URL || '';
-export const SEYES_BG = `${base}/templates/seyes.png`;
+
+/** Modèles rendus depuis PDF / PNG (comme Seyès). */
+export const TEMPLATE_IMAGE_FILES = {
+  seyes: 'seyes',
+  grid: 'grid',
+  'grid-margin': 'grid-margin',
+  millimeter: 'millimeter',
+  protractor: 'protractor',
+};
+
+export const getTemplateImageUrl = (templateId) => {
+  const file = TEMPLATE_IMAGE_FILES[templateId];
+  if (!file) return null;
+  return `${base}/templates/${file}.png`;
+};
+
+export const getTemplateThumbUrl = (templateId) => {
+  const file = TEMPLATE_IMAGE_FILES[templateId];
+  if (!file) return null;
+  return `${base}/templates/${file}-thumb.png`;
+};
+
+/** @deprecated utiliser getTemplateImageUrl('seyes') */
+export const SEYES_BG = getTemplateImageUrl('seyes');

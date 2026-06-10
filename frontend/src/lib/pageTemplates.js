@@ -1,4 +1,4 @@
-import { SEYES_BG, PAGE_W, PAGE_H } from './pageDimensions';
+import { getTemplateImageUrl, PAGE_W, PAGE_H } from './pageDimensions';
 
 export const normalizeTemplateId = (templateId) => {
   if (templateId === 'calligraphy' || templateId === 'music-large') return 'music';
@@ -7,11 +7,13 @@ export const normalizeTemplateId = (templateId) => {
 
 export const isPdfPage = (page) => Boolean(page?.pdfBackground);
 
+export const isImageTemplate = (templateId) =>
+  Boolean(getTemplateImageUrl(normalizeTemplateId(templateId)));
+
 export const getPaperClass = (templateId) => {
   const id = normalizeTemplateId(templateId);
   const map = {
     lined: 'paper-lined',
-    grid: 'paper-grid',
     dotted: 'paper-dotted',
     music: 'paper-music',
   };
@@ -20,13 +22,9 @@ export const getPaperClass = (templateId) => {
 
 /** Ajuste la taille des motifs CSS quand le zoom d'écriture agrandit la page. */
 export const getPaperZoomStyle = (templateId, zoom = 1) => {
-  if (!zoom || zoom <= 1.01) return undefined;
+  if (!zoom || zoom <= 1.01 || isImageTemplate(templateId)) return undefined;
   const id = normalizeTemplateId(templateId);
   const z = zoom;
-  if (id === 'grid') {
-    const cell = 24 * z;
-    return { backgroundSize: `${cell}px ${cell}px` };
-  }
   if (id === 'dotted') {
     const cell = 22 * z;
     return { backgroundSize: `${cell}px ${cell}px` };
@@ -45,8 +43,13 @@ export const getPaperZoomStyle = (templateId, zoom = 1) => {
 
 export const getTemplateBackground = (templateId) => {
   const id = normalizeTemplateId(templateId);
-  if (id === 'seyes') {
-    return { type: 'image', src: SEYES_BG };
+  const src = getTemplateImageUrl(id);
+  if (src) {
+    return {
+      type: 'image',
+      src,
+      fit: id === 'protractor' ? 'contain' : 'fill',
+    };
   }
   if (id === 'blank') {
     return { type: 'css', className: 'bg-white' };
@@ -57,7 +60,7 @@ export const getTemplateBackground = (templateId) => {
 /** Fond d'une page (modèle ou PDF importé) */
 export const getPageBackground = (page) => {
   if (page?.pdfBackground) {
-    return { type: 'image', src: page.pdfBackground };
+    return { type: 'image', src: page.pdfBackground, fit: 'fill' };
   }
   return getTemplateBackground(page?.template || 'seyes');
 };
@@ -65,42 +68,24 @@ export const getPageBackground = (page) => {
 /** Dessine le fond page sur canvas (pleine résolution) */
 export const drawTemplateBackground = (ctx, templateId, destW, destH) => {
   const id = normalizeTemplateId(templateId);
+  if (isImageTemplate(id)) return 'image';
+
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, destW, destH);
 
-  const sx = destW / PAGE_W;
   const sy = destH / PAGE_H;
   const line = (rgba, y1, y2 = y1 + 1) => {
     ctx.fillStyle = rgba;
     ctx.fillRect(0, y1 * sy, destW, Math.max(1, (y2 - y1) * sy));
   };
 
-  if (id === 'seyes') return 'image';
-
   if (id === 'lined') {
     for (let y = 32; y < PAGE_H; y += 32) line('rgba(148,163,184,0.35)', y, y + 1);
     return 'css';
   }
-  if (id === 'grid') {
-    const step = 24;
-    ctx.strokeStyle = 'rgba(148,163,184,0.3)';
-    ctx.lineWidth = 1;
-    for (let x = 0; x <= destW; x += step * sx) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, destH);
-      ctx.stroke();
-    }
-    for (let y = 0; y <= destH; y += step * sy) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(destW, y);
-      ctx.stroke();
-    }
-    return 'css';
-  }
   if (id === 'dotted') {
     const step = 22;
+    const sx = destW / PAGE_W;
     ctx.fillStyle = 'rgba(148,163,184,0.5)';
     for (let y = step; y < PAGE_H; y += step) {
       for (let x = step; x < PAGE_W; x += step) {

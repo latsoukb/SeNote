@@ -1,21 +1,11 @@
-import { PAGE_W, PAGE_H, SEYES_BG } from './pageDimensions';
+import { PAGE_W, PAGE_H, getTemplateImageUrl } from './pageDimensions';
 import { getPageBackground, drawTemplateBackground } from './pageTemplates';
 
-let seyesImage = null;
-const seyesLoad = new Promise((resolve) => {
-  const img = new Image();
-  img.onload = () => {
-    seyesImage = img;
-    resolve(img);
-  };
-  img.onerror = () => resolve(null);
-  img.src = SEYES_BG;
-});
-
 const imageCache = new Map();
+const preloaded = new Set();
 
 const loadBgImage = (src) => {
-  if (src === SEYES_BG) return Promise.resolve(seyesImage);
+  if (!src) return Promise.resolve(null);
   if (imageCache.has(src)) return imageCache.get(src);
   const p = new Promise((resolve) => {
     const img = new Image();
@@ -24,7 +14,17 @@ const loadBgImage = (src) => {
     img.src = src;
   });
   imageCache.set(src, p);
+  preloaded.add(src);
   return p;
+};
+
+const seyesLoad = loadBgImage(getTemplateImageUrl('seyes'));
+
+export const preloadTemplateImages = () => {
+  Object.keys({ seyes: 1, grid: 1, 'grid-margin': 1, millimeter: 1, protractor: 1 }).forEach((id) => {
+    const src = getTemplateImageUrl(id);
+    if (src && !preloaded.has(src)) loadBgImage(src);
+  });
 };
 
 const drawStroke = (ctx, s, sx, sy) => {

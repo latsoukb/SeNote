@@ -982,7 +982,7 @@ const PageSheet = ({
           src={bg.src}
           alt=""
           className="absolute inset-0 w-full h-full pointer-events-none select-none"
-          style={{ objectFit: 'fill' }}
+          style={{ objectFit: bg.fit || 'fill' }}
           draggable={false}
         />
       ) : (

@@ -1,23 +1,21 @@
-import { PAGE_W, PAGE_H, SEYES_BG } from './pageDimensions';
+import { PAGE_W, PAGE_H, getTemplateImageUrl } from './pageDimensions';
 import { drawTemplateBackground, normalizeTemplateId } from './pageTemplates';
 
-let seyesImage = null;
 const cache = {};
+const imageCache = {};
 
-const loadSeyes = () =>
-  new Promise((resolve) => {
-    if (seyesImage) {
-      resolve(seyesImage);
-      return;
-    }
+const loadTemplateImage = (src) => {
+  if (!src) return Promise.resolve(null);
+  if (imageCache[src]) return imageCache[src];
+  const p = new Promise((resolve) => {
     const img = new Image();
-    img.onload = () => {
-      seyesImage = img;
-      resolve(img);
-    };
+    img.onload = () => resolve(img);
     img.onerror = () => resolve(null);
-    img.src = SEYES_BG;
+    img.src = src;
   });
+  imageCache[src] = p;
+  return p;
+};
 
 /** Capture pleine page (900×1273) puis redimensionnée en miniature — fidèle au modèle */
 export const renderTemplatePreviewDataUrl = async (templateId) => {
@@ -31,9 +29,19 @@ export const renderTemplatePreviewDataUrl = async (templateId) => {
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, PAGE_W, PAGE_H);
 
-  if (id === 'seyes') {
-    const img = await loadSeyes();
-    if (img) ctx.drawImage(img, 0, 0, PAGE_W, PAGE_H);
+  const src = getTemplateImageUrl(id);
+  if (src) {
+    const img = await loadTemplateImage(src);
+    if (img) {
+      if (id === 'protractor') {
+        const scale = Math.min(PAGE_W / img.width, PAGE_H / img.height) * 0.92;
+        const w = img.width * scale;
+        const h = img.height * scale;
+        ctx.drawImage(img, (PAGE_W - w) / 2, (PAGE_H - h) / 2, w, h);
+      } else {
+        ctx.drawImage(img, 0, 0, PAGE_W, PAGE_H);
+      }
+    }
   } else {
     drawTemplateBackground(ctx, id, PAGE_W, PAGE_H);
   }

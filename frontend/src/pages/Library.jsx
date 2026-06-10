@@ -58,6 +58,7 @@ import SettingsDialog from '../components/SettingsDialog';
 import StudentInbox from '../components/StudentInbox';
 import StudentLogin from '../components/StudentLogin';
 import StudentWaiting from '../components/StudentWaiting';
+import StudentDeviceCode from '../components/StudentDeviceCode';
 import DeadlineHomeBlocks from '../components/DeadlineHomeBlocks';
 import OpenNotebookTabBar from '../components/OpenNotebookTabBar';
 import { useStudentClass } from '../context/StudentClassContext';
@@ -574,7 +575,8 @@ const Library = () => {
           <div className="flex items-center gap-1 sm:gap-2 ml-auto shrink-0">
             {currentStudent && (
               <>
-                <span className="hidden md:inline text-xs text-slate-500 max-w-[120px] truncate">
+                {enrolled && <StudentDeviceCode variant="chip" />}
+                <span className="hidden lg:inline text-xs text-slate-500 max-w-[120px] truncate">
                   {currentStudent.displayName}
                 </span>
                 <Button

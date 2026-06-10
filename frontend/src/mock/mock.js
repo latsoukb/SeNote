@@ -20,8 +20,11 @@ export const PAGE_TEMPLATES = [
   { id: 'blank', name: 'Vierge' },
   { id: 'lined', name: 'Ligné' },
   { id: 'grid', name: 'Quadrillé' },
+  { id: 'grid-margin', name: 'Quadrillé (marge)' },
+  { id: 'millimeter', name: 'Millimétré' },
   { id: 'dotted', name: 'Pointillé' },
   { id: 'music', name: 'Musique' },
+  { id: 'protractor', name: 'Rapporteur' },
 ];
 
 const makePage = (template = 'seyes') => ({

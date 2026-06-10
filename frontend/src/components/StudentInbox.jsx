@@ -17,6 +17,7 @@ import CommImportDialog from './CommImportDialog';
 import DeadlineBadge from './DeadlineBadge';
 import DeadlineDoneButton from './DeadlineDoneButton';
 import { DEADLINE_STYLES, getDeadlineDisplayUrgency } from '../lib/deadline';
+import StudentDeviceCode from './StudentDeviceCode';
 
 const TYPE_META = {
   [COMM_TYPES.MESSAGE]: { label: 'Message', icon: MessageSquare },
@@ -84,6 +85,10 @@ const StudentInbox = () => {
           <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
           Actualiser
         </Button>
+      </div>
+
+      <div className="px-4 sm:px-6 pb-3">
+        <StudentDeviceCode />
       </div>
 
       <div className="flex gap-2 px-4 sm:px-6 py-3 overflow-x-auto thin-scroll">
