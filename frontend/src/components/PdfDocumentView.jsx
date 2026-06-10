@@ -71,6 +71,7 @@ const PdfDocumentView = ({
   const addingRef = useRef(false);
   const wasAtEndRef = useRef(false);
   const scrollSyncRef = useRef(false);
+  const scrollSyncReadyRef = useRef(false);
   const currentPageIdxRef = useRef(currentPageIdx);
   const writeZoomRef = useRef(writeZoom);
   const [pageWidth, setPageWidth] = useState(700);
@@ -127,7 +128,7 @@ const PdfDocumentView = ({
 
   const syncPageFromViewport = useCallback(() => {
     const root = scrollRef.current;
-    if (!root || scrollSyncRef.current) return;
+    if (!root || scrollSyncRef.current || !scrollSyncReadyRef.current) return;
 
     const bestIdx = pickVisiblePageIndex(root, pageRefs.current, isVertical);
     if (bestIdx !== currentPageIdxRef.current) {
@@ -151,6 +152,26 @@ const PdfDocumentView = ({
     },
     [isVertical, syncPageFromViewport]
   );
+
+  useEffect(() => {
+    scrollSyncReadyRef.current = false;
+    if (!pages.length) return undefined;
+
+    let cancelled = false;
+    const restore = () => {
+      if (cancelled) return;
+      scrollToPage(currentPageIdx, false);
+      requestAnimationFrame(() => {
+        if (!cancelled) scrollSyncReadyRef.current = true;
+      });
+    };
+    requestAnimationFrame(() => requestAnimationFrame(restore));
+
+    return () => {
+      cancelled = true;
+      scrollSyncReadyRef.current = false;
+    };
+  }, [notebook?.id, pages.length, scrollToPage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Détection automatique au scroll + IntersectionObserver
   useEffect(() => {
@@ -196,8 +217,6 @@ const PdfDocumentView = ({
     pageRefs.current.forEach((el) => {
       if (el) observer.observe(el);
     });
-
-    syncPageFromViewport();
 
     return () => {
       root.removeEventListener('scroll', onScroll);

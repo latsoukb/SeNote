@@ -26,6 +26,7 @@ import SettingsDialog from '../components/SettingsDialog';
 import OpenNotebookTabBar from '../components/OpenNotebookTabBar';
 import { useOpenNotebooks } from '../context/OpenNotebooksContext';
 import { getNotebookSections } from '../lib/notebookSections';
+import { clampPageIdx } from '../lib/notebookSession';
 import { exportNotebookToPdf } from '../lib/exportNotebookPdf';
 import { createRuler, createSetSquare } from '../lib/instrumentSnap';
 import { clampPan, focalPan } from '../lib/inkEngine';
@@ -59,15 +60,26 @@ const NotebookEditor = () => {
     setNotebookTemplate,
   } = useNotes();
 
-  const { openNotebook } = useOpenNotebooks();
+  const {
+    openNotebook,
+    getNotebookSession,
+    updateNotebookSession,
+    getUndoStacks,
+  } = useOpenNotebooks();
   const notebook = getNotebook(id);
   const sections = notebook ? getNotebookSections(notebook) : [];
+  const initialSession = id ? getNotebookSession(id) : null;
 
   useEffect(() => {
     if (id) openNotebook(id);
   }, [id, openNotebook]);
-  const [currentPageIdx, setCurrentPageIdx] = useState(0);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  const [currentPageIdx, setCurrentPageIdx] = useState(
+    () => initialSession?.currentPageIdx ?? 0
+  );
+  const [sidebarOpen, setSidebarOpen] = useState(
+    () => initialSession?.sidebarOpen ?? true
+  );
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
   const [addPageOpen, setAddPageOpen] = useState(false);
@@ -99,17 +111,72 @@ const NotebookEditor = () => {
   }, [tool]);
 
   const thickness = thicknessForTool(toolThickness, tool);
-  const [writeZoom, setWriteZoom] = useState(DEFAULT_WRITE_ZOOM);
-  const [writePan, setWritePan] = useState({ x: 0, y: 0 });
+  const [writeZoom, setWriteZoom] = useState(
+    () => initialSession?.writeZoom ?? DEFAULT_WRITE_ZOOM
+  );
+  const [writePan, setWritePan] = useState(
+    () => initialSession?.writePan ?? { x: 0, y: 0 }
+  );
 
   const undoStackRef = useRef({});
   const redoStackRef = useRef({});
-  const [pageSyncRevision, setPageSyncRevision] = useState(0);
+  const [pageSyncRevision, setPageSyncRevision] = useState(
+    () => initialSession?.pageSyncRevision ?? 0
+  );
 
   const scrollToPageRef = useRef(null);
+  const sessionLiveRef = useRef({});
 
   const currentSection = sections[0] || null;
   const pages = currentSection?.pages || [];
+
+  sessionLiveRef.current = {
+    currentPageIdx,
+    writeZoom,
+    writePan,
+    sidebarOpen,
+    pageSyncRevision,
+  };
+
+  useEffect(() => {
+    if (!id) return;
+    const stacks = getUndoStacks(id);
+    undoStackRef.current = stacks.undo;
+    redoStackRef.current = stacks.redo;
+
+    const session = getNotebookSession(id);
+    const pageIdx = clampPageIdx(session.currentPageIdx, pages.length);
+    setCurrentPageIdx(pageIdx);
+    setWriteZoom(session.writeZoom);
+    setWritePan({ ...session.writePan });
+    setSidebarOpen(session.sidebarOpen);
+    setPageSyncRevision(session.pageSyncRevision ?? 0);
+    setEditingTitle(false);
+    setAddPageOpen(false);
+    setPageTemplateOpen(null);
+
+    const timer = setTimeout(() => {
+      scrollToPageRef.current?.(pageIdx, false);
+    }, 0);
+
+    return () => {
+      clearTimeout(timer);
+      updateNotebookSession(id, sessionLiveRef.current);
+    };
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!id) return;
+    updateNotebookSession(id, sessionLiveRef.current);
+  }, [id, currentPageIdx, writeZoom, writePan, sidebarOpen, pageSyncRevision, updateNotebookSession]);
+
+  useEffect(() => {
+    if (!id || pages.length === 0) return;
+    setCurrentPageIdx((idx) => {
+      const clamped = clampPageIdx(idx, pages.length);
+      return clamped === idx ? idx : clamped;
+    });
+  }, [id, pages.length]);
 
   /** Changement auto (scroll, stylet, ou passage au bord en zoom) */
   const handlePageChange = useCallback((idx, options = {}) => {
@@ -580,6 +647,7 @@ const NotebookEditor = () => {
 
         <div className="flex-1 flex flex-col bg-slate-100 dark:bg-slate-900 min-w-0 min-h-0">
           <PdfDocumentView
+            key={id}
             notebook={notebook}
             pages={pages}
             currentPageIdx={currentPageIdx}
