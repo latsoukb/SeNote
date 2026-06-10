@@ -21,7 +21,14 @@ const loadBgImage = (src) => {
 const seyesLoad = loadBgImage(getTemplateImageUrl('seyes'));
 
 export const preloadTemplateImages = () => {
-  Object.keys({ seyes: 1, grid: 1, 'grid-margin': 1, millimeter: 1, protractor: 1 }).forEach((id) => {
+  Object.keys({
+    seyes: 1,
+    grid: 1,
+    'grid-margin': 1,
+    millimeter: 1,
+    music: 1,
+    protractor: 1,
+  }).forEach((id) => {
     const src = getTemplateImageUrl(id);
     if (src && !preloaded.has(src)) loadBgImage(src);
   });

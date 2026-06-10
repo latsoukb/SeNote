@@ -1,15 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { renderTemplatePreviewDataUrl } from '../lib/templatePreview';
 import { normalizeTemplateId } from '../lib/pageTemplates';
+import { getTemplateThumbUrl } from '../lib/pageDimensions';
 
-/** Miniature = photo pleine page redimensionnée (même rendu que la feuille) */
+/** Miniature = vignette PNG (PDF) ou rendu canvas pour modèles CSS */
 const PageTemplatePreview = ({ template, selected, onClick, size = 'md' }) => {
   const isSm = size === 'sm';
   const [previewUrl, setPreviewUrl] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
-    renderTemplatePreviewDataUrl(normalizeTemplateId(template.id)).then((url) => {
+    const id = normalizeTemplateId(template.id);
+    const staticThumb = getTemplateThumbUrl(id);
+    if (staticThumb) {
+      setPreviewUrl(staticThumb);
+      return () => {
+        cancelled = true;
+      };
+    }
+    renderTemplatePreviewDataUrl(id).then((url) => {
       if (!cancelled) setPreviewUrl(url);
     });
     return () => {
@@ -48,7 +57,7 @@ const PageTemplatePreview = ({ template, selected, onClick, size = 'md' }) => {
         )}
       </div>
       <span
-        className={`font-medium text-slate-700 dark:text-slate-300 ${
+        className={`font-medium text-slate-700 dark:text-slate-300 text-center leading-tight ${
           isSm ? 'text-[10px]' : 'text-xs'
         }`}
       >

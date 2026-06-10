@@ -473,7 +473,7 @@ const NotebookEditor = () => {
                 {addPageMode === 'end' && 'Ajouter à la fin du cahier'}
               </p>
               <p className="text-xs font-medium text-slate-500 mb-2">Modèle vierge</p>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto thin-scroll pr-1">
                 {PAGE_TEMPLATES.map((t) => (
                   <PageTemplatePreview
                     key={t.id}
@@ -548,7 +548,7 @@ const NotebookEditor = () => {
                 </PopoverTrigger>
                 <PopoverContent align="end" className="w-72">
                   <p className="text-xs font-medium text-slate-500 mb-3">Style pour tout le cahier</p>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto thin-scroll pr-1">
                     {PAGE_TEMPLATES.map((t) => (
                       <PageTemplatePreview
                         key={t.id}
@@ -611,7 +611,7 @@ const NotebookEditor = () => {
                       </PopoverTrigger>
                       <PopoverContent align="end" className="w-72" onClick={(e) => e.stopPropagation()}>
                         <p className="text-xs font-medium text-slate-500 mb-3">Style de la page {idx + 1}</p>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto thin-scroll pr-1">
                           {PAGE_TEMPLATES.map((t) => (
                             <PageTemplatePreview
                               key={t.id}

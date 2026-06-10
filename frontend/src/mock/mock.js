@@ -17,14 +17,14 @@ export const FOLDER_COLORS = [
 
 export const PAGE_TEMPLATES = [
   { id: 'seyes', name: 'Seyès' },
-  { id: 'blank', name: 'Vierge' },
-  { id: 'lined', name: 'Ligné' },
   { id: 'grid', name: 'Quadrillé' },
-  { id: 'grid-margin', name: 'Quadrillé (marge)' },
+  { id: 'grid-margin', name: 'Quadrillé + marge' },
   { id: 'millimeter', name: 'Millimétré' },
-  { id: 'dotted', name: 'Pointillé' },
   { id: 'music', name: 'Musique' },
   { id: 'protractor', name: 'Rapporteur' },
+  { id: 'lined', name: 'Ligné' },
+  { id: 'dotted', name: 'Pointillé' },
+  { id: 'blank', name: 'Vierge' },
 ];
 
 const makePage = (template = 'seyes') => ({

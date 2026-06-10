@@ -2,6 +2,8 @@ import { getTemplateImageUrl, PAGE_W, PAGE_H } from './pageDimensions';
 
 export const normalizeTemplateId = (templateId) => {
   if (templateId === 'calligraphy' || templateId === 'music-large') return 'music';
+  // Ancien quadrillé CSS → image PDF
+  if (templateId === 'grid-css') return 'grid';
   return templateId;
 };
 
@@ -15,7 +17,6 @@ export const getPaperClass = (templateId) => {
   const map = {
     lined: 'paper-lined',
     dotted: 'paper-dotted',
-    music: 'paper-music',
   };
   return map[id] || '';
 };
@@ -31,12 +32,6 @@ export const getPaperZoomStyle = (templateId, zoom = 1) => {
   }
   if (id === 'lined') {
     return { backgroundSize: `100% ${32 * z}px` };
-  }
-  if (id === 'music') {
-    return {
-      backgroundSize: `100% ${88 * z}px`,
-      backgroundPosition: `0 ${48 * z}px`,
-    };
   }
   return undefined;
 };
@@ -93,17 +88,6 @@ export const drawTemplateBackground = (ctx, templateId, destW, destH) => {
         ctx.arc(x * sx, y * sy, 1.2 * sx, 0, Math.PI * 2);
         ctx.fill();
       }
-    }
-    return 'css';
-  }
-  if (id === 'music') {
-    const staffGap = 88;
-    const lineStep = 9;
-    const staffLines = [0, lineStep, lineStep * 2, lineStep * 3, lineStep * 4];
-    for (let staffTop = 48; staffTop < PAGE_H - 60; staffTop += staffGap) {
-      staffLines.forEach((offset) =>
-        line('rgba(15,23,42,0.55)', staffTop + offset, staffTop + offset + 1)
-      );
     }
     return 'css';
   }
