@@ -58,6 +58,7 @@ import SettingsDialog from '../components/SettingsDialog';
 import StudentInbox from '../components/StudentInbox';
 import StudentLogin from '../components/StudentLogin';
 import StudentWaiting from '../components/StudentWaiting';
+import DeadlineHomeBlocks from '../components/DeadlineHomeBlocks';
 import { useStudentClass } from '../context/StudentClassContext';
 import { toast } from 'sonner';
 import { parsePdfFile } from '../lib/pdfImport';
@@ -912,6 +913,8 @@ const Library = () => {
               </DialogContent>
             </Dialog>
           </div>
+
+          <DeadlineHomeBlocks />
 
           {selectedFolder === 'all' && pinnedNotebooks.length > 0 && !search && (
             <section className="mb-10">
