@@ -8,6 +8,7 @@ import { StudentClassProvider } from './context/StudentClassContext';
 import Library from './pages/Library';
 import NotebookEditor from './pages/NotebookEditor';
 import CommViewer from './pages/CommViewer';
+import StudentNotifications from './components/StudentNotifications';
 import { Toaster } from './components/ui/sonner';
 import AccessGate from './components/AccessGate';
 
@@ -20,6 +21,7 @@ function App() {
             <StudentClassProvider>
               <div className="App bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">
                 <BrowserRouter basename={process.env.PUBLIC_URL || ''}>
+                  <StudentNotifications />
                   <Routes>
                     <Route path="/" element={<Library />} />
                     <Route path="/view/:id" element={<CommViewer />} />

@@ -19,7 +19,6 @@ import {
   FileUp,
   Inbox,
   RefreshCw,
-  Bell,
   LogOut,
 } from 'lucide-react';
 import {
@@ -59,7 +58,6 @@ import SettingsDialog from '../components/SettingsDialog';
 import StudentInbox from '../components/StudentInbox';
 import StudentLogin from '../components/StudentLogin';
 import StudentWaiting from '../components/StudentWaiting';
-import NewCommBanner from '../components/NewCommBanner';
 import { useStudentClass } from '../context/StudentClassContext';
 import { toast } from 'sonner';
 import { parsePdfFile } from '../lib/pdfImport';
@@ -402,18 +400,6 @@ const Library = () => {
   const [newFolderColor, setNewFolderColor] = useState(FOLDER_COLORS[0]);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [pdfImporting, setPdfImporting] = useState(false);
-  const [bannerDismissed, setBannerDismissed] = useState(false);
-  const prevNewCountRef = useRef(newCount);
-
-  useEffect(() => {
-    if (newCount > prevNewCountRef.current) setBannerDismissed(false);
-    prevNewCountRef.current = newCount;
-  }, [newCount]);
-
-  useEffect(() => {
-    if (mainView === 'inbox' || newCount === 0) setBannerDismissed(true);
-  }, [mainView, newCount]);
-
   useEffect(() => {
     if (searchParams.get('action') === 'new') {
       setDialogOpen(true);
@@ -422,26 +408,6 @@ const Library = () => {
       setSearchParams(next, { replace: true });
     }
   }, [searchParams, setSearchParams]);
-
-  useEffect(() => {
-    const onNew = (e) => {
-      const items = e.detail?.items || [];
-      if (!items.length) return;
-      setBannerDismissed(false);
-      const first = items[0];
-      toast('Nouveau message de votre professeur', {
-        description: `${first.teacherName} — ${first.title || first.body?.slice(0, 40)}`,
-        duration: 10000,
-        icon: <Bell className="w-4 h-4 text-blue-600" />,
-        action: {
-          label: 'Voir',
-          onClick: () => setMainView('inbox'),
-        },
-      });
-    };
-    window.addEventListener('senote:new-communications', onNew);
-    return () => window.removeEventListener('senote:new-communications', onNew);
-  }, []);
 
   const handleSync = async () => {
     const { ok, newItems } = await syncNow();
@@ -568,13 +534,6 @@ const Library = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {currentStudent && !bannerDismissed && newCount > 0 && (
-        <NewCommBanner
-          count={newCount}
-          onOpen={() => setMainView('inbox')}
-          onDismiss={() => setBannerDismissed(true)}
-        />
-      )}
       <header className="sticky top-0 z-30 backdrop-blur-md bg-white/80 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center gap-2 sm:gap-4">
           <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>

@@ -100,11 +100,20 @@ export const StudentClassProvider = ({ children }) => {
   }, [deviceId]);
 
   useEffect(() => {
-    if (!displayName || !isSyncConfigured()) return undefined;
+    if (!deviceId || !isSyncConfigured()) return undefined;
     syncNow();
-    const id = setInterval(syncNow, 30_000);
-    return () => clearInterval(id);
-  }, [displayName, syncNow]);
+    const id = setInterval(syncNow, 15_000);
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') syncNow();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', syncNow);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', syncNow);
+    };
+  }, [deviceId, syncNow]);
 
   const markSeen = useCallback(
     async (comm) => {
@@ -136,6 +145,17 @@ export const StudentClassProvider = ({ children }) => {
     [communications],
   );
 
+  const upsertCommunication = useCallback((comm) => {
+    if (!comm?.id) return;
+    setCommunications((prev) => {
+      const idx = prev.findIndex((c) => c.id === comm.id);
+      if (idx < 0) return [comm, ...prev];
+      const next = [...prev];
+      next[idx] = { ...next[idx], ...comm };
+      return next;
+    });
+  }, []);
+
   const isCommUnread = useCallback(
     (commId) => !seenMap[seenKey(commId)],
     [seenMap],
@@ -163,6 +183,7 @@ export const StudentClassProvider = ({ children }) => {
       markCommunicationSeen: markSeen,
       isCommUnread,
       getCommunicationById,
+      upsertCommunication,
       COMM_TYPES,
     }),
     [
@@ -179,6 +200,7 @@ export const StudentClassProvider = ({ children }) => {
       markSeen,
       isCommUnread,
       getCommunicationById,
+      upsertCommunication,
     ],
   );
 

@@ -33,8 +33,8 @@ const StudentLogin = () => {
           </p>
         </div>
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4 text-center">
-          <p className="text-xs text-slate-500 mb-1">Code à donner au prof</p>
-          <p className="text-2xl font-bold tracking-widest text-blue-600">{deviceCode}</p>
+          <p className="text-xs text-slate-500 mb-1">Code à donner au prof (8 caractères)</p>
+          <p className="text-3xl font-bold tracking-[0.3em] text-blue-600">{deviceCode}</p>
         </div>
         {!syncConfigured && (
           <p className="text-xs text-amber-600 dark:text-amber-400 rounded-lg border border-amber-200 dark:border-amber-900 p-3">

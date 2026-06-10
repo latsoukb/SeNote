@@ -27,7 +27,7 @@ export const getOrCreateDeviceId = () => {
 };
 
 export const getDeviceCode = (deviceId) =>
-  (deviceId || '').replace(/^dev-/, '').toUpperCase();
+  (deviceId || '').replace(/^dev-/, '').slice(0, 8).toUpperCase();
 
 export const normalizeDeviceId = (input) => {
   const raw = (input || '').trim();
@@ -73,8 +73,20 @@ export const fileToAttachment = async (file) => {
 export const fetchStudentInbox = async (deviceId) => {
   const base = syncBase();
   if (!base) return { enrolled: false, classIds: [], communications: [] };
-  const res = await fetch(`${base}/students/${encodeURIComponent(deviceId)}/inbox`);
+  const res = await fetch(
+    `${base}/students/${encodeURIComponent(deviceId)}/inbox?lite=1`,
+  );
   if (!res.ok) throw new Error('Sync impossible');
+  return res.json();
+};
+
+export const fetchCommunicationDetail = async (classId, commId) => {
+  const base = syncBase();
+  if (!base) throw new Error('Sync non configuré');
+  const res = await fetch(
+    `${base}/classes/${encodeURIComponent(classId)}/communications/${encodeURIComponent(commId)}`,
+  );
+  if (!res.ok) throw new Error('Message introuvable');
   return res.json();
 };
 

@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from './ui/select';
 import { useNotes } from '../context/NotesContext';
+import { fetchCommunicationDetail } from '../lib/classSync';
 import { getCommBackgrounds } from '../lib/commImport';
 import { toast } from 'sonner';
 
@@ -33,7 +34,11 @@ const CommImportDialog = ({ comm, open, onOpenChange }) => {
     setLoading(true);
     const toastId = toast.loading('Import en cours…');
     try {
-      const backgrounds = await getCommBackgrounds(comm);
+      let source = comm;
+      if (source.attachment?.hasData && !source.attachment?.dataUrl) {
+        source = await fetchCommunicationDetail(source.classId, source.id);
+      }
+      const backgrounds = await getCommBackgrounds(source);
       if (!backgrounds?.length) {
         throw new Error('Document non importable');
       }
