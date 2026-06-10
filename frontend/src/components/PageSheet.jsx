@@ -1,7 +1,7 @@
 import React, { useRef, useLayoutEffect, useState, useCallback, useEffect } from 'react';
 import { makeId } from '../lib/id';
 import { PAGE_W, PAGE_H } from '../lib/pageDimensions';
-import { getPageBackground } from '../lib/pageTemplates';
+import { getPageBackground, getPaperZoomStyle } from '../lib/pageTemplates';
 import { detectShape, shapeToStroke, looksLikeHandwriting } from '../lib/shapeDetection';
 import {
   drawShape,
@@ -953,6 +953,10 @@ const PageSheet = ({
             : 'canvas-pen';
 
   const effectiveZoom = isActive ? writeZoom : 1;
+  const paperZoomStyle =
+    bg.type === 'css' && !page?.pdfBackground
+      ? getPaperZoomStyle(page?.template, effectiveZoom)
+      : undefined;
   const baseH = displayHeight;
   const contentW = layoutWidth * effectiveZoom;
   const contentH = displayHeight * effectiveZoom;
@@ -982,7 +986,10 @@ const PageSheet = ({
           draggable={false}
         />
       ) : (
-        <div className={`absolute inset-0 ${bg.className || 'bg-white'}`} />
+        <div
+          className={`absolute inset-0 ${bg.className || 'bg-white'}`}
+          style={paperZoomStyle}
+        />
       )}
       <InkSvgLayer
         strokes={inkStrokes}

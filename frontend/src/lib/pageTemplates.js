@@ -18,6 +18,31 @@ export const getPaperClass = (templateId) => {
   return map[id] || '';
 };
 
+/** Ajuste la taille des motifs CSS quand le zoom d'écriture agrandit la page. */
+export const getPaperZoomStyle = (templateId, zoom = 1) => {
+  if (!zoom || zoom <= 1.01) return undefined;
+  const id = normalizeTemplateId(templateId);
+  const z = zoom;
+  if (id === 'grid') {
+    const cell = 24 * z;
+    return { backgroundSize: `${cell}px ${cell}px` };
+  }
+  if (id === 'dotted') {
+    const cell = 22 * z;
+    return { backgroundSize: `${cell}px ${cell}px` };
+  }
+  if (id === 'lined') {
+    return { backgroundSize: `100% ${32 * z}px` };
+  }
+  if (id === 'music') {
+    return {
+      backgroundSize: `100% ${88 * z}px`,
+      backgroundPosition: `0 ${48 * z}px`,
+    };
+  }
+  return undefined;
+};
+
 export const getTemplateBackground = (templateId) => {
   const id = normalizeTemplateId(templateId);
   if (id === 'seyes') {
