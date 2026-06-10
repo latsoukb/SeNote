@@ -13,6 +13,8 @@ import { useStudentClass } from '../context/StudentClassContext';
 import { COMM_TYPES } from '../lib/classSync';
 import { canImportComm } from '../lib/commImport';
 import CommImportDialog from './CommImportDialog';
+import DeadlineBadge from './DeadlineBadge';
+import { DEADLINE_STYLES, getDeadlineUrgency } from '../lib/deadline';
 
 const TYPE_META = {
   [COMM_TYPES.MESSAGE]: { label: 'Message', icon: MessageSquare },
@@ -119,6 +121,8 @@ const StudentInbox = () => {
           const Icon = meta.icon;
           const unread = isCommUnread(comm.id);
           const importable = canImportComm(comm);
+          const urgency = getDeadlineUrgency(comm.deadlineAt);
+          const deadlineStyle = urgency ? DEADLINE_STYLES[urgency] : null;
 
           return (
             <div
@@ -126,7 +130,9 @@ const StudentInbox = () => {
               className={`rounded-xl border bg-white dark:bg-slate-900 transition-colors ${
                 unread
                   ? 'border-blue-400 dark:border-blue-600 shadow-sm shadow-blue-500/10'
-                  : 'border-slate-200 dark:border-slate-800'
+                  : deadlineStyle
+                    ? deadlineStyle.border
+                    : 'border-slate-200 dark:border-slate-800'
               }`}
             >
               {unread && <div className="h-1 bg-red-600 rounded-t-xl" />}
@@ -143,7 +149,10 @@ const StudentInbox = () => {
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium truncate">{comm.title || meta.label}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-medium truncate">{comm.title || meta.label}</p>
+                      <DeadlineBadge deadlineAt={comm.deadlineAt} />
+                    </div>
                     <p className="text-xs text-blue-600 font-medium">{comm.teacherName}</p>
                     {comm.body && (
                       <p className="text-sm text-slate-500 mt-1 line-clamp-2">{comm.body}</p>

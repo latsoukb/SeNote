@@ -19,6 +19,7 @@ import {
 } from '../lib/classSync';
 
 const SEEN_KEY = 'senote-seen-comms';
+const ANNOUNCED_KEY = 'senote-announced-comms';
 
 const StudentClassContext = createContext(null);
 
@@ -44,6 +45,22 @@ const saveSeen = (map) => {
   }
 };
 
+const loadAnnounced = () => {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(ANNOUNCED_KEY) || '[]'));
+  } catch {
+    return new Set();
+  }
+};
+
+const saveAnnounced = (set) => {
+  try {
+    localStorage.setItem(ANNOUNCED_KEY, JSON.stringify([...set]));
+  } catch {
+    /* ignore */
+  }
+};
+
 const seenKey = (commId) => commId;
 
 export const StudentClassProvider = ({ children }) => {
@@ -56,7 +73,12 @@ export const StudentClassProvider = ({ children }) => {
   const [lastSyncAt, setLastSyncAt] = useState(null);
   const [syncError, setSyncError] = useState(null);
   const [seenMap, setSeenMap] = useState(loadSeen);
-  const knownIdsRef = useRef(new Set());
+  const seenMapRef = useRef(loadSeen());
+  const announcedRef = useRef(loadAnnounced());
+
+  useEffect(() => {
+    seenMapRef.current = seenMap;
+  }, [seenMap]);
 
   const setupStudent = useCallback((name) => {
     const trimmed = name.trim() || 'Élève';
@@ -70,7 +92,8 @@ export const StudentClassProvider = ({ children }) => {
     setCommunications([]);
     setEnrolled(false);
     setClassIds([]);
-    knownIdsRef.current = new Set();
+    announcedRef.current = new Set();
+    saveAnnounced(announcedRef.current);
   }, []);
 
   const syncNow = useCallback(async () => {
@@ -83,8 +106,19 @@ export const StudentClassProvider = ({ children }) => {
       setEnrolled(data.enrolled);
       setClassIds(data.classIds || []);
       const items = data.communications || [];
-      const newItems = items.filter((c) => !knownIdsRef.current.has(c.id));
-      items.forEach((c) => knownIdsRef.current.add(c.id));
+      const seen = seenMapRef.current;
+      const newItems = [];
+      items.forEach((c) => {
+        const key = seenKey(c.id);
+        if (seen[key]) {
+          announcedRef.current.add(c.id);
+          return;
+        }
+        if (announcedRef.current.has(c.id)) return;
+        announcedRef.current.add(c.id);
+        newItems.push(c);
+      });
+      saveAnnounced(announcedRef.current);
       setCommunications(items);
       setLastSyncAt(Date.now());
       setSyncError(null);
@@ -126,6 +160,8 @@ export const StudentClassProvider = ({ children }) => {
       const next = { ...seenMap, [key]: Date.now() };
       setSeenMap(next);
       saveSeen(next);
+      announcedRef.current.add(comm.id);
+      saveAnnounced(announcedRef.current);
       try {
         await markCommunicationSeen(comm.classId, comm.id, {
           deviceId,

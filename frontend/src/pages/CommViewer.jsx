@@ -7,6 +7,7 @@ import { COMM_TYPES, fetchCommunicationDetail } from '../lib/classSync';
 import { canImportComm } from '../lib/commImport';
 import CommImportDialog from '../components/CommImportDialog';
 import Logo from '../components/Logo';
+import DeadlineBadge from '../components/DeadlineBadge';
 
 const CommViewer = () => {
   const { id } = useParams();
@@ -104,6 +105,8 @@ const CommViewer = () => {
           )}
         </div>
       </header>
+
+      <DeadlineBadge deadlineAt={view.deadlineAt} variant="banner" />
 
       <main className="flex-1 p-4 sm:p-8 max-w-3xl mx-auto w-full">
         {loading && (

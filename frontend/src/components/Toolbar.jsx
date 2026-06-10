@@ -43,8 +43,8 @@ const ToolButton = ({ active, onClick, label, children }) => (
 const Toolbar = ({
   tool,
   setTool,
-  color,
-  setColor,
+  toolColors,
+  setColorForActiveTool,
   toolThickness,
   setThicknessForActiveTool,
   onUndo,
@@ -59,6 +59,8 @@ const Toolbar = ({
   onExport,
 }) => {
   const colors = tool === 'highlighter' ? HIGHLIGHTER_COLORS : PEN_COLORS;
+  const colorKey = tool === 'highlighter' ? 'highlighter' : tool === 'text' ? 'text' : 'pen';
+  const color = toolColors[colorKey] ?? colors[0];
   const zoomCustom = Math.abs(writeZoom - DEFAULT_WRITE_ZOOM) > 0.08;
 
   const thickness = toolThickness[tool] ?? toolThickness.pen ?? 2.5;
@@ -166,7 +168,7 @@ const Toolbar = ({
               {colors.map((c) => (
                 <button
                   key={c}
-                  onClick={() => setColor(c)}
+                  onClick={() => setColorForActiveTool(c)}
                   className={`w-6 h-6 rounded-full border-2 shrink-0 ${
                     color === c ? 'border-blue-600 ring-2 ring-blue-300' : 'border-white dark:border-slate-700'
                   }`}
@@ -215,7 +217,7 @@ const Toolbar = ({
             {PEN_COLORS.map((c) => (
               <button
                 key={c}
-                onClick={() => setColor(c)}
+                onClick={() => setColorForActiveTool(c)}
                 className={`w-6 h-6 rounded-full border-2 shrink-0 ${
                   color === c ? 'border-blue-600 ring-2 ring-blue-300' : 'border-white dark:border-slate-700'
                 }`}

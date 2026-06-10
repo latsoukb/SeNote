@@ -32,6 +32,7 @@ import {
   saveToolThickness,
   thicknessForTool,
 } from '../lib/toolThickness';
+import { loadToolColors, saveToolColors, colorForTool } from '../lib/toolColors';
 import { MIN_ZOOM, MAX_ZOOM, DEFAULT_WRITE_ZOOM } from '../components/NoteCanvas';
 import {
   Popover,
@@ -67,8 +68,19 @@ const NotebookEditor = () => {
   const [pageTemplateOpen, setPageTemplateOpen] = useState(null);
 
   const [tool, setTool] = useState('pen');
-  const [color, setColor] = useState('#0F172A');
+  const [toolColors, setToolColors] = useState(loadToolColors);
   const [toolThickness, setToolThickness] = useState(loadToolThickness);
+
+  const setColorForActiveTool = useCallback((value) => {
+    const key = tool === 'highlighter' ? 'highlighter' : tool === 'text' ? 'text' : 'pen';
+    setToolColors((prev) => {
+      const next = { ...prev, [key]: value };
+      saveToolColors(next);
+      return next;
+    });
+  }, [tool]);
+
+  const color = colorForTool(toolColors, tool);
 
   const setThicknessForActiveTool = useCallback((value) => {
     setToolThickness((prev) => {
@@ -412,8 +424,8 @@ const NotebookEditor = () => {
       <Toolbar
         tool={tool}
         setTool={setTool}
-        color={color}
-        setColor={setColor}
+        toolColors={toolColors}
+        setColorForActiveTool={setColorForActiveTool}
         toolThickness={toolThickness}
         setThicknessForActiveTool={setThicknessForActiveTool}
         onUndo={handleUndo}
