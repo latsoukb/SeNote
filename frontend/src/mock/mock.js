@@ -21,8 +21,6 @@ export const PAGE_TEMPLATES = [
   { id: 'grid-margin', name: 'Quadrillé + marge' },
   { id: 'millimeter', name: 'Millimétré' },
   { id: 'music', name: 'Musique' },
-  { id: 'lined', name: 'Ligné' },
-  { id: 'dotted', name: 'Pointillé' },
   { id: 'blank', name: 'Vierge' },
 ];
 

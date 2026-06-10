@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { renderTemplatePreviewDataUrl } from '../lib/templatePreview';
 import { normalizeTemplateId } from '../lib/pageTemplates';
-import { getTemplateThumbUrl } from '../lib/pageDimensions';
+import { getTemplateImageUrl, getTemplateThumbUrl } from '../lib/pageDimensions';
+
+/** Musique : lignes trop fines en vignette compressée → aperçu depuis le PNG pleine page. */
+const previewSrcForTemplate = (id) => {
+  if (id === 'music') return getTemplateImageUrl(id) || getTemplateThumbUrl(id);
+  return getTemplateThumbUrl(id);
+};
 
 /** Miniature = vignette PNG (PDF) ou rendu canvas pour modèles CSS */
 const PageTemplatePreview = ({ template, selected, onClick, size = 'md' }) => {
@@ -11,9 +17,9 @@ const PageTemplatePreview = ({ template, selected, onClick, size = 'md' }) => {
   useEffect(() => {
     let cancelled = false;
     const id = normalizeTemplateId(template.id);
-    const staticThumb = getTemplateThumbUrl(id);
-    if (staticThumb) {
-      setPreviewUrl(staticThumb);
+    const staticPreview = previewSrcForTemplate(id);
+    if (staticPreview) {
+      setPreviewUrl(staticPreview);
       return () => {
         cancelled = true;
       };
