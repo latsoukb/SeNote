@@ -19,6 +19,29 @@ export const getRulerLengthPx = (ruler) => {
 
 export const getSetSquareLegPx = (sq) => cmToPx(sq.legCm ?? 10);
 
+export const getProtractorRadiusPx = (protractor) => cmToPx(protractor.radiusCm ?? 8);
+
+/** Segment du diamètre (règle droite du rapporteur) */
+export const getProtractorSegment = (protractor) => {
+  const rad = ((protractor.rotation || 0) * Math.PI) / 180;
+  const len = getProtractorRadiusPx(protractor) * 2;
+  const cx = protractor.x;
+  const cy = protractor.y;
+  return {
+    a: rotatePoint(cx - len / 2, cy, cx, cy, rad),
+    b: rotatePoint(cx + len / 2, cy, cx, cy, rad),
+    cx,
+    cy,
+    rad,
+    len,
+  };
+};
+
+export const projectOnProtractor = (pos, protractor, threshold = 30) => {
+  const { a, b } = getProtractorSegment(protractor);
+  return projectOnSegment(pos, a, b, RULER_THICKNESS, threshold, { leg: 'diameter' });
+};
+
 export const getRulerSegment = (ruler) => {
   const rad = ((ruler.rotation || 0) * Math.PI) / 180;
   const len = getRulerLengthPx(ruler);
@@ -127,6 +150,18 @@ export const snapToInstruments = (pos, instruments, threshold = 30) => {
     }
   }
 
+  const protractor = instruments?.find((i) => i.type === 'protractor');
+  if (protractor) {
+    const hit = projectOnProtractor(pos, protractor, threshold);
+    if (hit) {
+      const d = Math.hypot(pos.x - hit.x, pos.y - hit.y);
+      if (d < bestD) {
+        best = hit;
+        bestD = d;
+      }
+    }
+  }
+
   if (best) return { ...best, pressure: pos.pressure };
   return { ...pos, onRuler: false };
 };
@@ -164,6 +199,15 @@ export const createSetSquare = (legCm = 10, cx = 380, cy = 520) => ({
   y: cy,
   rotation: 0,
   legCm,
+});
+
+export const createProtractor = (radiusCm = 8, cx = 520, cy = 640) => ({
+  id: makeId('inst'),
+  type: 'protractor',
+  x: cx,
+  y: cy,
+  rotation: 0,
+  radiusCm,
 });
 
 /** @deprecated utiliser createRuler */

@@ -1,7 +1,14 @@
 import React from 'react';
 import { X, RotateCw } from 'lucide-react';
 import { cmToPx } from '../lib/pageDimensions';
-import { RULER_THICKNESS, getRulerLengthPx, getSetSquareLegPx } from '../lib/instrumentSnap';
+import {
+  RULER_THICKNESS,
+  getRulerLengthPx,
+  getSetSquareLegPx,
+  getProtractorRadiusPx,
+} from '../lib/instrumentSnap';
+
+const PROTRACTOR_IMG = `${process.env.PUBLIC_URL || ''}/instruments/protractor.png`;
 
 const snapRotation = (deg) => {
   const n = ((deg % 360) + 360) % 360;
@@ -406,6 +413,55 @@ const GoodNotesSetSquare = ({ inst, scale, zoom = 1, tool, onUpdate, onRemove })
   );
 };
 
+const GoodNotesProtractor = ({ inst, scale, zoom = 1, tool, onUpdate, onRemove }) => {
+  const canInteract = tool === 'ruler' || tool === 'pen' || tool === 'highlighter' || tool === 'lasso';
+  const radius = getProtractorRadiusPx(inst);
+  const diameter = radius * 2;
+  const startDrag = useInstrumentDrag(inst, scale, zoom, onUpdate, 'center');
+
+  return (
+    <div
+      data-instrument
+      className={`absolute ${canInteract ? 'pointer-events-none z-30' : 'pointer-events-none z-10'}`}
+      style={{
+        left: inst.x * scale,
+        top: inst.y * scale,
+        transform: `translate(-50%, -50%) rotate(${inst.rotation || 0}deg)`,
+      }}
+    >
+      <div
+        className="relative"
+        style={{ width: diameter * scale, height: radius * scale }}
+      >
+        <img
+          src={PROTRACTOR_IMG}
+          alt=""
+          draggable={false}
+          className="absolute inset-0 w-full h-full pointer-events-none select-none"
+          style={{ objectFit: 'contain', objectPosition: 'center' }}
+        />
+        <div
+          onPointerDown={(e) => {
+            if (!canInteract) return;
+            e.stopPropagation();
+            e.preventDefault();
+            startDrag(e, 'move');
+          }}
+          className={`absolute inset-0 ${
+            canInteract ? 'pointer-events-auto cursor-grab active:cursor-grabbing' : ''
+          }`}
+        />
+      </div>
+      <InstrumentControls
+        canInteract={canInteract}
+        startDrag={startDrag}
+        onRemove={onRemove}
+        rotateTitle="Pivoter le rapporteur"
+      />
+    </div>
+  );
+};
+
 const GeometryInstruments = ({ instruments = [], scale, zoom = 1, tool, onChange }) => {
   if (!instruments.length) return null;
 
@@ -432,6 +488,19 @@ const GeometryInstruments = ({ instruments = [], scale, zoom = 1, tool, onChange
         if (inst.type === 'setSquare') {
           return (
             <GoodNotesSetSquare
+              key={inst.id}
+              inst={inst}
+              scale={scale}
+              zoom={zoom}
+              tool={tool}
+              onUpdate={update}
+              onRemove={remove}
+            />
+          );
+        }
+        if (inst.type === 'protractor') {
+          return (
+            <GoodNotesProtractor
               key={inst.id}
               inst={inst}
               scale={scale}

@@ -27,7 +27,6 @@ export const preloadTemplateImages = () => {
     'grid-margin': 1,
     millimeter: 1,
     music: 1,
-    protractor: 1,
   }).forEach((id) => {
     const src = getTemplateImageUrl(id);
     if (src && !preloaded.has(src)) loadBgImage(src);

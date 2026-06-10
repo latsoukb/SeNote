@@ -43,7 +43,7 @@ export const getTemplateBackground = (templateId) => {
     return {
       type: 'image',
       src,
-      fit: id === 'protractor' ? 'contain' : 'fill',
+      fit: 'fill',
     };
   }
   if (id === 'blank') {

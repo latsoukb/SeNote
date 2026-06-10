@@ -18,7 +18,6 @@ export const TEMPLATE_IMAGE_FILES = {
   'grid-margin': 'grid-margin',
   millimeter: 'millimeter',
   music: 'music',
-  protractor: 'protractor',
 };
 
 export const getTemplateImageUrl = (templateId) => {

@@ -33,14 +33,7 @@ export const renderTemplatePreviewDataUrl = async (templateId) => {
   if (src) {
     const img = await loadTemplateImage(src);
     if (img) {
-      if (id === 'protractor') {
-        const scale = Math.min(PAGE_W / img.width, PAGE_H / img.height) * 0.92;
-        const w = img.width * scale;
-        const h = img.height * scale;
-        ctx.drawImage(img, (PAGE_W - w) / 2, (PAGE_H - h) / 2, w, h);
-      } else {
-        ctx.drawImage(img, 0, 0, PAGE_W, PAGE_H);
-      }
+      ctx.drawImage(img, 0, 0, PAGE_W, PAGE_H);
     }
   } else {
     drawTemplateBackground(ctx, id, PAGE_W, PAGE_H);
