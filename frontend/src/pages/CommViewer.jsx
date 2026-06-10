@@ -1,14 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Download, BookPlus, Loader2 } from 'lucide-react';
+import { ArrowLeft, Download, BookPlus, Loader2, FileText, Image as ImageIcon } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { useStudentClass } from '../context/StudentClassContext';
 import { COMM_TYPES, fetchCommunicationDetail } from '../lib/classSync';
 import { canImportComm } from '../lib/commImport';
+import { commNeedsDetailFetch, getCommAttachments } from '../lib/commAttachments';
 import CommImportDialog from '../components/CommImportDialog';
 import Logo from '../components/Logo';
 import DeadlineBadge from '../components/DeadlineBadge';
 import DeadlineDoneButton from '../components/DeadlineDoneButton';
+
+const isPdfAttachment = (att) =>
+  att.type === COMM_TYPES.PDF || att.mimeType === 'application/pdf';
+
+const isImageAttachment = (att) =>
+  att.type === COMM_TYPES.IMAGE || att.mimeType?.startsWith('image/');
 
 const CommViewer = () => {
   const { id } = useParams();
@@ -29,9 +36,7 @@ const CommViewer = () => {
       setComm(null);
       return;
     }
-    const needsDetail =
-      summary.attachment?.hasData && !summary.attachment?.dataUrl;
-    if (!needsDetail) {
+    if (!commNeedsDetailFetch(summary)) {
       setComm(summary);
       return;
     }
@@ -70,14 +75,19 @@ const CommViewer = () => {
   }
 
   const view = comm || summary;
+  const attachments = getCommAttachments(view);
+  const downloadable = attachments.filter((a) => a.dataUrl);
+  const needsDetail = commNeedsDetailFetch(view);
 
-  const download = () => {
-    if (!view.attachment?.dataUrl) return;
+  const downloadFile = (att) => {
+    if (!att.dataUrl) return;
     const a = document.createElement('a');
-    a.href = view.attachment.dataUrl;
-    a.download = view.attachment.fileName || 'fichier';
+    a.href = att.dataUrl;
+    a.download = att.fileName || 'fichier';
     a.click();
   };
+
+  const downloadAll = () => downloadable.forEach(downloadFile);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950">
@@ -88,7 +98,10 @@ const CommViewer = () => {
         <Logo size="sm" />
         <div className="min-w-0 flex-1">
           <p className="font-medium truncate">{view.title}</p>
-          <p className="text-xs text-slate-500">{view.teacherName}</p>
+          <p className="text-xs text-slate-500">
+            {view.teacherName}
+            {attachments.length > 1 && ` · ${attachments.length} fichiers`}
+          </p>
         </div>
         <div className="flex gap-2 shrink-0">
           {canImportComm(view) && (
@@ -97,16 +110,22 @@ const CommViewer = () => {
               size="sm"
               onClick={() => setImportOpen(true)}
               className="gap-2 bg-blue-600 hover:bg-blue-700"
-              disabled={loading || !view.attachment?.dataUrl}
+              disabled={loading || needsDetail}
             >
               <BookPlus className="w-4 h-4" />
               <span className="hidden sm:inline">Importer</span>
             </Button>
           )}
-          {view.attachment?.dataUrl && (
-            <Button variant="outline" size="sm" onClick={download} className="gap-2">
+          {downloadable.length === 1 && (
+            <Button variant="outline" size="sm" onClick={() => downloadFile(downloadable[0])} className="gap-2">
               <Download className="w-4 h-4" />
               <span className="hidden sm:inline">Télécharger</span>
+            </Button>
+          )}
+          {downloadable.length > 1 && (
+            <Button variant="outline" size="sm" onClick={downloadAll} className="gap-2">
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">Tout télécharger</span>
             </Button>
           )}
         </div>
@@ -135,21 +154,64 @@ const CommViewer = () => {
         {view.body && (
           <p className="text-base leading-relaxed whitespace-pre-wrap mb-6">{view.body}</p>
         )}
-        {view.type === COMM_TYPES.IMAGE && view.attachment?.dataUrl && (
-          <img
-            src={view.attachment.dataUrl}
-            alt={view.title}
-            className="max-w-full rounded-lg shadow-md border border-slate-200 dark:border-slate-800"
-          />
+
+        {attachments.length > 1 && (
+          <ul className="mb-6 flex flex-wrap gap-2">
+            {attachments.map((att, idx) => (
+              <li key={`${att.fileName}-${idx}`}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 max-w-full"
+                  disabled={!att.dataUrl}
+                  onClick={() => downloadFile(att)}
+                >
+                  {isPdfAttachment(att) ? (
+                    <FileText className="w-3.5 h-3.5 shrink-0" />
+                  ) : (
+                    <ImageIcon className="w-3.5 h-3.5 shrink-0" />
+                  )}
+                  <span className="truncate">{att.fileName || `Fichier ${idx + 1}`}</span>
+                </Button>
+              </li>
+            ))}
+          </ul>
         )}
-        {view.type === COMM_TYPES.PDF && view.attachment?.dataUrl && (
-          <iframe
-            title={view.title}
-            src={view.attachment.dataUrl}
-            className="w-full h-[70vh] rounded-lg border border-slate-200 dark:border-slate-800 bg-white"
-          />
-        )}
-        {view.type === COMM_TYPES.MESSAGE && !view.body && (
+
+        {attachments.map((att, idx) => {
+          if (!att.dataUrl) return null;
+          if (isImageAttachment(att)) {
+            return (
+              <figure key={`${att.fileName}-${idx}`} className="mb-6">
+                {attachments.length > 1 && (
+                  <figcaption className="text-sm text-slate-500 mb-2">{att.fileName}</figcaption>
+                )}
+                <img
+                  src={att.dataUrl}
+                  alt={att.fileName || view.title}
+                  className="max-w-full rounded-lg shadow-md border border-slate-200 dark:border-slate-800"
+                />
+              </figure>
+            );
+          }
+          if (isPdfAttachment(att)) {
+            return (
+              <figure key={`${att.fileName}-${idx}`} className="mb-6">
+                {attachments.length > 1 && (
+                  <figcaption className="text-sm text-slate-500 mb-2">{att.fileName}</figcaption>
+                )}
+                <iframe
+                  title={att.fileName || view.title}
+                  src={att.dataUrl}
+                  className="w-full h-[70vh] rounded-lg border border-slate-200 dark:border-slate-800 bg-white"
+                />
+              </figure>
+            );
+          }
+          return null;
+        })}
+
+        {view.type === COMM_TYPES.MESSAGE && !view.body && attachments.length === 0 && (
           <p className="text-slate-500 italic">Message sans texte.</p>
         )}
       </main>

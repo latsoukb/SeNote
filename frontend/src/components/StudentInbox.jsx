@@ -12,6 +12,7 @@ import { Button } from './ui/button';
 import { useStudentClass } from '../context/StudentClassContext';
 import { COMM_TYPES } from '../lib/classSync';
 import { canImportComm } from '../lib/commImport';
+import { commAttachmentCount } from '../lib/commAttachments';
 import CommImportDialog from './CommImportDialog';
 import DeadlineBadge from './DeadlineBadge';
 import DeadlineDoneButton from './DeadlineDoneButton';
@@ -123,6 +124,7 @@ const StudentInbox = () => {
           const Icon = meta.icon;
           const unread = isCommUnread(comm.id);
           const importable = canImportComm(comm);
+          const fileCount = commAttachmentCount(comm);
           const done = isCommunicationDone(comm.id);
           const urgency = getDeadlineDisplayUrgency(comm.deadlineAt, done);
           const deadlineStyle = urgency ? DEADLINE_STYLES[urgency] : null;
@@ -154,6 +156,11 @@ const StudentInbox = () => {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-medium truncate">{comm.title || meta.label}</p>
+                      {fileCount > 1 && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 shrink-0">
+                          {fileCount} fichiers
+                        </span>
+                      )}
                       <DeadlineBadge deadlineAt={comm.deadlineAt} done={done} />
                     </div>
                     <p className="text-xs text-blue-600 font-medium">{comm.teacherName}</p>

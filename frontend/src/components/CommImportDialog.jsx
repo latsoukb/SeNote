@@ -21,6 +21,7 @@ import { useNotes } from '../context/NotesContext';
 import { getNotebookSections } from '../lib/notebookSections';
 import { fetchCommunicationDetail } from '../lib/classSync';
 import { getCommBackgrounds } from '../lib/commImport';
+import { commNeedsDetailFetch } from '../lib/commAttachments';
 import { toast } from 'sonner';
 
 const CommImportDialog = ({ comm, open, onOpenChange }) => {
@@ -36,7 +37,7 @@ const CommImportDialog = ({ comm, open, onOpenChange }) => {
     const toastId = toast.loading('Import en cours…');
     try {
       let source = comm;
-      if (source.attachment?.hasData && !source.attachment?.dataUrl) {
+      if (commNeedsDetailFetch(source)) {
         source = await fetchCommunicationDetail(source.classId, source.id);
       }
       const backgrounds = await getCommBackgrounds(source);

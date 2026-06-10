@@ -1,20 +1,29 @@
 import { COMM_TYPES } from './classSync';
 import { parsePdfDataUrl } from './pdfImport';
+import { getCommAttachments } from './commAttachments';
 
-/** Extrait les fonds de page importables depuis un envoi prof. */
+/** Extrait les fonds de page importables depuis un envoi prof (tous les fichiers). */
 export const getCommBackgrounds = async (comm) => {
-  const title = comm.title || 'Document';
-  const dataUrl = comm.attachment?.dataUrl;
+  const attachments = getCommAttachments(comm);
+  const backgrounds = [];
 
-  if (comm.type === COMM_TYPES.PDF && dataUrl) {
-    const { backgrounds } = await parsePdfDataUrl(dataUrl, title);
-    return backgrounds;
+  for (const att of attachments) {
+    const label = att.fileName || comm.title || 'Document';
+    if (
+      (att.type === COMM_TYPES.PDF || att.mimeType === 'application/pdf') &&
+      att.dataUrl
+    ) {
+      const { backgrounds: pages } = await parsePdfDataUrl(att.dataUrl, label);
+      backgrounds.push(...pages);
+    } else if (
+      (att.type === COMM_TYPES.IMAGE || att.mimeType?.startsWith('image/')) &&
+      att.dataUrl
+    ) {
+      backgrounds.push(att.dataUrl);
+    }
   }
-  if (comm.type === COMM_TYPES.IMAGE && dataUrl) {
-    return [dataUrl];
-  }
-  return null;
+
+  return backgrounds.length ? backgrounds : null;
 };
 
-export const canImportComm = (comm) =>
-  comm?.type === COMM_TYPES.PDF || comm?.type === COMM_TYPES.IMAGE;
+export { canImportComm } from './commAttachments';
