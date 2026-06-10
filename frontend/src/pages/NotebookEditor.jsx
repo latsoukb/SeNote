@@ -28,7 +28,7 @@ import { useOpenNotebooks } from '../context/OpenNotebooksContext';
 import { getNotebookSections } from '../lib/notebookSections';
 import { clampPageIdx } from '../lib/notebookSession';
 import { exportNotebookToPdf } from '../lib/exportNotebookPdf';
-import { createRuler, createSetSquare, createProtractor } from '../lib/instrumentSnap';
+import { createRuler, createSetSquare } from '../lib/instrumentSnap';
 import { clampPan, focalPan } from '../lib/inkEngine';
 import {
   loadToolThickness,
@@ -372,15 +372,10 @@ const NotebookEditor = () => {
     const existing = (currentPage.instruments || []).filter((i) => {
       if (kind === 'ruler') return i.type !== 'ruler';
       if (kind === 'setSquare') return i.type !== 'setSquare';
-      if (kind === 'protractor') return i.type !== 'protractor';
       return true;
     });
     const inst =
-      kind === 'setSquare'
-        ? createSetSquare(sizeCm)
-        : kind === 'protractor'
-          ? createProtractor(sizeCm)
-          : createRuler(sizeCm);
+      kind === 'setSquare' ? createSetSquare(sizeCm) : createRuler(sizeCm);
     handlePageUpdate(currentPage.id, { instruments: [...existing, inst] });
     setTool('pen');
   };

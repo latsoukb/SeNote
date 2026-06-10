@@ -110,12 +110,6 @@ const Toolbar = ({
             >
               Équerre 10 cm
             </button>
-            <button
-              onClick={() => onAddInstrument('protractor', 8)}
-              className="w-full text-left px-3 py-2 rounded-md text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
-            >
-              Rapporteur
-            </button>
           </PopoverContent>
         </Popover>
         <ToolButton active={tool === 'text'} onClick={() => setTool('text')} label="Texte">

@@ -908,7 +908,7 @@ const Library = () => {
                   <div className="space-y-2">
                     <Label>Modèle de page</Label>
                     <p className="text-xs text-slate-500">
-                      Seyès, quadrillé, millimétré, musique, rapporteur…
+                      Seyès, quadrillé, millimétré, musique…
                     </p>
                     <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-[min(50vh,340px)] overflow-y-auto thin-scroll pr-1">
                       {PAGE_TEMPLATES.map((t) => (

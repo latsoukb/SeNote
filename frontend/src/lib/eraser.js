@@ -115,7 +115,7 @@ export const eraseTextBoxes = (boxes, eraserPts, radius) => {
 
 export const eraseInstruments = (instruments, eraserPts, radius) => {
   return (instruments || []).filter((inst) => {
-    if (inst.type === 'ruler' || inst.type === 'setSquare' || inst.type === 'protractor') {
+    if (inst.type === 'ruler' || inst.type === 'setSquare') {
       return !eraserPts.some((p) => dist(p, { x: inst.x, y: inst.y }) < radius + 40);
     }
     return true;

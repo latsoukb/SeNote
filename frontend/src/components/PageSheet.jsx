@@ -410,7 +410,7 @@ const PageSheet = ({
   const instruments = erasePreview?.instruments ?? page.instruments ?? [];
   const displayTextBoxes = erasePreview?.textBoxes ?? page.textBoxes ?? [];
   const hasSnapInstruments = instruments.some(
-    (i) => i.type === 'ruler' || i.type === 'setSquare' || i.type === 'protractor'
+    (i) => i.type === 'ruler' || i.type === 'setSquare'
   );
 
   const eraserRadius = () => Math.max(10, thickness * 3.5);
