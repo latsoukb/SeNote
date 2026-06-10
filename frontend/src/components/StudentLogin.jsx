@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Send } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -6,13 +7,17 @@ import Logo from './Logo';
 import { useStudentClass } from '../context/StudentClassContext';
 
 const StudentLogin = () => {
-  const { setupStudent, deviceCode, syncConfigured } = useStudentClass();
+  const { setupStudent, syncNow, syncConfigured } = useStudentClass();
   const [name, setName] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || submitting) return;
+    setSubmitting(true);
     setupStudent(name);
+    await syncNow();
+    setSubmitting(false);
   };
 
   return (
@@ -27,22 +32,25 @@ const StudentLogin = () => {
             onChange={(e) => setName(e.target.value)}
             placeholder="Amadou"
             required
+            autoFocus
           />
           <p className="text-xs text-slate-500">
-            Pas de code classe — ton professeur t&apos;inscrit depuis JokkoNote.
+            Ton code appareil s&apos;affichera après avoir envoyé ta demande — à montrer au prof sur
+            cette tablette uniquement.
           </p>
-        </div>
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 p-4 text-center">
-          <p className="text-xs text-slate-500 mb-1">Code à donner au prof (8 caractères)</p>
-          <p className="text-3xl font-bold tracking-[0.3em] text-blue-600">{deviceCode}</p>
         </div>
         {!syncConfigured && (
           <p className="text-xs text-amber-600 dark:text-amber-400 rounded-lg border border-amber-200 dark:border-amber-900 p-3">
             Serveur de sync non configuré.
           </p>
         )}
-        <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
-          Continuer
+        <Button
+          type="submit"
+          className="w-full bg-blue-600 hover:bg-blue-700 gap-2"
+          disabled={submitting || !name.trim()}
+        >
+          <Send className="w-4 h-4" />
+          {submitting ? 'Envoi…' : 'Demander mon inscription'}
         </Button>
       </form>
     </div>

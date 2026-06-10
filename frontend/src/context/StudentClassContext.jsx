@@ -7,6 +7,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { toast } from 'sonner';
 import {
   COMM_TYPES,
   fetchStudentInbox,
@@ -93,6 +94,7 @@ export const StudentClassProvider = ({ children }) => {
   const [doneMap, setDoneMap] = useState(loadDone);
   const seenMapRef = useRef(loadSeen());
   const announcedRef = useRef(loadAnnounced());
+  const enrolledRef = useRef(false);
 
   useEffect(() => {
     seenMapRef.current = seenMap;
@@ -109,6 +111,7 @@ export const StudentClassProvider = ({ children }) => {
     saveStoredStudentName('');
     setCommunications([]);
     setEnrolled(false);
+    enrolledRef.current = false;
     setClassIds([]);
     announcedRef.current = new Set();
     saveAnnounced(announcedRef.current);
@@ -121,7 +124,16 @@ export const StudentClassProvider = ({ children }) => {
     setSyncing(true);
     try {
       const data = await fetchStudentInbox(deviceId);
-      setEnrolled(data.enrolled);
+      const nowEnrolled = Boolean(data.enrolled);
+      if (nowEnrolled && !enrolledRef.current) {
+        const n = (data.classIds || []).length;
+        toast.success(
+          n > 1 ? `Inscrit dans ${n} classes` : 'Inscrit dans la classe de ton prof',
+          { description: 'Les messages arrivent dans Réception.', duration: 8000 },
+        );
+      }
+      enrolledRef.current = nowEnrolled;
+      setEnrolled(nowEnrolled);
       setClassIds(data.classIds || []);
       const items = data.communications || [];
       const seen = seenMapRef.current;
@@ -157,7 +169,8 @@ export const StudentClassProvider = ({ children }) => {
   useEffect(() => {
     if (!deviceId || !isSyncConfigured()) return undefined;
     syncNow();
-    const id = setInterval(syncNow, 15_000);
+    const tick = () => syncNow();
+    const id = setInterval(tick, enrolled ? 15_000 : 5_000);
     const onVisible = () => {
       if (document.visibilityState === 'visible') syncNow();
     };
@@ -168,7 +181,7 @@ export const StudentClassProvider = ({ children }) => {
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('focus', syncNow);
     };
-  }, [deviceId, syncNow]);
+  }, [deviceId, syncNow, enrolled]);
 
   const markSeen = useCallback(
     async (comm) => {
