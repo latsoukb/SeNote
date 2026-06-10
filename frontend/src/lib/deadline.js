@@ -11,6 +11,11 @@ export const getDeadlineUrgency = (deadlineAt) => {
   return 'green';
 };
 
+export const getDeadlineDisplayUrgency = (deadlineAt, done) => {
+  if (done) return 'done';
+  return getDeadlineUrgency(deadlineAt);
+};
+
 export const DEADLINE_STYLES = {
   red: {
     label: 'Urgent',
@@ -36,6 +41,14 @@ export const DEADLINE_STYLES = {
     badge: 'bg-emerald-600 text-white',
     banner: 'bg-emerald-600 text-white',
   },
+  done: {
+    label: 'Terminé',
+    bg: 'bg-emerald-600',
+    border: 'border-emerald-500',
+    text: 'text-emerald-700 dark:text-emerald-300',
+    badge: 'bg-emerald-600 text-white',
+    banner: 'bg-emerald-600 text-white',
+  },
 };
 
 export const formatDeadline = (deadlineAt) => {
@@ -47,6 +60,11 @@ export const formatDeadline = (deadlineAt) => {
     hour: '2-digit',
     minute: '2-digit',
   });
+};
+
+export const formatDeadlineStatus = (deadlineAt, done) => {
+  if (done) return 'Travail terminé';
+  return formatDeadlineCountdown(deadlineAt);
 };
 
 export const formatDeadlineCountdown = (deadlineAt) => {

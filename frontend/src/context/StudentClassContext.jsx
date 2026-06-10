@@ -20,6 +20,7 @@ import {
 
 const SEEN_KEY = 'senote-seen-comms';
 const ANNOUNCED_KEY = 'senote-announced-comms';
+const DONE_KEY = 'senote-done-comms';
 
 const StudentClassContext = createContext(null);
 
@@ -61,6 +62,22 @@ const saveAnnounced = (set) => {
   }
 };
 
+const loadDone = () => {
+  try {
+    return JSON.parse(localStorage.getItem(DONE_KEY) || '{}');
+  } catch {
+    return {};
+  }
+};
+
+const saveDone = (map) => {
+  try {
+    localStorage.setItem(DONE_KEY, JSON.stringify(map));
+  } catch {
+    /* ignore */
+  }
+};
+
 const seenKey = (commId) => commId;
 
 export const StudentClassProvider = ({ children }) => {
@@ -73,6 +90,7 @@ export const StudentClassProvider = ({ children }) => {
   const [lastSyncAt, setLastSyncAt] = useState(null);
   const [syncError, setSyncError] = useState(null);
   const [seenMap, setSeenMap] = useState(loadSeen);
+  const [doneMap, setDoneMap] = useState(loadDone);
   const seenMapRef = useRef(loadSeen());
   const announcedRef = useRef(loadAnnounced());
 
@@ -200,6 +218,22 @@ export const StudentClassProvider = ({ children }) => {
     [seenMap],
   );
 
+  const isCommunicationDone = useCallback(
+    (commId) => Boolean(doneMap[commId]),
+    [doneMap],
+  );
+
+  const toggleCommunicationDone = useCallback((commId) => {
+    if (!commId) return;
+    setDoneMap((prev) => {
+      const next = { ...prev };
+      if (next[commId]) delete next[commId];
+      else next[commId] = Date.now();
+      saveDone(next);
+      return next;
+    });
+  }, []);
+
   const session = displayName
     ? { deviceId, displayName, deviceCode: getDeviceCode(deviceId), enrolled, classIds }
     : null;
@@ -222,6 +256,8 @@ export const StudentClassProvider = ({ children }) => {
       syncNow,
       markCommunicationSeen: markSeen,
       isCommUnread,
+      isCommunicationDone,
+      toggleCommunicationDone,
       getCommunicationById,
       upsertCommunication,
       COMM_TYPES,
@@ -240,6 +276,8 @@ export const StudentClassProvider = ({ children }) => {
       syncNow,
       markSeen,
       isCommUnread,
+      isCommunicationDone,
+      toggleCommunicationDone,
       getCommunicationById,
       upsertCommunication,
     ],

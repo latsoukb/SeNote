@@ -14,7 +14,8 @@ import { COMM_TYPES } from '../lib/classSync';
 import { canImportComm } from '../lib/commImport';
 import CommImportDialog from './CommImportDialog';
 import DeadlineBadge from './DeadlineBadge';
-import { DEADLINE_STYLES, getDeadlineUrgency } from '../lib/deadline';
+import DeadlineDoneButton from './DeadlineDoneButton';
+import { DEADLINE_STYLES, getDeadlineDisplayUrgency } from '../lib/deadline';
 
 const TYPE_META = {
   [COMM_TYPES.MESSAGE]: { label: 'Message', icon: MessageSquare },
@@ -32,6 +33,7 @@ const StudentInbox = () => {
     syncNow,
     markCommunicationSeen,
     isCommUnread,
+    isCommunicationDone,
     syncConfigured,
     syncError,
   } = useStudentClass();
@@ -121,7 +123,8 @@ const StudentInbox = () => {
           const Icon = meta.icon;
           const unread = isCommUnread(comm.id);
           const importable = canImportComm(comm);
-          const urgency = getDeadlineUrgency(comm.deadlineAt);
+          const done = isCommunicationDone(comm.id);
+          const urgency = getDeadlineDisplayUrgency(comm.deadlineAt, done);
           const deadlineStyle = urgency ? DEADLINE_STYLES[urgency] : null;
 
           return (
@@ -151,7 +154,7 @@ const StudentInbox = () => {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-medium truncate">{comm.title || meta.label}</p>
-                      <DeadlineBadge deadlineAt={comm.deadlineAt} />
+                      <DeadlineBadge deadlineAt={comm.deadlineAt} done={done} />
                     </div>
                     <p className="text-xs text-blue-600 font-medium">{comm.teacherName}</p>
                     {comm.body && (
@@ -160,6 +163,11 @@ const StudentInbox = () => {
                     <p className="text-xs text-slate-400 mt-2">{formatWhen(comm.createdAt)}</p>
                   </div>
                 </Link>
+                {comm.deadlineAt && (
+                  <div className="mt-3 flex justify-end">
+                    <DeadlineDoneButton commId={comm.id} variant="inline" />
+                  </div>
+                )}
                 {importable && (
                   <Button
                     variant="outline"

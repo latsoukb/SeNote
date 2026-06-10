@@ -8,11 +8,17 @@ import { canImportComm } from '../lib/commImport';
 import CommImportDialog from '../components/CommImportDialog';
 import Logo from '../components/Logo';
 import DeadlineBadge from '../components/DeadlineBadge';
+import DeadlineDoneButton from '../components/DeadlineDoneButton';
 
 const CommViewer = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { getCommunicationById, upsertCommunication, markCommunicationSeen } = useStudentClass();
+  const {
+    getCommunicationById,
+    upsertCommunication,
+    markCommunicationSeen,
+    isCommunicationDone,
+  } = useStudentClass();
   const summary = getCommunicationById(id);
   const [comm, setComm] = useState(summary || null);
   const [loading, setLoading] = useState(false);
@@ -106,7 +112,18 @@ const CommViewer = () => {
         </div>
       </header>
 
-      <DeadlineBadge deadlineAt={view.deadlineAt} variant="banner" />
+      {view.deadlineAt && (
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <DeadlineBadge
+            deadlineAt={view.deadlineAt}
+            done={isCommunicationDone(view.id)}
+            variant="banner"
+          />
+          <div className="px-4 pb-2 sm:pb-0 sm:pr-4 shrink-0">
+            <DeadlineDoneButton commId={view.id} variant="inline" />
+          </div>
+        </div>
+      )}
 
       <main className="flex-1 p-4 sm:p-8 max-w-3xl mx-auto w-full">
         {loading && (
