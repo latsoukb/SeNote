@@ -39,8 +39,8 @@ import {
   focalPan,
   getPanEdgeOverflow,
 } from '../lib/inkEngine';
-import { drawStroke, drawStrokesLayered, createStaticLayer } from '../lib/strokeRenderer';
-import { configureCanvas2d, getCanvasPixelScale } from '../lib/canvasResolution';
+import { strokeToSvgPath } from '../lib/strokeSvg';
+import InkSvgLayer from './InkSvgLayer';
 import { MIN_ZOOM, MAX_ZOOM } from './NoteCanvas';
 
 const SHAPE_DELAY_MS = 650;
@@ -66,7 +66,10 @@ const PageSheet = ({
   onRequestActivate,
   onScrollChain,
 }) => {
-  const canvasRef = useRef(null);
+  const pointerLayerRef = useRef(null);
+  const livePathRef = useRef(null);
+  const [inkVersion, setInkVersion] = useState(0);
+  const [eraserRing, setEraserRing] = useState(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
   const panStartRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
@@ -92,10 +95,6 @@ const PageSheet = ({
   const lassoDragRef = useRef(null);
   const lassoOrigStrokeRef = useRef(null);
   const textTapRef = useRef(null);
-  const highlightLayerRef = useRef(null);
-  const inkLayerRef = useRef(null);
-  const staticDirtyRef = useRef(true);
-  const pixelScaleRef = useRef(1);
   const viewportRef = useRef(null);
   const pinchRef = useRef(null);
   const touchPanRef = useRef(null);
@@ -147,7 +146,7 @@ const PageSheet = ({
       points: s.points ? [...s.points] : s.points,
       shape: s.shape ? { ...s.shape } : s.shape,
     }));
-    staticDirtyRef.current = true;
+    setInkVersion((v) => v + 1);
   }, [page.strokes]);
 
   const syncStrokesFromProps = useCallback(() => {
@@ -167,7 +166,7 @@ const PageSheet = ({
     if (page.id !== pageIdRef.current) {
       strokesRef.current = page.strokes || [];
       pageIdRef.current = page.id;
-      staticDirtyRef.current = true;
+      setInkVersion((v) => v + 1);
     }
   }, [page.id, page.strokes]);
 
@@ -393,8 +392,9 @@ const PageSheet = ({
   const eraserRadius = () => Math.max(10, thickness * 3.5);
 
   const getPosFromClient = (clientX, clientY, pressure = 0.5) => {
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
+    const surface = pointerLayerRef.current;
+    if (!surface) return { x: 0, y: 0, pressure };
+    const rect = surface.getBoundingClientRect();
     let pos = {
       x: ((clientX - rect.left) / rect.width) * PAGE_W,
       y: ((clientY - rect.top) / rect.height) * PAGE_H,
@@ -408,90 +408,40 @@ const PageSheet = ({
 
   const getPos = (e) => getPosFromClient(e.clientX, e.clientY, e.pressure > 0 ? e.pressure : 0.5);
 
-  const syncCanvasResolution = useCallback((effectiveZoom) => {
-    const pixelScale = getCanvasPixelScale(effectiveZoom);
-    if (pixelScaleRef.current !== pixelScale) {
-      pixelScaleRef.current = pixelScale;
-      staticDirtyRef.current = true;
-      highlightLayerRef.current = null;
-      inkLayerRef.current = null;
+  const bumpInk = useCallback(() => setInkVersion((v) => v + 1), []);
+
+  const updateLivePath = useCallback(() => {
+    const el = livePathRef.current;
+    const stroke = currentStrokeRef.current;
+    if (!el) return;
+    if (!stroke?.points?.length) {
+      el.setAttribute('d', '');
+      return;
     }
-    const canvas = canvasRef.current;
-    if (canvas) configureCanvas2d(canvas, pixelScale);
-    return pixelScale;
+    const isHi = stroke.type === 'highlighter';
+    el.setAttribute('d', strokeToSvgPath(stroke));
+    el.setAttribute('stroke', stroke.color);
+    el.setAttribute('stroke-width', String(stroke.thickness));
+    el.setAttribute('stroke-linecap', isHi ? 'butt' : 'round');
+    el.setAttribute('opacity', isHi ? '0.5' : '1');
+    el.style.mixBlendMode = isHi ? 'multiply' : '';
   }, []);
-
-  const ensureStrokeLayers = useCallback((pixelScale) => {
-    if (!highlightLayerRef.current) {
-      highlightLayerRef.current = createStaticLayer();
-      configureCanvas2d(highlightLayerRef.current, pixelScale);
-    }
-    if (!inkLayerRef.current) {
-      inkLayerRef.current = createStaticLayer();
-      configureCanvas2d(inkLayerRef.current, pixelScale);
-    }
-    return { highlight: highlightLayerRef.current, ink: inkLayerRef.current };
-  }, []);
-
-  const rebuildStaticLayer = useCallback((pixelScale) => {
-    const { highlight, ink } = ensureStrokeLayers(pixelScale);
-    const hctx = highlight.getContext('2d');
-    const ictx = ink.getContext('2d');
-    hctx.setTransform(pixelScale, 0, 0, pixelScale, 0, 0);
-    ictx.setTransform(pixelScale, 0, 0, pixelScale, 0, 0);
-    hctx.clearRect(0, 0, PAGE_W, PAGE_H);
-    ictx.clearRect(0, 0, PAGE_W, PAGE_H);
-    const list = strokesRef.current ?? [];
-    list.filter((s) => s.type === 'highlighter').forEach((s) => drawStroke(hctx, s));
-    list.filter((s) => s.type !== 'highlighter').forEach((s) => drawStroke(ictx, s));
-    staticDirtyRef.current = false;
-  }, [ensureStrokeLayers]);
-
-  const renderCanvas = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const effectiveZoom = isActive ? writeZoom : 1;
-    const pixelScale = syncCanvasResolution(effectiveZoom);
-    const ctx = canvas.getContext('2d');
-    ctx.setTransform(pixelScale, 0, 0, pixelScale, 0, 0);
-    ctx.clearRect(0, 0, PAGE_W, PAGE_H);
-
-    const isErasing = tool === 'eraser' && liveStrokesRef.current;
-    const current = currentStrokeRef.current;
-
-    if (isErasing) {
-      drawStrokesLayered(ctx, liveStrokesRef.current);
-    } else {
-      if (staticDirtyRef.current) rebuildStaticLayer(pixelScale);
-      const hLayer = highlightLayerRef.current;
-      const iLayer = inkLayerRef.current;
-      if (hLayer) ctx.drawImage(hLayer, 0, 0, PAGE_W, PAGE_H);
-      if (current?.type === 'highlighter') drawStroke(ctx, current);
-      if (iLayer) ctx.drawImage(iLayer, 0, 0, PAGE_W, PAGE_H);
-      if (current && current.type !== 'highlighter') drawStroke(ctx, current);
-    }
-
-    if (tool === 'eraser' && isDrawing && eraserPathRef.current.length) {
-      const last = eraserPathRef.current[eraserPathRef.current.length - 1];
-      const r = Math.max(10, thickness * 3.5);
-      ctx.save();
-      ctx.strokeStyle = 'rgba(100,116,139,0.45)';
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([4, 4]);
-      ctx.beginPath();
-      ctx.arc(last.x, last.y, r, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-    }
-  }, [tool, isDrawing, thickness, rebuildStaticLayer, syncCanvasResolution, isActive, writeZoom]);
 
   const scheduleRender = useCallback(() => {
     if (rafRef.current) return;
     rafRef.current = requestAnimationFrame(() => {
       rafRef.current = null;
-      renderCanvas();
+      if (tool === 'eraser' && liveStrokesRef.current) {
+        bumpInk();
+        const last = eraserPathRef.current[eraserPathRef.current.length - 1];
+        if (last) {
+          setEraserRing({ x: last.x, y: last.y, r: Math.max(10, thickness * 3.5) });
+        }
+      } else {
+        updateLivePath();
+      }
     });
-  }, [renderCanvas]);
+  }, [tool, thickness, bumpInk, updateLivePath]);
 
   useLayoutEffect(() => {
     const forceFromUndo = pageSyncRevision !== lastSyncRevRef.current;
@@ -503,9 +453,9 @@ const PageSheet = ({
     } else {
       syncStrokesFromProps();
     }
-    renderCanvas();
+    bumpInk();
   }, [
-    renderCanvas,
+    bumpInk,
     syncStrokesFromProps,
     applyStrokesFromProps,
     page.id,
@@ -562,7 +512,7 @@ const PageSheet = ({
     next[idx] = snapped;
     strokesRef.current = next;
     onChange({ strokes: next });
-    renderCanvas();
+    bumpInk();
   };
 
   const scheduleShapeConversion = (strokeId) => {
@@ -582,9 +532,8 @@ const PageSheet = ({
 
   const commitStrokes = (next) => {
     strokesRef.current = next;
-    staticDirtyRef.current = true;
     onChange({ strokes: next });
-    scheduleRender();
+    bumpInk();
   };
 
   const handleShapeHandleDrag = (handleId, e) => {
@@ -687,7 +636,7 @@ const PageSheet = ({
 
     if (tool === 'lasso') {
       e.preventDefault();
-      canvasRef.current?.setPointerCapture(e.pointerId);
+      pointerLayerRef.current?.setPointerCapture(e.pointerId);
       setPenActive(true, e.pointerType);
       const pos = getPos(e);
       if (selectTextAt(pos)) return;
@@ -722,7 +671,7 @@ const PageSheet = ({
     }
 
     e.preventDefault();
-    canvasRef.current?.setPointerCapture(e.pointerId);
+    pointerLayerRef.current?.setPointerCapture(e.pointerId);
     setPenActive(true, e.pointerType);
 
     clearShapeTimer();
@@ -880,7 +829,7 @@ const PageSheet = ({
     }
     if (tool === 'lasso' && lassoDragRef.current) {
       setIsDrawing(false);
-      canvasRef.current?.releasePointerCapture?.(e?.pointerId);
+      pointerLayerRef.current?.releasePointerCapture?.(e?.pointerId);
       setPenActive(false, e?.pointerType);
       if (lassoDragRef.current.moved) {
         commitStrokes(strokesRef.current || []);
@@ -892,7 +841,7 @@ const PageSheet = ({
 
     if (!isDrawing) return;
     setIsDrawing(false);
-    canvasRef.current?.releasePointerCapture?.(e?.pointerId);
+    pointerLayerRef.current?.releasePointerCapture?.(e?.pointerId);
     setPenActive(false, e?.pointerType);
 
     if (tool === 'eraser') {
@@ -914,13 +863,14 @@ const PageSheet = ({
       liveInstrumentsRef.current = null;
       eraserPathRef.current = [];
       setErasePreview(null);
-      staticDirtyRef.current = true;
-      renderCanvas();
+      setEraserRing(null);
+      bumpInk();
       return;
     }
 
     const stroke = currentStrokeRef.current;
     currentStrokeRef.current = null;
+    if (livePathRef.current) livePathRef.current.setAttribute('d', '');
     instrumentStartRef.current = null;
     instrumentEdgeRef.current = null;
 
@@ -935,15 +885,13 @@ const PageSheet = ({
 
       const nextStrokes = [...strokesRef.current, saved];
       strokesRef.current = nextStrokes;
-      staticDirtyRef.current = true;
       onChange({ strokes: nextStrokes });
+      bumpInk();
 
       if (tool === 'pen' && saved.points.length >= 20 && !looksLikeHandwriting(saved.points)) {
         scheduleShapeConversion(saved.id);
       }
     }
-
-    renderCanvas();
   };
 
   const eraseAt = (pos) => {
@@ -967,6 +915,7 @@ const PageSheet = ({
       textBoxes: liveTextBoxesRef.current,
       instruments: liveInstrumentsRef.current,
     });
+    setEraserRing({ x: pos.x, y: pos.y, r: radius });
   };
 
   const bg = getPageBackground(page);
@@ -982,9 +931,13 @@ const PageSheet = ({
   const effectiveZoom = isActive ? writeZoom : 1;
   const baseW = displayWidth;
   const baseH = displayHeight;
-  const contentScale = scale;
+  const contentW = displayWidth * effectiveZoom;
+  const contentH = displayHeight * effectiveZoom;
+  const visualScale = scale * effectiveZoom;
   const panX = isActive && effectiveZoom > 1 ? writePan.x : 0;
   const panY = isActive && effectiveZoom > 1 ? writePan.y : 0;
+  void inkVersion;
+  const inkStrokes = erasePreview?.strokes ?? strokesRef.current ?? [];
   const isZoomedForPan = isActive && writeZoom > 1.01;
   // Zoomé : pan au doigt en JS + passage auto à la page suivante au bord
   const pageTouchAction =
@@ -1008,13 +961,18 @@ const PageSheet = ({
       ) : (
         <div className={`absolute inset-0 ${bg.className || 'bg-white'}`} />
       )}
-      <canvas
-        ref={canvasRef}
+      <InkSvgLayer
+        strokes={inkStrokes}
+        livePathRef={livePathRef}
+        eraserPreview={eraserRing}
+      />
+      <div
+        ref={pointerLayerRef}
         onPointerDown={startDraw}
         onPointerMove={moveDraw}
         onPointerUp={endDraw}
         onPointerCancel={endDraw}
-        className={`absolute inset-0 w-full h-full ${cursorClass}`}
+        className={`absolute inset-0 ${cursorClass}`}
         style={{
           touchAction: pageTouchAction,
           zIndex: 10,
@@ -1023,8 +981,8 @@ const PageSheet = ({
       />
       <GeometryInstruments
         instruments={instruments}
-        scale={contentScale}
-        zoom={effectiveZoom}
+        scale={visualScale}
+        zoom={1}
         tool={tool}
         onChange={(next) => onChange({ instruments: next })}
       />
@@ -1033,7 +991,7 @@ const PageSheet = ({
         style={{
           width: PAGE_W,
           height: PAGE_H,
-          transform: `scale(${contentScale})`,
+          transform: `scale(${visualScale})`,
           transformOrigin: 'top left',
           pointerEvents: 'none',
           zIndex: 20,
@@ -1042,7 +1000,7 @@ const PageSheet = ({
         {(displayTextBoxes || []).map((t) => (
           <TextBox
             key={t.id}
-            box={{ ...t, scale: contentScale, zoom: effectiveZoom }}
+            box={{ ...t, scale: visualScale, zoom: 1 }}
             tool={tool}
             editing={editingTextId === t.id}
             selected={selectedTextId === t.id}
@@ -1073,7 +1031,7 @@ const PageSheet = ({
         {(tool === 'lasso' || tool === 'text') && selectedTextBox && !editingTextId && (
           <TextBoxToolbar
             box={selectedTextBox}
-            scale={contentScale}
+            scale={visualScale}
             onChange={(patch) =>
               onChange({
                 textBoxes: (page.textBoxes || []).map((b) =>
@@ -1084,12 +1042,12 @@ const PageSheet = ({
           />
         )}
         {tool === 'lasso' && selectionBounds && (
-          <LassoSelection bounds={selectionBounds} scale={contentScale} />
+          <LassoSelection bounds={selectionBounds} scale={visualScale} />
         )}
         {tool === 'lasso' && selectedStroke?.shape && (
           <ShapeEditor
             shape={selectedStroke.shape}
-            scale={contentScale}
+            scale={visualScale}
             onHandleDrag={handleShapeHandleDrag}
           />
         )}
@@ -1110,17 +1068,13 @@ const PageSheet = ({
       <div
         className="absolute top-0 left-0"
         style={{
-          width: baseW,
-          height: baseH,
-          transform:
-            effectiveZoom !== 1 || panX || panY
-              ? `translate(${panX}px, ${panY}px) scale(${effectiveZoom})`
-              : undefined,
-          transformOrigin: 'top left',
+          width: contentW,
+          height: contentH,
+          transform: panX || panY ? `translate(${panX}px, ${panY}px)` : undefined,
           willChange: effectiveZoom > 1 ? 'transform' : undefined,
         }}
       >
-        <div className="relative" style={{ width: baseW, height: baseH }}>
+        <div className="relative" style={{ width: contentW, height: contentH }}>
           {pageContent}
         </div>
       </div>
