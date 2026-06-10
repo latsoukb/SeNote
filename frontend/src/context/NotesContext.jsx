@@ -6,7 +6,9 @@ import {
   newPage as createPage,
   newPdfPage as createPdfPage,
   newFolder as createFolder,
+  newSection as createSection,
 } from '../mock/mock';
+import { ensureNotebookSections } from '../lib/notebookSections';
 import { checkBackend, fetchWorkspace, saveWorkspace as saveWorkspaceApi } from '../lib/api';
 import { loadWorkspace, saveWorkspace, getStorageLabel } from '../lib/dataStore';
 import {
@@ -20,12 +22,22 @@ const NotesContext = createContext(null);
 
 const emptyTrash = () => ({ notebooks: [], pages: [] });
 
-const migrateNotebook = (nb) => ({
-  ...nb,
-  folderId: nb.folderId ?? null,
-  pinned: nb.pinned ?? false,
-  pageTemplate: nb.pageTemplate ?? 'seyes',
-});
+const migrateNotebook = (nb) =>
+  ensureNotebookSections({
+    ...nb,
+    folderId: nb.folderId ?? null,
+    pinned: nb.pinned ?? false,
+    pageTemplate: nb.pageTemplate ?? 'seyes',
+  });
+
+const mapSection = (nb, sectionId, fn) => {
+  const migrated = migrateNotebook(nb);
+  return {
+    ...migrated,
+    sections: migrated.sections.map((s) => (s.id === sectionId ? fn(s) : s)),
+    updatedAt: Date.now(),
+  };
+};
 
 const defaultData = () => ({
   folders: initialFolders,
@@ -274,26 +286,28 @@ export const NotesProvider = ({ children }) => {
     );
   }, []);
 
-  const addPage = useCallback((notebookId, template) => {
+  const addPage = useCallback((notebookId, sectionId, template) => {
     const page = createPage(template);
     setNotebooks((prev) =>
       prev.map((n) =>
         n.id === notebookId
-          ? { ...n, pages: [...n.pages, page], updatedAt: Date.now() }
+          ? mapSection(n, sectionId, (s) => ({ ...s, pages: [...s.pages, page] }))
           : n
       )
     );
     return page;
   }, []);
 
-  const insertPageAt = useCallback((notebookId, index, template = 'blank') => {
+  const insertPageAt = useCallback((notebookId, sectionId, index, template = 'blank') => {
     const page = createPage(template);
     setNotebooks((prev) =>
       prev.map((n) => {
         if (n.id !== notebookId) return n;
-        const pages = [...n.pages];
-        pages.splice(Math.max(0, Math.min(index, pages.length)), 0, page);
-        return { ...n, pages, updatedAt: Date.now() };
+        return mapSection(n, sectionId, (s) => {
+          const pages = [...s.pages];
+          pages.splice(Math.max(0, Math.min(index, pages.length)), 0, page);
+          return { ...s, pages };
+        });
       })
     );
     return page;
@@ -309,7 +323,13 @@ export const NotesProvider = ({ children }) => {
         sourceType: 'pdf',
         folderId,
         pinned: false,
-        pages: pdfBackgrounds.map((bg) => createPdfPage(bg)),
+        sections: [
+          {
+            id: `sec-${Math.random().toString(36).slice(2, 10)}`,
+            title: 'Document',
+            pages: pdfBackgrounds.map((bg) => createPdfPage(bg)),
+          },
+        ],
         updatedAt: Date.now(),
         createdAt: Date.now(),
       };
@@ -319,34 +339,40 @@ export const NotesProvider = ({ children }) => {
     []
   );
 
-  const appendPdfPagesToNotebook = useCallback((notebookId, pdfBackgrounds) => {
+  const appendPdfPagesToNotebook = useCallback((notebookId, sectionId, pdfBackgrounds) => {
     const pages = pdfBackgrounds.map((bg) => createPdfPage(bg));
     setNotebooks((prev) =>
       prev.map((n) =>
         n.id === notebookId
-          ? { ...n, pages: [...n.pages, ...pages], updatedAt: Date.now() }
+          ? mapSection(n, sectionId, (s) => ({ ...s, pages: [...s.pages, ...pages] }))
           : n
       )
     );
     return pages;
   }, []);
 
-  const movePageToTrash = useCallback((notebookId, pageId) => {
+  const movePageToTrash = useCallback((notebookId, sectionId, pageId) => {
     let entry = null;
     setNotebooks((prev) => {
-      const nb = prev.find((n) => n.id === notebookId);
-      const page = nb?.pages.find((p) => p.id === pageId);
-      if (!nb || !page) return prev;
+      const nb = migrateNotebook(prev.find((n) => n.id === notebookId));
+      const section = nb?.sections.find((s) => s.id === sectionId);
+      const page = section?.pages.find((p) => p.id === pageId);
+      if (!nb || !section || !page) return prev;
       entry = {
         id: `${notebookId}-${pageId}`,
         notebookId,
+        sectionId,
         notebookTitle: nb.title,
+        sectionTitle: section.title,
         page: { ...page },
         deletedAt: Date.now(),
       };
       return prev.map((n) =>
         n.id === notebookId
-          ? { ...n, pages: n.pages.filter((p) => p.id !== pageId), updatedAt: Date.now() }
+          ? mapSection(n, sectionId, (s) => ({
+              ...s,
+              pages: s.pages.filter((p) => p.id !== pageId),
+            }))
           : n
       );
     });
@@ -368,11 +394,18 @@ export const NotesProvider = ({ children }) => {
     });
     if (entry) {
       setNotebooks((prev) =>
-        prev.map((n) =>
-          n.id === entry.notebookId
-            ? { ...n, pages: [...n.pages, entry.page], updatedAt: Date.now() }
-            : n
-        )
+        prev.map((n) => {
+          if (n.id !== entry.notebookId) return n;
+          const sectionId =
+            entry.sectionId && n.sections?.some((s) => s.id === entry.sectionId)
+              ? entry.sectionId
+              : n.sections?.[0]?.id;
+          if (!sectionId) return n;
+          return mapSection(n, sectionId, (s) => ({
+            ...s,
+            pages: [...s.pages, entry.page],
+          }));
+        })
       );
     }
   }, []);
@@ -385,30 +418,29 @@ export const NotesProvider = ({ children }) => {
     setTrash({ notebooks: [], pages: [] });
   }, []);
 
-  const deletePage = useCallback((notebookId, pageId) => {
-    movePageToTrash(notebookId, pageId);
+  const deletePage = useCallback((notebookId, sectionId, pageId) => {
+    movePageToTrash(notebookId, sectionId, pageId);
   }, [movePageToTrash]);
 
   const deleteNotebook = useCallback((id) => {
     moveNotebookToTrash(id);
   }, [moveNotebookToTrash]);
 
-  const updatePage = useCallback((notebookId, pageId, patch) => {
+  const updatePage = useCallback((notebookId, sectionId, pageId, patch) => {
     setNotebooks((prev) =>
       prev.map((n) =>
         n.id === notebookId
-          ? {
-              ...n,
-              pages: n.pages.map((p) => (p.id === pageId ? { ...p, ...patch } : p)),
-              updatedAt: Date.now(),
-            }
+          ? mapSection(n, sectionId, (s) => ({
+              ...s,
+              pages: s.pages.map((p) => (p.id === pageId ? { ...p, ...patch } : p)),
+            }))
           : n
       )
     );
   }, []);
 
-  const setPageTemplate = useCallback((notebookId, pageId, template) => {
-    updatePage(notebookId, pageId, { template, pdfBackground: undefined });
+  const setPageTemplate = useCallback((notebookId, sectionId, pageId, template) => {
+    updatePage(notebookId, sectionId, pageId, { template, pdfBackground: undefined });
   }, [updatePage]);
 
   const setNotebookTemplate = useCallback((notebookId, template) => {
@@ -418,15 +450,51 @@ export const NotesProvider = ({ children }) => {
           ? {
               ...n,
               pageTemplate: template,
-              pages: n.pages.map((p) =>
-                p.pdfBackground
-                  ? p
-                  : { ...p, template, pdfBackground: undefined }
-              ),
+              sections: n.sections.map((s) => ({
+                ...s,
+                pages: s.pages.map((p) =>
+                  p.pdfBackground ? p : { ...p, template, pdfBackground: undefined }
+                ),
+              })),
               updatedAt: Date.now(),
             }
           : n
       )
+    );
+  }, []);
+
+  const addSection = useCallback((notebookId, title) => {
+    const section = createSection(title || `Onglet`, 'blank');
+    setNotebooks((prev) =>
+      prev.map((n) =>
+        n.id === notebookId
+          ? { ...n, sections: [...n.sections, section], updatedAt: Date.now() }
+          : n
+      )
+    );
+    return section;
+  }, []);
+
+  const updateSection = useCallback((notebookId, sectionId, patch) => {
+    setNotebooks((prev) =>
+      prev.map((n) =>
+        n.id === notebookId
+          ? mapSection(n, sectionId, (s) => ({ ...s, ...patch }))
+          : n
+      )
+    );
+  }, []);
+
+  const deleteSection = useCallback((notebookId, sectionId) => {
+    setNotebooks((prev) =>
+      prev.map((n) => {
+        if (n.id !== notebookId || n.sections.length <= 1) return n;
+        return {
+          ...n,
+          sections: n.sections.filter((s) => s.id !== sectionId),
+          updatedAt: Date.now(),
+        };
+      })
     );
   }, []);
 
@@ -476,6 +544,9 @@ export const NotesProvider = ({ children }) => {
         updatePage,
         setPageTemplate,
         setNotebookTemplate,
+        addSection,
+        updateSection,
+        deleteSection,
         getNotebook,
       }}
     >

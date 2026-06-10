@@ -24,6 +24,8 @@ import PdfDocumentView from '../components/PdfDocumentView';
 import PageTemplatePreview from '../components/PageTemplatePreview';
 import PageLiveThumbnail from '../components/PageLiveThumbnail';
 import SettingsDialog from '../components/SettingsDialog';
+import NotebookTabs from '../components/NotebookTabs';
+import { getNotebookSections } from '../lib/notebookSections';
 import { exportNotebookToPdf } from '../lib/exportNotebookPdf';
 import { createRuler, createSetSquare } from '../lib/instrumentSnap';
 import { clampPan, focalPan } from '../lib/inkEngine';
@@ -55,10 +57,16 @@ const NotebookEditor = () => {
     updatePage,
     setPageTemplate,
     setNotebookTemplate,
+    addSection,
+    updateSection,
+    deleteSection,
   } = useNotes();
 
   const notebook = getNotebook(id);
+  const sections = notebook ? getNotebookSections(notebook) : [];
+  const [currentSectionId, setCurrentSectionId] = useState(null);
   const [currentPageIdx, setCurrentPageIdx] = useState(0);
+  const pageIdxMemoryRef = useRef({});
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
@@ -100,6 +108,59 @@ const NotebookEditor = () => {
 
   const scrollToPageRef = useRef(null);
 
+  const currentSection =
+    sections.find((s) => s.id === currentSectionId) || sections[0] || null;
+  const pages = currentSection?.pages || [];
+
+  useEffect(() => {
+    if (!notebook || sections.length === 0) return;
+    if (!currentSectionId || !sections.some((s) => s.id === currentSectionId)) {
+      setCurrentSectionId(sections[0].id);
+      setCurrentPageIdx(pageIdxMemoryRef.current[sections[0].id] ?? 0);
+    }
+  }, [notebook, sections, currentSectionId]);
+
+  const switchSection = useCallback(
+    (sectionId) => {
+      if (currentSectionId) {
+        pageIdxMemoryRef.current[currentSectionId] = currentPageIdx;
+      }
+      setCurrentSectionId(sectionId);
+      setCurrentPageIdx(pageIdxMemoryRef.current[sectionId] ?? 0);
+      setWritePan({ x: 0, y: 0 });
+    },
+    [currentSectionId, currentPageIdx]
+  );
+
+  const handleAddSection = useCallback(() => {
+    if (!notebook) return;
+    const n = sections.length + 1;
+    const section = addSection(notebook.id, `Onglet ${n}`);
+    switchSection(section.id);
+    toast.success('Nouvel onglet créé');
+  }, [addSection, notebook, sections.length, switchSection]);
+
+  const handleRenameSection = useCallback(
+    (sectionId, title) => {
+      if (!notebook) return;
+      updateSection(notebook.id, sectionId, { title });
+    },
+    [notebook, updateSection]
+  );
+
+  const handleDeleteSection = useCallback(
+    (sectionId) => {
+      if (!notebook || sections.length <= 1) return;
+      deleteSection(notebook.id, sectionId);
+      if (currentSectionId === sectionId) {
+        const next = sections.find((s) => s.id !== sectionId);
+        if (next) switchSection(next.id);
+      }
+      toast('Onglet supprimé');
+    },
+    [notebook, sections, currentSectionId, deleteSection, switchSection]
+  );
+
   /** Changement auto (scroll, stylet, ou passage au bord en zoom) */
   const handlePageChange = useCallback((idx, options = {}) => {
     setCurrentPageIdx(idx);
@@ -119,15 +180,15 @@ const NotebookEditor = () => {
 
   const handleAutoAddPage = useCallback(
     (template) => {
-      if (!notebook) return;
-      const newIdx = notebook.pages.length;
-      addPage(notebook.id, template);
+      if (!notebook || !currentSection) return;
+      const newIdx = pages.length;
+      addPage(notebook.id, currentSection.id, template);
       setCurrentPageIdx(newIdx);
     },
-    [addPage, notebook]
+    [addPage, notebook, currentSection, pages.length]
   );
 
-  const currentPage = notebook?.pages[currentPageIdx] || notebook?.pages[0];
+  const currentPage = pages[currentPageIdx] || pages[0];
 
   useEffect(() => {
     const blockSafariZoom = (e) => e.preventDefault();
@@ -180,14 +241,16 @@ const NotebookEditor = () => {
       notebook.pageTemplate ||
       'blank';
 
+    if (!currentSection) return;
+
     if (addPageMode === 'end') {
-      addPage(notebook.id, tpl);
-      setCurrentPageIdx(notebook.pages.length);
+      addPage(notebook.id, currentSection.id, tpl);
+      setCurrentPageIdx(pages.length);
     } else if (addPageMode === 'before') {
-      insertPageAt(notebook.id, currentPageIdx, tpl);
+      insertPageAt(notebook.id, currentSection.id, currentPageIdx, tpl);
       setCurrentPageIdx(currentPageIdx);
     } else {
-      insertPageAt(notebook.id, currentPageIdx + 1, tpl);
+      insertPageAt(notebook.id, currentSection.id, currentPageIdx + 1, tpl);
       setCurrentPageIdx(currentPageIdx + 1);
     }
 
@@ -202,17 +265,19 @@ const NotebookEditor = () => {
   };
 
   const handleDeletePage = (pageId) => {
-    if (notebook.pages.length <= 1) {
+    if (!currentSection) return;
+    if (pages.length <= 1) {
       toast.error('Vous ne pouvez pas supprimer la dernière page');
       return;
     }
-    deletePage(notebook.id, pageId);
+    deletePage(notebook.id, currentSection.id, pageId);
     setCurrentPageIdx((idx) => Math.max(0, idx - 1));
     toast('Page déplacée vers la corbeille');
   };
 
   const handlePageUpdate = (pageId, patch) => {
-    updatePage(notebook.id, pageId, patch);
+    if (!currentSection) return;
+    updatePage(notebook.id, currentSection.id, pageId, patch);
   };
 
   const pushUndo = (pageId, snapshot) => {
@@ -390,7 +455,7 @@ const NotebookEditor = () => {
               <p className="text-xs text-slate-500 mb-3">
                 {addPageMode === 'before' && `Insérer avant la page ${currentPageIdx + 1}`}
                 {addPageMode === 'after' && `Insérer après la page ${currentPageIdx + 1}`}
-                {addPageMode === 'end' && 'Ajouter à la fin du cahier'}
+                {addPageMode === 'end' && `Ajouter à la fin de « ${currentSection?.title || 'l\'onglet'} »`}
               </p>
               <p className="text-xs font-medium text-slate-500 mb-2">Modèle vierge</p>
               <div className="grid grid-cols-3 gap-2">
@@ -406,7 +471,7 @@ const NotebookEditor = () => {
             </PopoverContent>
           </Popover>
           <span className="text-xs text-slate-500 dark:text-slate-400">
-            {currentPageIdx + 1} / {notebook.pages.length}
+            {currentPageIdx + 1} / {pages.length}
           </span>
           <SettingsDialog />
           <Button
@@ -452,8 +517,8 @@ const NotebookEditor = () => {
               </div>
             </div>
             <div className="flex items-center justify-between px-3 py-2 border-b border-slate-200 dark:border-slate-800 gap-1">
-              <span className="text-xs uppercase tracking-wide font-medium text-slate-500">
-                Pages
+              <span className="text-xs uppercase tracking-wide font-medium text-slate-500 truncate">
+                {currentSection?.title || 'Pages'}
               </span>
               <div className="flex items-center gap-0.5">
               <Popover open={notebookTemplateOpen} onOpenChange={setNotebookTemplateOpen}>
@@ -496,7 +561,7 @@ const NotebookEditor = () => {
               </div>
             </div>
             <div className="flex-1 overflow-y-auto thin-scroll p-3 space-y-3">
-              {notebook.pages.map((p, idx) => (
+              {pages.map((p, idx) => (
                 <div key={p.id} className="group relative">
                   <button
                     onClick={() => handleSidebarPage(idx)}
@@ -539,7 +604,7 @@ const NotebookEditor = () => {
                               size="sm"
                               selected={p.template === t.id}
                               onClick={() => {
-                                setPageTemplate(notebook.id, p.id, t.id);
+                                setPageTemplate(notebook.id, currentSection.id, p.id, t.id);
                                 setPageTemplateOpen(null);
                                 toast.success(`Page ${idx + 1} : ${t.name}`);
                               }}
@@ -549,7 +614,7 @@ const NotebookEditor = () => {
                       </PopoverContent>
                     </Popover>
                     )}
-                    {notebook.pages.length > 1 && (
+                    {pages.length > 1 && (
                       <button
                         onClick={() => handleDeletePage(p.id)}
                         className="p-1 rounded bg-white/90 dark:bg-slate-800/90 text-red-500"
@@ -566,9 +631,19 @@ const NotebookEditor = () => {
         )}
 
         <div className="flex-1 flex flex-col bg-slate-100 dark:bg-slate-900 min-w-0 min-h-0">
+          {sections.length > 0 && currentSectionId && (
+            <NotebookTabs
+              sections={sections}
+              activeSectionId={currentSectionId}
+              onSelect={switchSection}
+              onAdd={handleAddSection}
+              onRename={handleRenameSection}
+              onDelete={handleDeleteSection}
+            />
+          )}
           <PdfDocumentView
             notebook={notebook}
-            pages={notebook.pages}
+            pages={pages}
             currentPageIdx={currentPageIdx}
             onPageChange={handlePageChange}
             onRegisterScrollToPage={(fn) => {

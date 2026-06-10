@@ -2,6 +2,7 @@ import { jsPDF } from 'jspdf';
 import { PAGE_W, PAGE_H, SEYES_BG } from './pageDimensions';
 import { getPageBackground, drawTemplateBackground } from './pageTemplates';
 import { drawStrokesLayered } from './strokeRenderer';
+import { getAllNotebookPages } from './notebookSections';
 
 const loadImage = (src) =>
   new Promise((resolve, reject) => {
@@ -59,9 +60,10 @@ export const exportNotebookToPdf = async (notebook) => {
     /* optional */
   }
 
-  for (let i = 0; i < notebook.pages.length; i++) {
+  const pages = getAllNotebookPages(notebook);
+  for (let i = 0; i < pages.length; i++) {
     if (i > 0) pdf.addPage();
-    const canvas = await renderPageToCanvas(notebook.pages[i], imageCache);
+    const canvas = await renderPageToCanvas(pages[i], imageCache);
     const data = canvas.toDataURL('image/jpeg', 0.92);
     pdf.addImage(data, 'JPEG', 0, 0, 595, 842);
   }

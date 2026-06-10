@@ -62,6 +62,7 @@ import DeadlineHomeBlocks from '../components/DeadlineHomeBlocks';
 import { useStudentClass } from '../context/StudentClassContext';
 import { toast } from 'sonner';
 import { parsePdfFile } from '../lib/pdfImport';
+import { countNotebookPages } from '../lib/notebookSections';
 
 const formatDate = (ts) => {
   const d = new Date(ts);
@@ -98,7 +99,7 @@ const NotebookCard = ({
             {nb.title}
           </h3>
           <p className="text-white/70 text-xs mt-1">
-            {nb.pages.length} page{nb.pages.length > 1 ? 's' : ''}
+            {countNotebookPages(nb)} page{countNotebookPages(nb) > 1 ? 's' : ''}
           </p>
         </div>
       </div>

@@ -45,7 +45,13 @@ export const initialNotebooks = [
     pageTemplate: 'seyes',
     folderId: 'folder-school',
     pinned: true,
-    pages: [makePage('seyes'), makePage('seyes')],
+    sections: [
+      {
+        id: 'sec-welcome-1',
+        title: 'Onglet 1',
+        pages: [makePage('seyes'), makePage('seyes')],
+      },
+    ],
     updatedAt: Date.now(),
     createdAt: Date.now() - 86400000,
   },
@@ -56,7 +62,7 @@ export const initialNotebooks = [
     pageTemplate: 'seyes',
     folderId: 'folder-school',
     pinned: false,
-    pages: [makePage('seyes')],
+    sections: [{ id: 'sec-meetings-1', title: 'Onglet 1', pages: [makePage('seyes')] }],
     updatedAt: Date.now() - 3600000,
     createdAt: Date.now() - 5 * 86400000,
   },
@@ -67,7 +73,7 @@ export const initialNotebooks = [
     pageTemplate: 'blank',
     folderId: 'folder-personal',
     pinned: false,
-    pages: [makePage('blank'), makePage('grid')],
+    sections: [{ id: 'sec-sketches-1', title: 'Onglet 1', pages: [makePage('blank'), makePage('grid')] }],
     updatedAt: Date.now() - 7200000,
     createdAt: Date.now() - 10 * 86400000,
   },
@@ -78,7 +84,7 @@ export const initialNotebooks = [
     pageTemplate: 'grid',
     folderId: null,
     pinned: false,
-    pages: [makePage('grid')],
+    sections: [{ id: 'sec-math-1', title: 'Onglet 1', pages: [makePage('grid')] }],
     updatedAt: Date.now() - 4 * 86400000,
     createdAt: Date.now() - 30 * 86400000,
   },
@@ -124,6 +130,12 @@ export const newFolder = (name = 'Nouveau dossier', color = FOLDER_COLORS[0]) =>
   createdAt: Date.now(),
 });
 
+export const newSection = (title = 'Onglet 1', pageTemplate = 'seyes') => ({
+  id: `sec-${Math.random().toString(36).slice(2, 10)}`,
+  title,
+  pages: [makePage(pageTemplate)],
+});
+
 export const newNotebook = (
   title = 'Nouveau cahier',
   cover = 'cover-blue',
@@ -136,7 +148,7 @@ export const newNotebook = (
   pageTemplate,
   folderId,
   pinned: false,
-  pages: [makePage(pageTemplate)],
+  sections: [newSection('Onglet 1', pageTemplate)],
   updatedAt: Date.now(),
   createdAt: Date.now(),
 });

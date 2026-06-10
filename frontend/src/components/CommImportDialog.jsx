@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from './ui/select';
 import { useNotes } from '../context/NotesContext';
+import { getNotebookSections } from '../lib/notebookSections';
 import { fetchCommunicationDetail } from '../lib/classSync';
 import { getCommBackgrounds } from '../lib/commImport';
 import { toast } from 'sonner';
@@ -51,7 +52,10 @@ const CommImportDialog = ({ comm, open, onOpenChange }) => {
         navigate(`/notebook/${nb.id}`);
       } else {
         if (!notebookId) throw new Error('Choisissez un cahier');
-        appendPdfPagesToNotebook(notebookId, backgrounds);
+        const nb = notebooks.find((n) => n.id === notebookId);
+        const sectionId = getNotebookSections(nb)[0]?.id;
+        if (!sectionId) throw new Error('Cahier invalide');
+        appendPdfPagesToNotebook(notebookId, sectionId, backgrounds);
         toast.success('Pages ajoutées', {
           id: toastId,
           description: `${backgrounds.length} page${backgrounds.length > 1 ? 's' : ''}`,
