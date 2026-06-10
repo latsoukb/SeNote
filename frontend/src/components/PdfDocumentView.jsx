@@ -74,7 +74,6 @@ const PdfDocumentView = ({
   const scrollSyncReadyRef = useRef(false);
   const currentPageIdxRef = useRef(currentPageIdx);
   const writeZoomRef = useRef(writeZoom);
-  const [pageWidth, setPageWidth] = useState(700);
   const [penLock, setPenLock] = useState(false);
   const isVertical = scrollDirection !== 'horizontal';
 
@@ -109,23 +108,6 @@ const PdfDocumentView = ({
       root.removeEventListener('touchstart', blockTouch, { capture: true });
     };
   }, [penLock]);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const update = () => {
-      const w = el.clientWidth;
-      const isTablet = window.innerWidth >= 768 || navigator.maxTouchPoints > 1;
-      // Tablette : pleine largeur (style GoodNotes). Téléphone : petite marge.
-      const pad = isTablet ? 0 : 16;
-      const minW = isTablet ? 280 : 280;
-      setPageWidth(Math.max(minW, w - pad));
-    };
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
 
   const syncPageFromViewport = useCallback(() => {
     const root = scrollRef.current;
@@ -244,8 +226,8 @@ const PdfDocumentView = ({
       }}
     >
       <div
-        className={`mx-auto py-2 px-0 sm:py-3 ${
-          isVertical ? 'flex flex-col items-stretch w-full' : 'flex flex-row items-start h-full'
+        className={`w-full min-w-0 py-2 px-0 sm:py-3 ${
+          isVertical ? 'flex flex-col items-stretch' : 'flex flex-row items-start h-full'
         }`}
         style={{ gap: GAP }}
       >
@@ -256,11 +238,11 @@ const PdfDocumentView = ({
               pageRefs.current[idx] = el;
             }}
             data-page-idx={idx}
-            className="shrink-0 shadow-lg w-full flex justify-center"
+            className="shrink-0 w-full min-w-0"
           >
             <PageSheet
               page={page}
-              displayWidth={pageWidth}
+              displayWidth={0}
               tool={tool}
               color={color}
               thickness={thickness}
@@ -290,8 +272,8 @@ const PdfDocumentView = ({
             }`}
             style={
               isVertical
-                ? { width: pageWidth, minHeight: 120, padding: '2rem 0' }
-                : { width: 120, minHeight: pageWidth * (PAGE_H / PAGE_W), padding: '0 2rem' }
+                ? { width: '100%', minHeight: 120, padding: '2rem 0' }
+                : { width: 120, minHeight: 240, padding: '0 2rem' }
             }
           >
             {isVertical

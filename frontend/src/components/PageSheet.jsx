@@ -96,6 +96,7 @@ const PageSheet = ({
   const lassoOrigStrokeRef = useRef(null);
   const textTapRef = useRef(null);
   const viewportRef = useRef(null);
+  const [layoutWidth, setLayoutWidth] = useState(displayWidth);
   const pinchRef = useRef(null);
   const touchPanRef = useRef(null);
   const writeZoomRef = useRef(writeZoom);
@@ -169,6 +170,28 @@ const PageSheet = ({
       setInkVersion((v) => v + 1);
     }
   }, [page.id, page.strokes]);
+
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return undefined;
+    const update = () => {
+      const w = el.clientWidth;
+      if (w > 0) setLayoutWidth(w);
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    if (el.parentElement) ro.observe(el.parentElement);
+    window.addEventListener('resize', update);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', update);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (displayWidth > 0) setLayoutWidth(displayWidth);
+  }, [displayWidth]);
 
   useEffect(() => {
     if (!isActive || !onWritePanChange || writeZoom <= 1) return;
@@ -381,8 +404,9 @@ const PageSheet = ({
     [onPenActiveChange]
   );
 
-  const displayHeight = displayWidth * (PAGE_H / PAGE_W);
-  const scale = displayWidth / PAGE_W;
+  const baseW = layoutWidth;
+  const displayHeight = layoutWidth * (PAGE_H / PAGE_W);
+  const scale = layoutWidth / PAGE_W;
   const instruments = erasePreview?.instruments ?? page.instruments ?? [];
   const displayTextBoxes = erasePreview?.textBoxes ?? page.textBoxes ?? [];
   const hasSnapInstruments = instruments.some(
@@ -929,9 +953,8 @@ const PageSheet = ({
             : 'canvas-pen';
 
   const effectiveZoom = isActive ? writeZoom : 1;
-  const baseW = displayWidth;
   const baseH = displayHeight;
-  const contentW = displayWidth * effectiveZoom;
+  const contentW = layoutWidth * effectiveZoom;
   const contentH = displayHeight * effectiveZoom;
   const visualScale = scale * effectiveZoom;
   const panX = isActive && effectiveZoom > 1 ? writePan.x : 0;
@@ -1060,7 +1083,7 @@ const PageSheet = ({
       ref={viewportRef}
       data-page-viewport
       className={`relative bg-white overflow-hidden shadow-lg ${isActive ? 'ring-2 ring-blue-500/40' : ''}`}
-      style={{ width: baseW, height: baseH, touchAction: pageTouchAction }}
+      style={{ width: '100%', height: baseH, touchAction: pageTouchAction }}
       onPointerMove={isPanning ? moveDraw : undefined}
       onPointerUp={isPanning ? endDraw : undefined}
       onPointerCancel={isPanning ? endDraw : undefined}
