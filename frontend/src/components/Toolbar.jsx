@@ -26,7 +26,7 @@ const ToolButton = ({ active, onClick, label, children }) => (
           className={`p-2 rounded-lg transition-colors shrink-0 ${
             active
               ? 'bg-brand-600 text-white'
-              : 'text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'
+              : 'text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-brand-700'
           }`}
           aria-label={label}
         >
@@ -63,7 +63,7 @@ const Toolbar = ({
   const thickness = toolThickness[tool] ?? toolThickness.pen ?? 2.5;
 
   return (
-    <div className="w-full shrink-0 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 z-40">
+    <div className="w-full shrink-0 border-b border-slate-200 dark:border-brand-800 bg-white dark:bg-brand-950 z-40">
       <div className="flex items-center gap-1 px-3 py-2 overflow-x-auto thin-scroll">
         <ToolButton active={tool === 'pen'} onClick={() => setTool('pen')} label="Stylo">
           <Pen className="w-5 h-5" />
@@ -80,7 +80,7 @@ const Toolbar = ({
               className={`p-2 rounded-lg transition-colors shrink-0 ${
                 instrumentsActive
                   ? 'bg-brand-600 text-white'
-                  : 'text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  : 'text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-brand-700'
               }`}
               aria-label="Instruments de géométrie"
             >
@@ -91,19 +91,19 @@ const Toolbar = ({
             <p className="text-xs text-slate-500 px-2 pb-2">Dimensions réelles (A4)</p>
             <button
               onClick={() => onAddInstrument('ruler', 30)}
-              className="w-full text-left px-3 py-2 rounded-md text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="w-full text-left px-3 py-2 rounded-md text-sm hover:bg-slate-100 dark:hover:bg-brand-800"
             >
               Règle 30 cm
             </button>
             <button
               onClick={() => onAddInstrument('ruler', 10)}
-              className="w-full text-left px-3 py-2 rounded-md text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="w-full text-left px-3 py-2 rounded-md text-sm hover:bg-slate-100 dark:hover:bg-brand-800"
             >
               Règle 10 cm
             </button>
             <button
               onClick={() => onAddInstrument('setSquare', 10)}
-              className="w-full text-left px-3 py-2 rounded-md text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="w-full text-left px-3 py-2 rounded-md text-sm hover:bg-slate-100 dark:hover:bg-brand-800"
             >
               Équerre 10 cm
             </button>
@@ -113,7 +113,7 @@ const Toolbar = ({
           <Type className="w-5 h-5" />
         </ToolButton>
 
-        <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 mx-0.5 shrink-0" />
+        <div className="h-6 w-px bg-slate-200 dark:bg-brand-800 mx-0.5 shrink-0" />
 
         {tool === 'eraser' && (
           <Popover>
@@ -164,7 +164,7 @@ const Toolbar = ({
                   key={c}
                   onClick={() => setColorForActiveTool(c)}
                   className={`w-6 h-6 rounded-full border-2 shrink-0 ${
-                    color === c ? 'border-brand-600 ring-2 ring-brand-300' : 'border-white dark:border-slate-700'
+                    color === c ? 'border-brand-600 ring-2 ring-brand-300' : 'border-white dark:border-brand-700'
                   }`}
                   style={{ background: c }}
                   aria-label={`Couleur ${c}`}
@@ -174,7 +174,7 @@ const Toolbar = ({
             <Popover>
               <PopoverTrigger asChild>
                 <button
-                  className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-sm hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
+                  className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-sm hover:bg-slate-100 dark:hover:bg-brand-800 shrink-0"
                   aria-label={tool === 'highlighter' ? 'Épaisseur du surligneur' : 'Épaisseur du stylo'}
                 >
                   <div className="w-6 h-6 flex items-center justify-center shrink-0">
@@ -213,7 +213,7 @@ const Toolbar = ({
                 key={c}
                 onClick={() => setColorForActiveTool(c)}
                 className={`w-6 h-6 rounded-full border-2 shrink-0 ${
-                  color === c ? 'border-brand-600 ring-2 ring-brand-300' : 'border-white dark:border-slate-700'
+                  color === c ? 'border-brand-600 ring-2 ring-brand-300' : 'border-white dark:border-brand-700'
                 }`}
                 style={{ background: c }}
                 aria-label={`Couleur ${c}`}
@@ -222,7 +222,7 @@ const Toolbar = ({
           </div>
         )}
 
-        <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 mx-0.5 shrink-0" />
+        <div className="h-6 w-px bg-slate-200 dark:bg-brand-800 mx-0.5 shrink-0" />
 
         <ToolButton onClick={onUndo} label="Annuler">
           <Undo2 className="w-5 h-5" />
@@ -241,7 +241,7 @@ const Toolbar = ({
           className={`px-2 py-1 rounded-full text-xs font-medium shrink-0 tabular-nums ${
             zoomCustom
               ? 'bg-brand-600 text-white'
-              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-brand-800'
           }`}
           title={
             zoomCustom

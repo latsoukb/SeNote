@@ -45,14 +45,14 @@ const OpenNotebookTabBar = ({ activeId = null }) => {
   const sortedNotebooks = [...notebooks].sort((a, b) => b.updatedAt - a.updatedAt);
 
   return (
-    <div className="shrink-0 flex items-end gap-0.5 h-10 px-1 bg-slate-900 border-b border-slate-800 overflow-x-auto thin-scroll">
+    <div className="shrink-0 flex items-end gap-0.5 h-10 px-1 bg-brand-950 border-b border-brand-900 overflow-x-auto thin-scroll">
       <button
         type="button"
         onClick={goHome}
         className={`shrink-0 flex items-center justify-center w-10 h-9 mb-0 rounded-t-md transition-colors ${
           activeId === null
-            ? 'bg-slate-700 text-white'
-            : 'text-slate-400 hover:text-white hover:bg-slate-800'
+            ? 'bg-brand-700 text-white'
+            : 'text-brand-300 hover:text-white hover:bg-brand-900'
         }`}
         aria-label="Bibliothèque"
         title="Bibliothèque"
@@ -70,8 +70,8 @@ const OpenNotebookTabBar = ({ activeId = null }) => {
             onClick={() => selectTab(id)}
             className={`group shrink-0 flex items-center gap-1 h-9 mb-0 pl-3 pr-1 max-w-[11rem] rounded-t-lg cursor-pointer transition-colors ${
               active
-                ? 'bg-slate-700 text-white'
-                : 'bg-slate-800/60 text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                ? 'bg-brand-800 text-white'
+                : 'bg-brand-900/60 text-brand-300 hover:bg-brand-900 hover:text-brand-100'
             }`}
           >
             <span className="text-xs font-medium truncate">{titleFor(id)}</span>
@@ -79,7 +79,7 @@ const OpenNotebookTabBar = ({ activeId = null }) => {
             <button
               type="button"
               onClick={(e) => handleClose(id, e)}
-              className="shrink-0 p-1 rounded hover:bg-slate-600/80 text-slate-400 hover:text-white opacity-70 group-hover:opacity-100 transition-opacity"
+              className="shrink-0 p-1 rounded hover:bg-brand-700/80 text-brand-300 hover:text-white opacity-70 group-hover:opacity-100 transition-opacity"
               aria-label={`Fermer ${titleFor(id)}`}
             >
               <X className="w-3 h-3" />
@@ -92,7 +92,7 @@ const OpenNotebookTabBar = ({ activeId = null }) => {
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="shrink-0 flex items-center justify-center w-9 h-9 mb-0 rounded-t-md text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="shrink-0 flex items-center justify-center w-9 h-9 mb-0 rounded-t-md text-brand-300 hover:text-white hover:bg-brand-900 transition-colors"
             aria-label="Ouvrir un cahier"
             title="Ouvrir un cahier"
           >
@@ -115,7 +115,7 @@ const OpenNotebookTabBar = ({ activeId = null }) => {
                       className={`w-full flex items-center gap-2 px-2 py-2 rounded-md text-left text-sm transition-colors ${
                         nb.id === activeId
                           ? 'bg-brand-50 dark:bg-brand-950 text-brand-700 dark:text-brand-300'
-                          : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+                          : 'hover:bg-slate-100 dark:hover:bg-brand-900'
                       }`}
                     >
                       <BookOpen className="w-4 h-4 shrink-0 text-slate-400" />

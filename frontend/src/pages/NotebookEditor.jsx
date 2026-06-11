@@ -393,7 +393,7 @@ const NotebookEditor = () => {
   return (
     <div className="h-dvh flex flex-col overflow-hidden">
       <OpenNotebookTabBar activeId={id} />
-      <header className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 z-40">
+      <header className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-brand-800 bg-white dark:bg-brand-950 z-40">
         <div className="flex items-center gap-3 min-w-0">
           <Button
             variant="ghost"
@@ -404,7 +404,7 @@ const NotebookEditor = () => {
             <PanelLeft className="w-5 h-5" />
           </Button>
           <Logo size="sm" />
-          <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 mx-2" />
+          <div className="h-6 w-px bg-slate-200 dark:bg-brand-800 mx-2" />
           {editingTitle ? (
             <Input
               value={titleDraft}
@@ -417,7 +417,7 @@ const NotebookEditor = () => {
           ) : (
             <button
               onClick={startEditTitle}
-              className="font-medium text-sm hover:bg-slate-100 dark:hover:bg-slate-800 px-2 py-1 rounded-md truncate max-w-[30vw]"
+              className="font-medium text-sm hover:bg-slate-100 dark:hover:bg-brand-800 px-2 py-1 rounded-md truncate max-w-[30vw]"
             >
               {notebook.title}
             </button>
@@ -454,7 +454,7 @@ const NotebookEditor = () => {
                     className={`flex-1 text-xs py-1.5 rounded-md border transition-colors ${
                       addPageMode === m.id
                         ? 'bg-brand-600 text-white border-brand-600'
-                        : 'border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        : 'border-slate-200 dark:border-brand-700 hover:bg-slate-100 dark:hover:bg-brand-800'
                     }`}
                   >
                     {m.label}
@@ -515,7 +515,7 @@ const NotebookEditor = () => {
 
       <div className="flex flex-1 min-h-0">
         {sidebarOpen && (
-          <aside className="w-56 border-r border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex flex-col shrink-0">
+          <aside className="w-56 border-r border-slate-200 dark:border-brand-800 bg-slate-50 dark:bg-brand-900/50 flex flex-col shrink-0">
             <div className="h-24 cover-shine relative" style={{ background: coverGradient }}>
               <div className="cover-spine" />
               <div className="absolute inset-0 p-3 flex items-end">
@@ -524,7 +524,7 @@ const NotebookEditor = () => {
                 </p>
               </div>
             </div>
-            <div className="flex items-center justify-between px-3 py-2 border-b border-slate-200 dark:border-slate-800 gap-1">
+            <div className="flex items-center justify-between px-3 py-2 border-b border-slate-200 dark:border-brand-800 gap-1">
               <span className="text-xs uppercase tracking-wide font-medium text-slate-500">
                 Pages
               </span>
@@ -532,7 +532,7 @@ const NotebookEditor = () => {
               <Popover open={notebookTemplateOpen} onOpenChange={setNotebookTemplateOpen}>
                 <PopoverTrigger asChild>
                   <button
-                    className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800"
+                    className="p-1 rounded hover:bg-slate-200 dark:hover:bg-brand-800"
                     aria-label="Style de page du cahier"
                     title="Appliquer un style à tout le cahier"
                   >
@@ -560,7 +560,7 @@ const NotebookEditor = () => {
               </Popover>
               <button
                 type="button"
-                className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800"
+                className="p-1 rounded hover:bg-slate-200 dark:hover:bg-brand-800"
                 aria-label="Ajouter une page"
                 onClick={() => setAddPageOpen(true)}
               >
@@ -576,7 +576,7 @@ const NotebookEditor = () => {
                     className={`w-full aspect-[3/4] rounded-md bg-white dark:bg-slate-100 border-2 transition-all overflow-hidden ${
                       idx === currentPageIdx
                         ? 'border-brand-600 shadow-md'
-                        : 'border-slate-200 dark:border-slate-700 hover:border-slate-400'
+                        : 'border-slate-200 dark:border-brand-700 hover:border-slate-400'
                     }`}
                   >
                     <PageLiveThumbnail page={p} />
@@ -595,7 +595,7 @@ const NotebookEditor = () => {
                       <PopoverTrigger asChild>
                         <button
                           onClick={(e) => e.stopPropagation()}
-                          className="p-1 rounded bg-white/90 dark:bg-slate-800/90 text-slate-600"
+                          className="p-1 rounded bg-white/90 dark:bg-brand-800/90 text-slate-600"
                           aria-label="Changer le style de page"
                           title="Style de cette page"
                         >
@@ -625,7 +625,7 @@ const NotebookEditor = () => {
                     {pages.length > 1 && (
                       <button
                         onClick={() => handleDeletePage(p.id)}
-                        className="p-1 rounded bg-white/90 dark:bg-slate-800/90 text-red-500"
+                        className="p-1 rounded bg-white/90 dark:bg-brand-800/90 text-red-500"
                         aria-label="Supprimer la page"
                       >
                         <Trash2 className="w-3 h-3" />
@@ -638,7 +638,7 @@ const NotebookEditor = () => {
           </aside>
         )}
 
-        <div className="flex-1 flex flex-col bg-slate-100 dark:bg-slate-900 min-w-0 min-h-0">
+        <div className="flex-1 flex flex-col bg-slate-100 dark:bg-brand-900 min-w-0 min-h-0">
           <PdfDocumentView
             key={id}
             notebook={notebook}

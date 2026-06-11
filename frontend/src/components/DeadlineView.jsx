@@ -32,7 +32,7 @@ export const DeadlineSidebarLink = ({ mainView, setMainView, onNavigate }) => {
       className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors justify-between ${
         mainView === 'deadlines'
           ? 'bg-brand-100 dark:bg-brand-950 text-brand-700 dark:text-brand-300 font-medium'
-          : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+          : 'hover:bg-slate-100 dark:hover:bg-brand-800'
       }`}
     >
       <span className="flex items-center gap-2 min-w-0">

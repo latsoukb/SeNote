@@ -88,7 +88,7 @@ const CommImportDialog = ({ comm, open, onOpenChange }) => {
             className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-colors ${
               mode === 'new'
                 ? 'border-brand-600 bg-brand-50 dark:bg-brand-950'
-                : 'border-slate-200 dark:border-slate-700'
+                : 'border-slate-200 dark:border-brand-700'
             }`}
           >
             <BookPlus className="w-6 h-6" />
@@ -100,7 +100,7 @@ const CommImportDialog = ({ comm, open, onOpenChange }) => {
             className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-colors ${
               mode === 'append'
                 ? 'border-brand-600 bg-brand-50 dark:bg-brand-950'
-                : 'border-slate-200 dark:border-slate-700'
+                : 'border-slate-200 dark:border-brand-700'
             }`}
           >
             <FolderInput className="w-6 h-6" />

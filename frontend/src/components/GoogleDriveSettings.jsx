@@ -79,7 +79,7 @@ const GoogleDriveSettings = () => {
   };
 
   return (
-    <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-800">
+    <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-brand-800">
       <Label className="flex items-center gap-2">
         <Cloud className="w-4 h-4" />
         Google Drive

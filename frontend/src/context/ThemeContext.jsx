@@ -22,18 +22,12 @@ export const ThemeProvider = ({ children }) => {
 
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
+    const isDark = theme === 'dark';
+    root.classList.toggle('dark', isDark);
+    applyAccentTheme(accent, isDark);
     localStorage.setItem('senote-theme', theme);
-  }, [theme]);
-
-  useEffect(() => {
-    applyAccentTheme(accent);
     localStorage.setItem('senote-accent', accent);
-  }, [accent]);
+  }, [theme, accent]);
 
   const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
 

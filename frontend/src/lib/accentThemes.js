@@ -95,11 +95,33 @@ export function isValidAccent(id) {
   return id in PALETTES;
 }
 
-export function applyAccentTheme(accentId) {
+const DARK_SURFACE_VARS = [
+  '--background',
+  '--card',
+  '--popover',
+  '--secondary',
+  '--muted',
+  '--border',
+  '--input',
+];
+
+export function applyAccentTheme(accentId, isDark = false) {
   const palette = PALETTES[accentId] || PALETTES[DEFAULT_ACCENT];
   const root = document.documentElement;
   root.dataset.accent = accentId in PALETTES ? accentId : DEFAULT_ACCENT;
   Object.entries(palette).forEach(([shade, value]) => {
     root.style.setProperty(`--brand-${shade}`, value);
   });
+
+  if (isDark) {
+    root.style.setProperty('--background', palette[950]);
+    root.style.setProperty('--card', palette[900]);
+    root.style.setProperty('--popover', palette[900]);
+    root.style.setProperty('--secondary', palette[900]);
+    root.style.setProperty('--muted', palette[900]);
+    root.style.setProperty('--border', palette[800]);
+    root.style.setProperty('--input', palette[800]);
+  } else {
+    DARK_SURFACE_VARS.forEach((name) => root.style.removeProperty(name));
+  }
 }

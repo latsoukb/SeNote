@@ -54,7 +54,7 @@ const StudentInbox = () => {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-slate-200 dark:border-slate-800">
+      <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-slate-200 dark:border-brand-800">
         <div>
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <Inbox className="w-5 h-5 text-brand-600" />
@@ -100,7 +100,7 @@ const StudentInbox = () => {
             className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
               filter === f
                 ? 'bg-brand-600 text-white border-brand-600'
-                : 'border-slate-200 dark:border-slate-700'
+                : 'border-slate-200 dark:border-brand-700'
             }`}
           >
             {f === 'all' ? 'Tout' : TYPE_META[f]?.label || f}
@@ -137,12 +137,12 @@ const StudentInbox = () => {
           return (
             <div
               key={comm.id}
-              className={`rounded-xl border bg-white dark:bg-slate-900 transition-colors ${
+              className={`rounded-xl border bg-white dark:bg-brand-900 transition-colors ${
                 unread
                   ? 'border-brand-400 dark:border-brand-600 shadow-sm shadow-brand-500/10'
                   : deadlineStyle
                     ? deadlineStyle.border
-                    : 'border-slate-200 dark:border-slate-800'
+                    : 'border-slate-200 dark:border-brand-800'
               }`}
             >
               {unread && <div className="h-1 bg-red-600 rounded-t-xl" />}
@@ -155,14 +155,14 @@ const StudentInbox = () => {
                   <div className="relative w-10 h-10 rounded-lg bg-brand-100 dark:bg-brand-950 flex items-center justify-center shrink-0">
                     <Icon className="w-5 h-5 text-brand-600" />
                     {unread && (
-                      <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-600 rounded-full border-2 border-white dark:border-slate-900" />
+                      <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-600 rounded-full border-2 border-white dark:border-brand-900" />
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-medium truncate">{comm.title || meta.label}</p>
                       {fileCount > 1 && (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 shrink-0">
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-brand-800 text-slate-600 dark:text-slate-300 shrink-0">
                           {fileCount} fichiers
                         </span>
                       )}
