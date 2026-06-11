@@ -127,7 +127,7 @@ const GoogleDriveSettings = () => {
       ) : (
         <Button
           type="button"
-          className="w-full gap-2 bg-blue-600 hover:bg-blue-700"
+          className="w-full gap-2 bg-brand-600 hover:bg-brand-700"
           onClick={handleConnect}
           disabled={!isDriveConfigured()}
         >

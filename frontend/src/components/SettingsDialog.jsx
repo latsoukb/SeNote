@@ -9,8 +9,10 @@ import {
 import { Button } from './ui/button';
 import { Label } from './ui/label';
 import { Switch } from './ui/switch';
-import { Settings, Download, ArrowDown, ArrowLeft } from 'lucide-react';
+import { Settings, Download, ArrowDown, ArrowLeft, Sun, Moon, Check } from 'lucide-react';
 import { useSettings } from '../context/SettingsContext';
+import { useTheme } from '../context/ThemeContext';
+import { ACCENT_OPTIONS } from '../lib/accentThemes';
 import { useStudentClass } from '../context/StudentClassContext';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import GoogleDriveSettings from './GoogleDriveSettings';
@@ -19,6 +21,7 @@ import { isNativeApp } from '../lib/platform';
 
 const SettingsDialog = ({ trigger }) => {
   const { settings, updateSettings } = useSettings();
+  const { theme, accent, toggleTheme, setAccent } = useTheme();
   const { session: studentSession } = useStudentClass();
   const { canInstall, isInstalled, install } = usePWAInstall();
   const [open, setOpen] = React.useState(false);
@@ -45,6 +48,64 @@ const SettingsDialog = ({ trigger }) => {
           {studentSession && <StudentDeviceCode variant="settings" />}
 
           <div className="space-y-3">
+            <Label>Apparence</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => theme !== 'light' && toggleTheme()}
+                className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${
+                  theme === 'light'
+                    ? 'border-brand-600 bg-brand-50 dark:bg-brand-950'
+                    : 'border-slate-200 dark:border-slate-700 hover:border-slate-400'
+                }`}
+              >
+                <Sun className="w-5 h-5" />
+                <span className="text-sm font-medium">Clair</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => theme !== 'dark' && toggleTheme()}
+                className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${
+                  theme === 'dark'
+                    ? 'border-brand-600 bg-brand-50 dark:bg-brand-950'
+                    : 'border-slate-200 dark:border-slate-700 hover:border-slate-400'
+                }`}
+              >
+                <Moon className="w-5 h-5" />
+                <span className="text-sm font-medium">Sombre</span>
+              </button>
+            </div>
+            <p className="text-xs text-slate-500">Couleur d&apos;accent de l&apos;interface</p>
+            <div className="grid grid-cols-3 gap-2">
+              {ACCENT_OPTIONS.map((option) => {
+                const selected = accent === option.id;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => setAccent(option.id)}
+                    className={`flex flex-col items-center gap-1.5 p-2.5 rounded-lg border-2 transition-all ${
+                      selected
+                        ? 'border-brand-600 bg-brand-50 dark:bg-brand-950'
+                        : 'border-slate-200 dark:border-slate-700 hover:border-slate-400'
+                    }`}
+                    aria-label={`Couleur ${option.label}`}
+                    aria-pressed={selected}
+                  >
+                    <span
+                      className="w-8 h-8 rounded-full border border-black/10 dark:border-white/20 flex items-center justify-center"
+                      style={{ backgroundColor: option.swatch }}
+                    >
+                      {selected && <Check className="w-4 h-4 text-white drop-shadow-sm" strokeWidth={3} />}
+                    </span>
+                    <span className="text-xs font-medium">{option.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="space-y-3">
             <Label>Défilement des pages</Label>
             <div className="grid grid-cols-2 gap-2">
               <button
@@ -52,7 +113,7 @@ const SettingsDialog = ({ trigger }) => {
                 onClick={() => updateSettings({ scrollDirection: 'vertical' })}
                 className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
                   settings.scrollDirection === 'vertical'
-                    ? 'border-blue-600 bg-blue-50 dark:bg-blue-950'
+                    ? 'border-brand-600 bg-brand-50 dark:bg-brand-950'
                     : 'border-slate-200 dark:border-slate-700 hover:border-slate-400'
                 }`}
               >
@@ -64,7 +125,7 @@ const SettingsDialog = ({ trigger }) => {
                 onClick={() => updateSettings({ scrollDirection: 'horizontal' })}
                 className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
                   settings.scrollDirection === 'horizontal'
-                    ? 'border-blue-600 bg-blue-50 dark:bg-blue-950'
+                    ? 'border-brand-600 bg-brand-50 dark:bg-brand-950'
                     : 'border-slate-200 dark:border-slate-700 hover:border-slate-400'
                 }`}
               >
@@ -117,7 +178,7 @@ const SettingsDialog = ({ trigger }) => {
                 SeNote est installé sur cet appareil.
               </p>
             ) : canInstall ? (
-              <Button onClick={handleInstall} className="w-full gap-2 bg-blue-600 hover:bg-blue-700">
+              <Button onClick={handleInstall} className="w-full gap-2 bg-brand-600 hover:bg-brand-700">
                 <Download className="w-4 h-4" />
                 Installer SeNote (raccourci)
               </Button>

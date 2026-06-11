@@ -46,7 +46,7 @@ const StudentLogin = () => {
         )}
         <Button
           type="submit"
-          className="w-full bg-blue-600 hover:bg-blue-700 gap-2"
+          className="w-full bg-brand-600 hover:bg-brand-700 gap-2"
           disabled={submitting || !name.trim()}
         >
           <Send className="w-4 h-4" />

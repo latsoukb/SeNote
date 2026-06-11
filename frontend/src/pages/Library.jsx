@@ -59,7 +59,8 @@ import StudentInbox from '../components/StudentInbox';
 import StudentLogin from '../components/StudentLogin';
 import StudentWaiting from '../components/StudentWaiting';
 import StudentDeviceCode from '../components/StudentDeviceCode';
-import DeadlineHomeBlocks from '../components/DeadlineHomeBlocks';
+import DeadlineSidebarSection from '../components/DeadlineSidebarSection';
+import { useDeadlineItems } from '../hooks/useDeadlineItems';
 import OpenNotebookTabBar from '../components/OpenNotebookTabBar';
 import { useStudentClass } from '../context/StudentClassContext';
 import { toast } from 'sonner';
@@ -87,7 +88,7 @@ const NotebookCard = ({
   <div className="group fade-up">
     <Link to={`/notebook/${nb.id}`} className="block relative">
       {nb.pinned && (
-        <span className="absolute top-2 right-2 z-10 bg-blue-600 text-white rounded-full p-1 shadow">
+        <span className="absolute top-2 right-2 z-10 bg-brand-600 text-white rounded-full p-1 shadow">
           <Pin className="w-3 h-3" />
         </span>
       )}
@@ -171,7 +172,7 @@ const NotebookCard = ({
 const navBtnClass = (active) =>
   `w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${
     active
-      ? 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-medium'
+      ? 'bg-brand-100 dark:bg-brand-950 text-brand-700 dark:text-brand-300 font-medium'
       : 'hover:bg-slate-100 dark:hover:bg-slate-800'
   }`;
 
@@ -225,6 +226,7 @@ const LibrarySidebar = ({
         <StudentDeviceCode />
       </div>
     )}
+    <DeadlineSidebarSection />
     <div className="h-px bg-slate-200 dark:bg-slate-800 my-3" />
     <p className="text-xs uppercase tracking-wide font-medium text-slate-500 px-2 mb-3">
       Organisation
@@ -353,7 +355,7 @@ const LibrarySidebar = ({
           <Button variant="ghost" onClick={() => setFolderDialogOpen(false)}>
             Annuler
           </Button>
-          <Button onClick={onCreateFolder} className="bg-blue-600 hover:bg-blue-700 text-white">
+          <Button onClick={onCreateFolder} className="bg-brand-600 hover:bg-brand-700 text-white">
             Créer
           </Button>
         </DialogFooter>
@@ -498,6 +500,7 @@ const Library = () => {
   };
 
   const trashCount = (trash?.notebooks?.length || 0) + (trash?.pages?.length || 0);
+  const { pendingCount: deadlinePendingCount } = useDeadlineItems();
 
   const handleMove = (notebookId, folderId) => {
     moveNotebookToFolder(notebookId, folderId);
@@ -553,10 +556,16 @@ const Library = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                className="shrink-0 md:hidden"
+                className="relative shrink-0 md:hidden"
                 aria-label="Menu organisation"
               >
                 <PanelLeft className="w-5 h-5" />
+                {deadlinePendingCount > 0 && (
+                  <span
+                    className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-600 rounded-full"
+                    title={`${deadlinePendingCount} travail${deadlinePendingCount > 1 ? 'x' : ''} en cours`}
+                  />
+                )}
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-[min(100vw,280px)] p-4 overflow-y-auto">
@@ -576,7 +585,7 @@ const Library = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Rechercher un cahier..."
-              className="pl-9 bg-slate-100 dark:bg-slate-900 border-transparent focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="pl-9 bg-slate-100 dark:bg-slate-900 border-transparent focus-visible:ring-2 focus-visible:ring-brand-500"
             />
           </div>
           <div className="flex items-center gap-1 sm:gap-2 ml-auto shrink-0">
@@ -639,7 +648,7 @@ const Library = () => {
             onClick={() => setMainView('inbox')}
             className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
               mainView === 'inbox'
-                ? 'bg-blue-600 text-white border-blue-600'
+                ? 'bg-brand-600 text-white border-brand-600'
                 : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'
             }`}
           >
@@ -659,7 +668,7 @@ const Library = () => {
               onClick={() => setSelectedFolder(id)}
               className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                 selectedFolder === id
-                  ? 'bg-blue-600 text-white border-blue-600'
+                  ? 'bg-brand-600 text-white border-brand-600'
                   : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'
               }`}
             >
@@ -676,7 +685,7 @@ const Library = () => {
               onClick={() => setSelectedFolder(f.id)}
               className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                 selectedFolder === f.id
-                  ? 'bg-blue-600 text-white border-blue-600'
+                  ? 'bg-brand-600 text-white border-brand-600'
                   : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'
               }`}
             >
@@ -688,7 +697,7 @@ const Library = () => {
       </header>
 
       <div className="flex flex-1 max-w-7xl mx-auto w-full">
-        <aside className="w-52 shrink-0 border-r border-slate-200 dark:border-slate-800 p-4 hidden md:block">
+        <aside className="w-52 shrink-0 border-r border-slate-200 dark:border-slate-800 p-4 hidden md:block overflow-y-auto max-h-[calc(100vh-8rem)]">
           <LibrarySidebar {...sidebarProps} />
         </aside>
 
@@ -866,7 +875,7 @@ const Library = () => {
             </Button>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-5 h-11 gap-2">
+                <Button className="bg-brand-600 hover:bg-brand-700 text-white rounded-full px-5 h-11 gap-2">
                   <Plus className="w-4 h-4" />
                   Nouveau cahier
                 </Button>
@@ -896,7 +905,7 @@ const Library = () => {
                           onClick={() => setNewCover(c.id)}
                           className={`h-16 rounded-md cover-shine border-2 transition-all ${
                             newCover === c.id
-                              ? 'border-blue-600 scale-105'
+                              ? 'border-brand-600 scale-105'
                               : 'border-transparent hover:border-slate-300 dark:hover:border-slate-700'
                           }`}
                           style={{ background: c.gradient }}
@@ -926,15 +935,13 @@ const Library = () => {
                   <Button variant="ghost" onClick={() => setDialogOpen(false)}>
                     Annuler
                   </Button>
-                  <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700 text-white">
+                  <Button onClick={handleCreate} className="bg-brand-600 hover:bg-brand-700 text-white">
                     Créer
                   </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
           </div>
-
-          <DeadlineHomeBlocks />
 
           {selectedFolder === 'all' && pinnedNotebooks.length > 0 && !search && (
             <section className="mb-10">

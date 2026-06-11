@@ -6,10 +6,8 @@ import {
   Type,
   Undo2,
   Redo2,
-  Trash,
   Ruler,
   Download,
-  Lasso,
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
@@ -27,7 +25,7 @@ const ToolButton = ({ active, onClick, label, children }) => (
           onClick={onClick}
           className={`p-2 rounded-lg transition-colors shrink-0 ${
             active
-              ? 'bg-blue-600 text-white'
+              ? 'bg-brand-600 text-white'
               : 'text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'
           }`}
           aria-label={label}
@@ -49,7 +47,6 @@ const Toolbar = ({
   setThicknessForActiveTool,
   onUndo,
   onRedo,
-  onClear,
   writeZoom = 1,
   onWriteZoomIn,
   onWriteZoomOut,
@@ -82,7 +79,7 @@ const Toolbar = ({
             <button
               className={`p-2 rounded-lg transition-colors shrink-0 ${
                 instrumentsActive
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-brand-600 text-white'
                   : 'text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700'
               }`}
               aria-label="Instruments de géométrie"
@@ -114,9 +111,6 @@ const Toolbar = ({
         </Popover>
         <ToolButton active={tool === 'text'} onClick={() => setTool('text')} label="Texte">
           <Type className="w-5 h-5" />
-        </ToolButton>
-        <ToolButton active={tool === 'lasso'} onClick={() => setTool('lasso')} label="Lasso — sélectionner traits, formes et texte">
-          <Lasso className="w-5 h-5" />
         </ToolButton>
 
         <div className="h-6 w-px bg-slate-200 dark:bg-slate-800 mx-0.5 shrink-0" />
@@ -170,7 +164,7 @@ const Toolbar = ({
                   key={c}
                   onClick={() => setColorForActiveTool(c)}
                   className={`w-6 h-6 rounded-full border-2 shrink-0 ${
-                    color === c ? 'border-blue-600 ring-2 ring-blue-300' : 'border-white dark:border-slate-700'
+                    color === c ? 'border-brand-600 ring-2 ring-brand-300' : 'border-white dark:border-slate-700'
                   }`}
                   style={{ background: c }}
                   aria-label={`Couleur ${c}`}
@@ -219,7 +213,7 @@ const Toolbar = ({
                 key={c}
                 onClick={() => setColorForActiveTool(c)}
                 className={`w-6 h-6 rounded-full border-2 shrink-0 ${
-                  color === c ? 'border-blue-600 ring-2 ring-blue-300' : 'border-white dark:border-slate-700'
+                  color === c ? 'border-brand-600 ring-2 ring-brand-300' : 'border-white dark:border-slate-700'
                 }`}
                 style={{ background: c }}
                 aria-label={`Couleur ${c}`}
@@ -236,9 +230,6 @@ const Toolbar = ({
         <ToolButton onClick={onRedo} label="Rétablir">
           <Redo2 className="w-5 h-5" />
         </ToolButton>
-        <ToolButton onClick={onClear} label="Effacer la page">
-          <Trash className="w-5 h-5" />
-        </ToolButton>
 
         <div className="flex-1 min-w-2" />
 
@@ -249,7 +240,7 @@ const Toolbar = ({
           onClick={zoomCustom ? onWriteZoomReset : onWriteZoomIn}
           className={`px-2 py-1 rounded-full text-xs font-medium shrink-0 tabular-nums ${
             zoomCustom
-              ? 'bg-blue-600 text-white'
+              ? 'bg-brand-600 text-white'
               : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
           title={

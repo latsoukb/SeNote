@@ -114,7 +114,7 @@ const OpenNotebookTabBar = ({ activeId = null }) => {
                       onClick={() => handleOpenNotebook(nb.id)}
                       className={`w-full flex items-center gap-2 px-2 py-2 rounded-md text-left text-sm transition-colors ${
                         nb.id === activeId
-                          ? 'bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300'
+                          ? 'bg-brand-50 dark:bg-brand-950 text-brand-700 dark:text-brand-300'
                           : 'hover:bg-slate-100 dark:hover:bg-slate-800'
                       }`}
                     >

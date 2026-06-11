@@ -13,7 +13,7 @@ const NewCommBanner = ({ count, onOpen, onDismiss }) => {
   return (
     <div
       role="status"
-      className="bg-blue-600 text-white px-4 py-2.5 flex items-center gap-3 shadow-md"
+      className="bg-brand-600 text-white px-4 py-2.5 flex items-center gap-3 shadow-md"
     >
       <Bell className="w-4 h-4 shrink-0" />
       <button

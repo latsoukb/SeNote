@@ -36,7 +36,7 @@ const StudentNotifications = () => {
       toast('Nouveau message de votre professeur', {
         description: `${first.teacherName} — ${first.title || first.body?.slice(0, 40)}`,
         duration: 10000,
-        icon: <Bell className="w-4 h-4 text-blue-600" />,
+        icon: <Bell className="w-4 h-4 text-brand-600" />,
         action: {
           label: 'Voir',
           onClick: openReception,

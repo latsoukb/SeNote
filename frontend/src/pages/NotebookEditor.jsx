@@ -337,12 +337,6 @@ const NotebookEditor = () => {
     setPageSyncRevision((r) => r + 1);
   };
 
-  const handleClearPage = () => {
-    pushUndo(currentPage.id, clonePageSnapshot(currentPage));
-    handlePageUpdate(currentPage.id, { strokes: [], textBoxes: [] });
-    toast('Page effacée');
-  };
-
   const handleWriteZoomReset = () => {
     setWriteZoom(DEFAULT_WRITE_ZOOM);
     setWritePan({ x: 0, y: 0 });
@@ -459,7 +453,7 @@ const NotebookEditor = () => {
                     onClick={() => setAddPageMode(m.id)}
                     className={`flex-1 text-xs py-1.5 rounded-md border transition-colors ${
                       addPageMode === m.id
-                        ? 'bg-blue-600 text-white border-blue-600'
+                        ? 'bg-brand-600 text-white border-brand-600'
                         : 'border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
                   >
@@ -510,7 +504,6 @@ const NotebookEditor = () => {
         setThicknessForActiveTool={setThicknessForActiveTool}
         onUndo={handleUndo}
         onRedo={handleRedo}
-        onClear={handleClearPage}
         writeZoom={writeZoom}
         onWriteZoomIn={() => adjustWriteZoom(0.2)}
         onWriteZoomOut={() => adjustWriteZoom(-0.2)}
@@ -582,7 +575,7 @@ const NotebookEditor = () => {
                     onClick={() => handleSidebarPage(idx)}
                     className={`w-full aspect-[3/4] rounded-md bg-white dark:bg-slate-100 border-2 transition-all overflow-hidden ${
                       idx === currentPageIdx
-                        ? 'border-blue-600 shadow-md'
+                        ? 'border-brand-600 shadow-md'
                         : 'border-slate-200 dark:border-slate-700 hover:border-slate-400'
                     }`}
                   >
@@ -591,7 +584,7 @@ const NotebookEditor = () => {
                   <p className="text-[11px] text-center mt-1 text-slate-500">{idx + 1}</p>
                   <div className="absolute top-1 right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                     {isPdfPage(p) ? (
-                      <span className="px-1.5 py-0.5 rounded bg-blue-600/90 text-white text-[9px] font-medium">
+                      <span className="px-1.5 py-0.5 rounded bg-brand-600/90 text-white text-[9px] font-medium">
                         PDF
                       </span>
                     ) : (

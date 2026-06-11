@@ -269,7 +269,7 @@ const InstrumentControls = ({ canInteract, startDrag, onRemove, rotateTitle }) =
 };
 
 const GoodNotesRuler = ({ inst, scale, zoom = 1, tool, onUpdate, onRemove }) => {
-  const canInteract = tool === 'ruler' || tool === 'pen' || tool === 'highlighter' || tool === 'lasso';
+  const canInteract = tool === 'ruler' || tool === 'pen' || tool === 'highlighter';
   const len = getRulerLengthPx(inst);
   const lengthCm = inst.lengthCm ?? 30;
   const thick = RULER_THICKNESS;
@@ -318,7 +318,7 @@ const GoodNotesRuler = ({ inst, scale, zoom = 1, tool, onUpdate, onRemove }) => 
 };
 
 const GoodNotesSetSquare = ({ inst, scale, zoom = 1, tool, onUpdate, onRemove }) => {
-  const canInteract = tool === 'ruler' || tool === 'pen' || tool === 'highlighter' || tool === 'lasso';
+  const canInteract = tool === 'ruler' || tool === 'pen' || tool === 'highlighter';
   const leg = getSetSquareLegPx(inst);
   const legCm = inst.legCm ?? 10;
   const hypoCm = legCm * Math.SQRT2;

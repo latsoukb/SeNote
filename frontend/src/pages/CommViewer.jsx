@@ -109,7 +109,7 @@ const CommViewer = () => {
               variant="default"
               size="sm"
               onClick={() => setImportOpen(true)}
-              className="gap-2 bg-blue-600 hover:bg-blue-700"
+              className="gap-2 bg-brand-600 hover:bg-brand-700"
               disabled={loading || needsDetail}
             >
               <BookPlus className="w-4 h-4" />

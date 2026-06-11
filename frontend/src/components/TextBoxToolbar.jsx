@@ -48,7 +48,7 @@ const TextBoxToolbar = ({ box, onChange, scale = 1 }) => {
             key={c}
             onClick={() => onChange({ color: c })}
             className={`w-4 h-4 rounded-full border shrink-0 ${
-              box.color === c ? 'border-blue-600 ring-1 ring-blue-400' : 'border-slate-300'
+              box.color === c ? 'border-brand-600 ring-1 ring-brand-400' : 'border-slate-300'
             }`}
             style={{ background: c }}
             aria-label={`Couleur ${c}`}

@@ -63,7 +63,7 @@ const AccessGate = ({ children }) => {
           autoFocus
         />
         {error && <p className="text-sm text-red-600 mb-3">Code incorrect</p>}
-        <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
+        <Button type="submit" className="w-full bg-brand-600 hover:bg-brand-700">
           Entrer
         </Button>
       </form>

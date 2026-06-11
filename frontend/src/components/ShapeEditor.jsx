@@ -8,7 +8,7 @@ const Handle = ({ h, scale, onDragStart }) => (
       e.preventDefault();
       onDragStart(h.id, e);
     }}
-    className="absolute rounded-full bg-blue-600 border-2 border-white shadow-md cursor-grab active:cursor-grabbing z-30 pointer-events-auto"
+    className="absolute rounded-full bg-brand-600 border-2 border-white shadow-md cursor-grab active:cursor-grabbing z-30 pointer-events-auto"
     style={{
       left: h.x * scale,
       top: h.y * scale,

@@ -3,14 +3,7 @@ import { makeId } from '../lib/id';
 import { PAGE_W, PAGE_H } from '../lib/pageDimensions';
 import { getPageBackground, getPaperZoomStyle } from '../lib/pageTemplates';
 import { detectShape, shapeToStroke, looksLikeHandwriting } from '../lib/shapeDetection';
-import {
-  drawShape,
-  hitTestStroke,
-  getStrokeBounds,
-  moveStroke,
-  updateShapeFromHandle,
-  shapeToPoints,
-} from '../lib/shapeGeometry';
+import { drawShape } from '../lib/shapeGeometry';
 import { snapToInstruments, instrumentEdgeKey } from '../lib/instrumentSnap';
 import {
   eraseStrokes,
@@ -20,8 +13,6 @@ import {
 import TextBox from './TextBox';
 import TextBoxToolbar from './TextBoxToolbar';
 import GeometryInstruments from './GeometryInstruments';
-import ShapeEditor from './ShapeEditor';
-import LassoSelection from './LassoSelection';
 import {
   canDrawWithPointer,
   shouldIgnoreDrawPointer,
@@ -78,7 +69,6 @@ const PageSheet = ({
   const instrumentEdgeRef = useRef(null);
   const [editingTextId, setEditingTextId] = useState(null);
   const [selectedTextId, setSelectedTextId] = useState(null);
-  const [selectedStrokeId, setSelectedStrokeId] = useState(null);
   const [dragFrame, setDragFrame] = useState(0);
   const shapeTimerRef = useRef(null);
   const pendingStrokeIdRef = useRef(null);
@@ -92,8 +82,6 @@ const PageSheet = ({
   const constraintRef = useRef(false);
   const pageIdRef = useRef(page.id);
   const lastSyncRevRef = useRef(pageSyncRevision);
-  const lassoDragRef = useRef(null);
-  const lassoOrigStrokeRef = useRef(null);
   const textTapRef = useRef(null);
   const viewportRef = useRef(null);
   const [layoutWidth, setLayoutWidth] = useState(displayWidth);
@@ -551,26 +539,12 @@ const PageSheet = ({
 
   const strokeList = strokesRef.current ?? page.strokes ?? [];
   void dragFrame;
-  const selectedStroke = strokeList.find((s) => s.id === selectedStrokeId);
   const selectedTextBox = (page.textBoxes || []).find((t) => t.id === selectedTextId);
 
   const commitStrokes = (next) => {
     strokesRef.current = next;
     onChange({ strokes: next });
     bumpInk();
-  };
-
-  const handleShapeHandleDrag = (handleId, e) => {
-    if (!selectedStroke?.shape) return;
-    const pos = getPos(e);
-    const newShape = updateShapeFromHandle(selectedStroke.shape, handleId, pos);
-    const newPoints = shapeToPoints(newShape);
-    const next = strokeList.map((s) =>
-      s.id === selectedStrokeId ? { ...s, shape: newShape, points: newPoints } : s
-    );
-    strokesRef.current = next;
-    onChange({ strokes: next });
-    scheduleRender();
   };
 
   const getTextBoxBounds = (t, pad = 12) => {
@@ -588,29 +562,6 @@ const PageSheet = ({
         return boxes[i];
       }
     }
-    return null;
-  };
-
-  const selectTextAt = (pos) => {
-    const hit = hitTestTextAt(pos);
-    if (hit) {
-      setSelectedTextId(hit.id);
-      setSelectedStrokeId(null);
-      return true;
-    }
-    return false;
-  };
-
-  const selectStrokeAt = (pos) => {
-    const list = strokesRef.current || page.strokes || [];
-    for (let i = list.length - 1; i >= 0; i--) {
-      if (hitTestStroke(list[i], pos, 18)) {
-        setSelectedStrokeId(list[i].id);
-        setSelectedTextId(null);
-        return list[i];
-      }
-    }
-    setSelectedStrokeId(null);
     return null;
   };
 
@@ -658,22 +609,6 @@ const PageSheet = ({
     if (tool === 'ruler') return;
     if (stylusOnly && !canDrawWithPointer(e, stylusOnly)) return;
 
-    if (tool === 'lasso') {
-      e.preventDefault();
-      pointerLayerRef.current?.setPointerCapture(e.pointerId);
-      setPenActive(true, e.pointerType);
-      const pos = getPos(e);
-      if (selectTextAt(pos)) return;
-      const hit = selectStrokeAt(pos);
-      if (hit) {
-        pushUndo(cloneUndoSnapshot());
-        lassoOrigStrokeRef.current = hit;
-        lassoDragRef.current = { startPos: pos, moved: false };
-        setIsDrawing(true);
-      }
-      return;
-    }
-
     if (tool === 'text') {
       e.preventDefault();
       const pos = getPos(e);
@@ -683,7 +618,6 @@ const PageSheet = ({
           setEditingTextId(hit.id);
         } else {
           setSelectedTextId(hit.id);
-          setSelectedStrokeId(null);
           setEditingTextId(null);
         }
       } else {
@@ -719,8 +653,6 @@ const PageSheet = ({
     if (!instrumentStartRef.current) {
       pushUndo(cloneUndoSnapshot());
     }
-    setSelectedStrokeId(null);
-
     const stroke = {
       id: makeId('s'),
       type: tool,
@@ -750,24 +682,6 @@ const PageSheet = ({
       );
       return;
     }
-    if (tool === 'lasso' && lassoDragRef.current && lassoOrigStrokeRef.current) {
-      e.preventDefault();
-      const pos = getPos(e);
-      const dx = pos.x - lassoDragRef.current.startPos.x;
-      const dy = pos.y - lassoDragRef.current.startPos.y;
-      if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
-        lassoDragRef.current.moved = true;
-        const moved = moveStroke(lassoOrigStrokeRef.current, dx, dy);
-        const next = (strokesRef.current || []).map((s) =>
-          s.id === moved.id ? moved : s
-        );
-        strokesRef.current = next;
-        scheduleRender();
-        setDragFrame((n) => n + 1);
-      }
-      return;
-    }
-
     if (!isDrawing) return;
     e.preventDefault();
     const pos = getPos(e);
@@ -851,18 +765,6 @@ const PageSheet = ({
       setPenActive(false, e?.pointerType);
       return;
     }
-    if (tool === 'lasso' && lassoDragRef.current) {
-      setIsDrawing(false);
-      pointerLayerRef.current?.releasePointerCapture?.(e?.pointerId);
-      setPenActive(false, e?.pointerType);
-      if (lassoDragRef.current.moved) {
-        commitStrokes(strokesRef.current || []);
-      }
-      lassoDragRef.current = null;
-      lassoOrigStrokeRef.current = null;
-      return;
-    }
-
     if (!isDrawing) return;
     setIsDrawing(false);
     pointerLayerRef.current?.releasePointerCapture?.(e?.pointerId);
@@ -948,9 +850,7 @@ const PageSheet = ({
       ? 'canvas-eraser'
       : tool === 'text'
         ? 'canvas-text'
-        : tool === 'lasso'
-            ? 'canvas-lasso'
-            : 'canvas-pen';
+        : 'canvas-pen';
 
   const effectiveZoom = isActive ? writeZoom : 1;
   const paperZoomStyle =
@@ -973,8 +873,6 @@ const PageSheet = ({
       : scrollDirection === 'horizontal'
         ? 'pan-x'
         : 'pan-y';
-  const selectionBounds = tool === 'lasso' && selectedStroke ? getStrokeBounds(selectedStroke) : null;
-
   const pageContent = (
     <>
       {bg.type === 'image' ? (
@@ -1039,7 +937,6 @@ const PageSheet = ({
                 setEditingTextId(t.id);
               } else {
                 setSelectedTextId(t.id);
-                setSelectedStrokeId(null);
                 setEditingTextId(null);
               }
             }}
@@ -1058,7 +955,7 @@ const PageSheet = ({
             }
           />
         ))}
-        {(tool === 'lasso' || tool === 'text') && selectedTextBox && !editingTextId && (
+        {tool === 'text' && selectedTextBox && !editingTextId && (
           <TextBoxToolbar
             box={selectedTextBox}
             scale={visualScale}
@@ -1071,16 +968,6 @@ const PageSheet = ({
             }
           />
         )}
-        {tool === 'lasso' && selectionBounds && (
-          <LassoSelection bounds={selectionBounds} scale={visualScale} />
-        )}
-        {tool === 'lasso' && selectedStroke?.shape && (
-          <ShapeEditor
-            shape={selectedStroke.shape}
-            scale={visualScale}
-            onHandleDrag={handleShapeHandleDrag}
-          />
-        )}
       </div>
     </>
   );
@@ -1089,7 +976,7 @@ const PageSheet = ({
     <div
       ref={viewportRef}
       data-page-viewport
-      className={`relative bg-white overflow-hidden shadow-lg ${isActive ? 'ring-2 ring-blue-500/40' : ''}`}
+      className={`relative bg-white overflow-hidden shadow-lg ${isActive ? 'ring-2 ring-brand-500/40' : ''}`}
       style={{ width: '100%', height: baseH, touchAction: pageTouchAction }}
       onPointerMove={isPanning ? moveDraw : undefined}
       onPointerUp={isPanning ? endDraw : undefined}
@@ -1109,7 +996,7 @@ const PageSheet = ({
         </div>
       </div>
       {isActive && effectiveZoom !== 1 && (
-        <div className="absolute top-2 right-2 bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full font-medium z-30 pointer-events-none">
+        <div className="absolute top-2 right-2 bg-brand-600 text-white text-[10px] px-2 py-0.5 rounded-full font-medium z-30 pointer-events-none">
           {Math.round(effectiveZoom * 100)}%
         </div>
       )}

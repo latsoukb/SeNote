@@ -57,7 +57,7 @@ const StudentInbox = () => {
       <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-slate-200 dark:border-slate-800">
         <div>
           <h2 className="text-lg font-semibold flex items-center gap-2">
-            <Inbox className="w-5 h-5 text-blue-600" />
+            <Inbox className="w-5 h-5 text-brand-600" />
             Réception
             {newCount > 0 && (
               <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">
@@ -99,7 +99,7 @@ const StudentInbox = () => {
             onClick={() => setFilter(f)}
             className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
               filter === f
-                ? 'bg-blue-600 text-white border-blue-600'
+                ? 'bg-brand-600 text-white border-brand-600'
                 : 'border-slate-200 dark:border-slate-700'
             }`}
           >
@@ -139,7 +139,7 @@ const StudentInbox = () => {
               key={comm.id}
               className={`rounded-xl border bg-white dark:bg-slate-900 transition-colors ${
                 unread
-                  ? 'border-blue-400 dark:border-blue-600 shadow-sm shadow-blue-500/10'
+                  ? 'border-brand-400 dark:border-brand-600 shadow-sm shadow-brand-500/10'
                   : deadlineStyle
                     ? deadlineStyle.border
                     : 'border-slate-200 dark:border-slate-800'
@@ -152,8 +152,8 @@ const StudentInbox = () => {
                   onClick={() => markCommunicationSeen(comm)}
                   className="flex items-start gap-3"
                 >
-                  <div className="relative w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-950 flex items-center justify-center shrink-0">
-                    <Icon className="w-5 h-5 text-blue-600" />
+                  <div className="relative w-10 h-10 rounded-lg bg-brand-100 dark:bg-brand-950 flex items-center justify-center shrink-0">
+                    <Icon className="w-5 h-5 text-brand-600" />
                     {unread && (
                       <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-600 rounded-full border-2 border-white dark:border-slate-900" />
                     )}
@@ -168,7 +168,7 @@ const StudentInbox = () => {
                       )}
                       <DeadlineBadge deadlineAt={comm.deadlineAt} done={done} />
                     </div>
-                    <p className="text-xs text-blue-600 font-medium">{comm.teacherName}</p>
+                    <p className="text-xs text-brand-600 font-medium">{comm.teacherName}</p>
                     {comm.body && (
                       <p className="text-sm text-slate-500 mt-1 line-clamp-2">{comm.body}</p>
                     )}
@@ -184,7 +184,7 @@ const StudentInbox = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="mt-3 w-full gap-2 text-blue-700 border-blue-200 hover:bg-blue-50 dark:hover:bg-blue-950"
+                    className="mt-3 w-full gap-2 text-brand-700 border-brand-200 hover:bg-brand-50 dark:hover:bg-brand-950"
                     onClick={() => setImportComm(comm)}
                   >
                     <BookPlus className="w-4 h-4" />

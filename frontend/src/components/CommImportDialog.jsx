@@ -87,7 +87,7 @@ const CommImportDialog = ({ comm, open, onOpenChange }) => {
             onClick={() => setMode('new')}
             className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-colors ${
               mode === 'new'
-                ? 'border-blue-600 bg-blue-50 dark:bg-blue-950'
+                ? 'border-brand-600 bg-brand-50 dark:bg-brand-950'
                 : 'border-slate-200 dark:border-slate-700'
             }`}
           >
@@ -99,7 +99,7 @@ const CommImportDialog = ({ comm, open, onOpenChange }) => {
             onClick={() => setMode('append')}
             className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-colors ${
               mode === 'append'
-                ? 'border-blue-600 bg-blue-50 dark:bg-blue-950'
+                ? 'border-brand-600 bg-brand-50 dark:bg-brand-950'
                 : 'border-slate-200 dark:border-slate-700'
             }`}
           >
@@ -137,7 +137,7 @@ const CommImportDialog = ({ comm, open, onOpenChange }) => {
           <Button
             onClick={runImport}
             disabled={loading || (mode === 'append' && (!notebookId || notebooks.length === 0))}
-            className="bg-blue-600 hover:bg-blue-700 gap-2"
+            className="bg-brand-600 hover:bg-brand-700 gap-2"
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             Importer

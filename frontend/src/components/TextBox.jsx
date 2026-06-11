@@ -15,7 +15,7 @@ const TextBox = ({
 }) => {
   const dragRef = useRef(null);
   const interactionScale = (box.scale || 1) * (box.zoom || 1);
-  const canEdit = tool === 'text' || tool === 'lasso';
+  const canEdit = tool === 'text';
   const showChrome = editing || (canEdit && selected);
   const font = TEXT_FONTS.find((f) => f.id === box.fontFamily) || TEXT_FONTS[0];
 
@@ -96,7 +96,7 @@ const TextBox = ({
           onChange={(e) => onChange({ text: e.target.value, width: Math.max(80, e.target.scrollWidth) })}
           onBlur={onBlur}
           onKeyDown={(e) => e.key === 'Escape' && onBlur()}
-          className="bg-transparent outline-none resize-none w-full border-b border-blue-500/60"
+          className="bg-transparent outline-none resize-none w-full border-b border-brand-500/60"
           style={{
             color: box.color,
             fontSize: box.size,
@@ -110,7 +110,7 @@ const TextBox = ({
           onDoubleClick={() => tool === 'text' && onEdit?.()}
           onPointerDown={startDrag}
           className={`whitespace-pre-wrap leading-snug relative ${
-            showChrome ? 'outline outline-1 outline-blue-400/50 outline-offset-2' : ''
+            showChrome ? 'outline outline-1 outline-brand-400/50 outline-offset-2' : ''
           }`}
           style={{
             color: box.color,
@@ -124,7 +124,7 @@ const TextBox = ({
           {showChrome && (
             <div
               onPointerDown={startResize}
-              className="absolute -bottom-1 -right-1 w-3 h-3 bg-blue-600 border border-white rounded-sm cursor-se-resize z-10"
+              className="absolute -bottom-1 -right-1 w-3 h-3 bg-brand-600 border border-white rounded-sm cursor-se-resize z-10"
               aria-label="Redimensionner"
             />
           )}
