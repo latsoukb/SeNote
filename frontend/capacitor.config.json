@@ -1,0 +1,20 @@
+{
+  "appId": "com.senote.tablet",
+  "appName": "SeNote",
+  "webDir": "build",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1000,
+      "backgroundColor": "#1e293b",
+      "showSpinner": false
+    }
+  }
+}

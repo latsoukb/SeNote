@@ -1,6 +1,7 @@
 import React from 'react';
 import './App.css';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, HashRouter, Routes, Route } from 'react-router-dom';
+import { isNativeApp } from './lib/platform';
 import { ThemeProvider } from './context/ThemeContext';
 import { SettingsProvider } from './context/SettingsContext';
 import { NotesProvider } from './context/NotesContext';
@@ -20,6 +21,15 @@ function App() {
   React.useEffect(() => {
     ensureAppConfig();
   }, []);
+
+  const native = isNativeApp();
+  // Capacitor utilise file:// — HashRouter obligatoire pour que les routes fonctionnent
+  const Router = native
+    ? ({ children }) => <HashRouter>{children}</HashRouter>
+    : ({ children }) => (
+        <BrowserRouter basename={process.env.PUBLIC_URL || ''}>{children}</BrowserRouter>
+      );
+
   return (
     <ErrorBoundary>
     <AccessGate>
@@ -30,15 +40,16 @@ function App() {
             <OpenNotebooksProvider>
             <StudentClassProvider>
               <div className="App bg-slate-50 dark:bg-chrome-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">
-                <BrowserRouter basename={process.env.PUBLIC_URL || ''}>
-                  <StudentNotifications />
+                <Router>
+                  {/* Notifications désactivées sur APK : polling réseau inutile */}
+                  {!native && <StudentNotifications />}
                   <Routes>
                     <Route path="/" element={<Library />} />
                     <Route path="/view/:id" element={<CommViewer />} />
                     <Route path="/notebook/:id" element={<NotebookEditor />} />
                     <Route path="/notebook/:id/page/:pageId" element={<NotebookEditor />} />
                   </Routes>
-                </BrowserRouter>
+                </Router>
                 <Toaster richColors position="bottom-right" />
               </div>
             </StudentClassProvider>
