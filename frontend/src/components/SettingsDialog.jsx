@@ -40,11 +40,11 @@ const SettingsDialog = ({ trigger }) => {
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md max-h-[min(90dvh,100vh-2rem)] flex flex-col gap-0 p-0 overflow-hidden">
+        <DialogHeader className="shrink-0 px-6 pt-6 pb-2">
           <DialogTitle>Paramètres</DialogTitle>
         </DialogHeader>
-        <div className="space-y-6 py-2">
+        <div className="space-y-6 py-2 px-6 pb-6 overflow-y-auto overscroll-contain thin-scroll min-h-0 flex-1">
           {studentSession && <StudentDeviceCode variant="settings" />}
 
           <div className="space-y-3">
