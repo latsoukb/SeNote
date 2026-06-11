@@ -217,7 +217,7 @@ const PdfDocumentView = ({
   return (
     <div
       ref={scrollRef}
-      className={`flex-1 thin-scroll bg-slate-200/80 dark:bg-brand-950/50 ${
+      className={`flex-1 thin-scroll bg-slate-200/80 dark:bg-chrome-950/50 ${
         isVertical ? 'overflow-y-auto overflow-x-hidden' : 'overflow-x-auto overflow-y-hidden'
       }`}
       style={{
@@ -267,7 +267,7 @@ const PdfDocumentView = ({
         ))}
         {autoAddPage && (
           <div
-            className={`shrink-0 flex items-center justify-center text-slate-400 text-xs border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-md bg-white/40 dark:bg-brand-900/20 ${
+            className={`shrink-0 flex items-center justify-center text-slate-400 text-xs border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-md bg-white/40 dark:bg-chrome-900/20 ${
               isVertical ? 'w-full' : 'h-full'
             }`}
             style={

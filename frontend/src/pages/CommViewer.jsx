@@ -90,8 +90,8 @@ const CommViewer = () => {
   const downloadAll = () => downloadable.forEach(downloadFile);
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-brand-950">
-      <header className="sticky top-0 z-10 border-b border-slate-200 dark:border-brand-800 bg-white/90 dark:bg-brand-900/90 backdrop-blur px-4 py-3 flex items-center gap-3">
+    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-chrome-950">
+      <header className="sticky top-0 z-10 border-b border-slate-200 dark:border-chrome-800 bg-white/90 dark:bg-chrome-900/90 backdrop-blur px-4 py-3 flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={() => navigate('/?view=reception')} aria-label="Retour">
           <ArrowLeft className="w-5 h-5" />
         </Button>
@@ -189,7 +189,7 @@ const CommViewer = () => {
                 <img
                   src={att.dataUrl}
                   alt={att.fileName || view.title}
-                  className="max-w-full rounded-lg shadow-md border border-slate-200 dark:border-brand-800"
+                  className="max-w-full rounded-lg shadow-md border border-slate-200 dark:border-chrome-800"
                 />
               </figure>
             );
@@ -203,7 +203,7 @@ const CommViewer = () => {
                 <iframe
                   title={att.fileName || view.title}
                   src={att.dataUrl}
-                  className="w-full h-[70vh] rounded-lg border border-slate-200 dark:border-brand-800 bg-white"
+                  className="w-full h-[70vh] rounded-lg border border-slate-200 dark:border-chrome-800 bg-white"
                 />
               </figure>
             );

@@ -21,7 +21,7 @@ function App() {
           <NotesProvider>
             <OpenNotebooksProvider>
             <StudentClassProvider>
-              <div className="App bg-slate-50 dark:bg-brand-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">
+              <div className="App bg-slate-50 dark:bg-chrome-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">
                 <BrowserRouter basename={process.env.PUBLIC_URL || ''}>
                   <StudentNotifications />
                   <Routes>

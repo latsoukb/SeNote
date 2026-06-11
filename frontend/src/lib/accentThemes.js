@@ -1,4 +1,4 @@
-/** Palettes d'accent (échelle Tailwind, valeurs HSL sans hsl()). */
+/** Palettes d'accent pour boutons, liens, sélections (couleurs vives). */
 const PALETTES = {
   blue: {
     50: '214 100% 97%',
@@ -80,6 +80,34 @@ const PALETTES = {
   },
 };
 
+/** Foncé d'interface = échelle slate Tailwind (bleu parfait en mode sombre). */
+const SLATE_CHROME = {
+  950: '222.2 84% 4.9%',
+  900: '222.2 47.4% 11.2%',
+  800: '217.2 32.6% 17.5%',
+  700: '215 25% 26.7%',
+  600: '215 16% 34%',
+  500: '215 16% 47%',
+  400: '215 20% 65%',
+  300: '213 27% 84%',
+  200: '214 32% 91%',
+  100: '214 32% 96%',
+};
+
+const extractHue = (hsl) => parseFloat(hsl.split(' ')[0]);
+
+/** Même profondeur que slate ; teinte de l'accent pour rose, vert, etc. Bleu = slate exact. */
+function buildChromePalette(accentId, palette) {
+  if (accentId === 'blue') return { ...SLATE_CHROME };
+  const hue = extractHue(palette[600]);
+  return Object.fromEntries(
+    Object.entries(SLATE_CHROME).map(([shade, value]) => {
+      const [, s, l] = value.split(' ');
+      return [shade, `${hue} ${s} ${l}`];
+    })
+  );
+}
+
 export const ACCENT_OPTIONS = [
   { id: 'blue', label: 'Bleu', swatch: 'hsl(221, 83%, 53%)' },
   { id: 'rose', label: 'Rose', swatch: 'hsl(347, 77%, 50%)' },
@@ -107,20 +135,25 @@ const DARK_SURFACE_VARS = [
 
 export function applyAccentTheme(accentId, isDark = false) {
   const palette = PALETTES[accentId] || PALETTES[DEFAULT_ACCENT];
+  const chrome = buildChromePalette(accentId, palette);
   const root = document.documentElement;
   root.dataset.accent = accentId in PALETTES ? accentId : DEFAULT_ACCENT;
+
   Object.entries(palette).forEach(([shade, value]) => {
     root.style.setProperty(`--brand-${shade}`, value);
   });
+  Object.entries(chrome).forEach(([shade, value]) => {
+    root.style.setProperty(`--chrome-${shade}`, value);
+  });
 
   if (isDark) {
-    root.style.setProperty('--background', palette[950]);
-    root.style.setProperty('--card', palette[900]);
-    root.style.setProperty('--popover', palette[900]);
-    root.style.setProperty('--secondary', palette[900]);
-    root.style.setProperty('--muted', palette[900]);
-    root.style.setProperty('--border', palette[800]);
-    root.style.setProperty('--input', palette[800]);
+    root.style.setProperty('--background', chrome[950]);
+    root.style.setProperty('--card', chrome[900]);
+    root.style.setProperty('--popover', chrome[900]);
+    root.style.setProperty('--secondary', chrome[900]);
+    root.style.setProperty('--muted', chrome[900]);
+    root.style.setProperty('--border', chrome[800]);
+    root.style.setProperty('--input', chrome[800]);
   } else {
     DARK_SURFACE_VARS.forEach((name) => root.style.removeProperty(name));
   }

@@ -13,7 +13,7 @@ const TextBoxToolbar = ({ box, onChange, scale = 1 }) => {
 
   return (
     <div
-      className="absolute z-40 flex items-center gap-1 px-2 py-1 rounded-lg bg-white dark:bg-brand-900 shadow-lg border border-slate-200 dark:border-brand-700 pointer-events-auto"
+      className="absolute z-40 flex items-center gap-1 px-2 py-1 rounded-lg bg-white dark:bg-chrome-900 shadow-lg border border-slate-200 dark:border-chrome-700 pointer-events-auto"
       style={{
         left: box.x * scale,
         top: Math.max(0, box.y * scale - 36),
@@ -24,7 +24,7 @@ const TextBoxToolbar = ({ box, onChange, scale = 1 }) => {
       <select
         value={box.fontFamily || 'sans'}
         onChange={(e) => onChange({ fontFamily: e.target.value })}
-        className="text-[10px] h-6 rounded border border-slate-200 dark:border-brand-700 bg-transparent px-1 max-w-[72px]"
+        className="text-[10px] h-6 rounded border border-slate-200 dark:border-chrome-700 bg-transparent px-1 max-w-[72px]"
         aria-label="Police"
       >
         {TEXT_FONTS.map((f) => (
@@ -39,7 +39,7 @@ const TextBoxToolbar = ({ box, onChange, scale = 1 }) => {
         max={72}
         value={Math.round(box.size || 16)}
         onChange={(e) => onChange({ size: Math.max(8, Math.min(72, Number(e.target.value) || 16)) })}
-        className="w-10 h-6 text-[10px] text-center rounded border border-slate-200 dark:border-brand-700 bg-transparent"
+        className="w-10 h-6 text-[10px] text-center rounded border border-slate-200 dark:border-chrome-700 bg-transparent"
         aria-label="Taille"
       />
       <div className="flex gap-0.5">

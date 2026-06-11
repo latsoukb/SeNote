@@ -116,7 +116,7 @@ const NotebookCard = ({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
-            className="p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-brand-800 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-chrome-800 opacity-0 group-hover:opacity-100 transition-opacity"
             aria-label="Options"
           >
             <MoreVertical className="w-4 h-4" />
@@ -173,8 +173,8 @@ const NotebookCard = ({
 const navBtnClass = (active) =>
   `w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${
     active
-      ? 'bg-brand-100 dark:bg-brand-950 text-brand-700 dark:text-brand-300 font-medium'
-      : 'hover:bg-slate-100 dark:hover:bg-brand-800'
+      ? 'bg-brand-100 dark:bg-chrome-950 text-brand-700 dark:text-brand-300 font-medium'
+      : 'hover:bg-slate-100 dark:hover:bg-chrome-800'
   }`;
 
 const LibrarySidebar = ({
@@ -232,7 +232,7 @@ const LibrarySidebar = ({
       setMainView={setMainView}
       onNavigate={onNavigate}
     />
-    <div className="h-px bg-slate-200 dark:bg-brand-800 my-3" />
+    <div className="h-px bg-slate-200 dark:bg-chrome-800 my-3" />
     <p className="text-xs uppercase tracking-wide font-medium text-slate-500 px-2 mb-3">
       Organisation
     </p>
@@ -269,7 +269,7 @@ const LibrarySidebar = ({
       <Folder className="w-4 h-4 shrink-0 opacity-50" />
       Sans dossier
     </button>
-    <div className="h-px bg-slate-200 dark:bg-brand-800 my-3" />
+    <div className="h-px bg-slate-200 dark:bg-chrome-800 my-3" />
     <button
       onClick={() => {
         setMainView('library');
@@ -283,12 +283,12 @@ const LibrarySidebar = ({
         Corbeille
       </span>
       {trashCount > 0 && (
-        <span className="text-xs bg-slate-200 dark:bg-brand-700 px-1.5 py-0.5 rounded-full">
+        <span className="text-xs bg-slate-200 dark:bg-chrome-700 px-1.5 py-0.5 rounded-full">
           {trashCount}
         </span>
       )}
     </button>
-    <div className="h-px bg-slate-200 dark:bg-brand-800 my-3" />
+    <div className="h-px bg-slate-200 dark:bg-chrome-800 my-3" />
     <p className="text-xs uppercase tracking-wide font-medium text-slate-500 px-2 mb-2">
       Dossiers
     </p>
@@ -319,7 +319,7 @@ const LibrarySidebar = ({
     ))}
     <Dialog open={folderDialogOpen} onOpenChange={setFolderDialogOpen}>
       <DialogTrigger asChild>
-        <button className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-slate-500 hover:bg-slate-100 dark:hover:bg-brand-800 mt-1">
+        <button className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-slate-500 hover:bg-slate-100 dark:hover:bg-chrome-800 mt-1">
           <FolderPlus className="w-4 h-4" />
           Nouveau dossier
         </button>
@@ -558,7 +558,7 @@ const Library = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <OpenNotebookTabBar activeId={null} />
-      <header className="sticky top-0 z-30 backdrop-blur-md bg-white/80 dark:bg-brand-950/80 border-b border-slate-200 dark:border-brand-800">
+      <header className="sticky top-0 z-30 backdrop-blur-md bg-white/80 dark:bg-chrome-950/80 border-b border-slate-200 dark:border-chrome-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center gap-2 sm:gap-4">
           <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
             <SheetTrigger asChild>
@@ -594,7 +594,7 @@ const Library = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Rechercher un cahier..."
-              className="pl-9 bg-slate-100 dark:bg-brand-900 border-transparent focus-visible:ring-2 focus-visible:ring-brand-500"
+              className="pl-9 bg-slate-100 dark:bg-chrome-900 border-transparent focus-visible:ring-2 focus-visible:ring-brand-500"
             />
           </div>
           <div className="flex items-center gap-1 sm:gap-2 ml-auto shrink-0">
@@ -647,7 +647,7 @@ const Library = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Rechercher..."
-              className="pl-9 bg-slate-100 dark:bg-brand-900 border-transparent"
+              className="pl-9 bg-slate-100 dark:bg-chrome-900 border-transparent"
             />
           </div>
         </div>
@@ -658,7 +658,7 @@ const Library = () => {
             className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
               mainView === 'inbox'
                 ? 'bg-brand-600 text-white border-brand-600'
-                : 'bg-white dark:bg-brand-900 border-slate-200 dark:border-brand-700'
+                : 'bg-white dark:bg-chrome-900 border-slate-200 dark:border-chrome-700'
             }`}
           >
             <Inbox className="w-3.5 h-3.5" />
@@ -674,7 +674,7 @@ const Library = () => {
               className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                 mainView === 'deadlines'
                   ? 'bg-brand-600 text-white border-brand-600'
-                  : 'bg-white dark:bg-brand-900 border-slate-200 dark:border-brand-700'
+                  : 'bg-white dark:bg-chrome-900 border-slate-200 dark:border-chrome-700'
               }`}
             >
               <CalendarClock className="w-3.5 h-3.5" />
@@ -699,7 +699,7 @@ const Library = () => {
               className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                 selectedFolder === id
                   ? 'bg-brand-600 text-white border-brand-600'
-                  : 'bg-white dark:bg-brand-900 border-slate-200 dark:border-brand-700'
+                  : 'bg-white dark:bg-chrome-900 border-slate-200 dark:border-chrome-700'
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
@@ -716,7 +716,7 @@ const Library = () => {
               className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                 selectedFolder === f.id
                   ? 'bg-brand-600 text-white border-brand-600'
-                  : 'bg-white dark:bg-brand-900 border-slate-200 dark:border-brand-700'
+                  : 'bg-white dark:bg-chrome-900 border-slate-200 dark:border-chrome-700'
               }`}
             >
               <span className="w-2 h-2 rounded-full" style={{ background: f.color }} />
@@ -727,7 +727,7 @@ const Library = () => {
       </header>
 
       <div className="flex flex-1 max-w-7xl mx-auto w-full">
-        <aside className="w-52 shrink-0 border-r border-slate-200 dark:border-brand-800 p-4 hidden md:block overflow-y-auto max-h-[calc(100vh-8rem)]">
+        <aside className="w-52 shrink-0 border-r border-slate-200 dark:border-chrome-800 p-4 hidden md:block overflow-y-auto max-h-[calc(100vh-8rem)]">
           <LibrarySidebar {...sidebarProps} />
         </aside>
 
@@ -795,7 +795,7 @@ const Library = () => {
                         {trash.notebooks.map((nb) => (
                           <div
                             key={nb.id}
-                            className="flex items-center justify-between p-4 rounded-lg border border-slate-200 dark:border-brand-800 bg-white dark:bg-brand-900"
+                            className="flex items-center justify-between p-4 rounded-lg border border-slate-200 dark:border-chrome-800 bg-white dark:bg-chrome-900"
                           >
                             <div className="min-w-0">
                               <p className="font-medium truncate">{nb.title}</p>
@@ -842,7 +842,7 @@ const Library = () => {
                         {trash.pages.map((entry) => (
                           <div
                             key={entry.id}
-                            className="flex items-center justify-between p-4 rounded-lg border border-slate-200 dark:border-brand-800 bg-white dark:bg-brand-900"
+                            className="flex items-center justify-between p-4 rounded-lg border border-slate-200 dark:border-chrome-800 bg-white dark:bg-chrome-900"
                           >
                             <div className="min-w-0">
                               <p className="font-medium truncate">{entry.notebookTitle}</p>
@@ -995,7 +995,7 @@ const Library = () => {
 
           {filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center">
-              <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-brand-900 flex items-center justify-center mb-4">
+              <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-chrome-900 flex items-center justify-center mb-4">
                 <BookOpen className="w-7 h-7 text-slate-400" />
               </div>
               <h3 className="font-medium text-lg">Aucun cahier</h3>

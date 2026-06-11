@@ -37,10 +37,10 @@ const AccessGate = ({ children }) => {
   };
 
   return (
-    <div className="min-h-dvh flex items-center justify-center bg-slate-100 dark:bg-brand-950 px-4">
+    <div className="min-h-dvh flex items-center justify-center bg-slate-100 dark:bg-chrome-950 px-4">
       <form
         onSubmit={submit}
-        className="w-full max-w-sm p-8 rounded-2xl bg-white dark:bg-brand-900 shadow-xl border border-slate-200 dark:border-brand-800 text-center"
+        className="w-full max-w-sm p-8 rounded-2xl bg-white dark:bg-chrome-900 shadow-xl border border-slate-200 dark:border-chrome-800 text-center"
       >
         <div className="flex justify-center mb-6">
           <Logo size="md" />

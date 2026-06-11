@@ -22,7 +22,7 @@ const StudentDeviceCode = ({ variant = 'bar', className = '' }) => {
       <button
         type="button"
         onClick={copy}
-        className={`inline-flex items-center gap-1.5 rounded-full border border-brand-200 dark:border-brand-800 bg-brand-50 dark:bg-brand-950/50 px-2.5 py-1 text-xs font-medium text-brand-700 dark:text-brand-300 hover:bg-brand-100 dark:hover:bg-brand-900/50 transition-colors ${className}`}
+        className={`inline-flex items-center gap-1.5 rounded-full border border-brand-200 dark:border-chrome-800 bg-brand-50 dark:bg-chrome-900/50 px-2.5 py-1 text-xs font-medium text-brand-700 dark:text-brand-300 hover:bg-brand-100 dark:hover:bg-chrome-900/50 transition-colors ${className}`}
         title="Copier le code pour un autre professeur"
       >
         <span className="text-slate-500 font-normal">Code</span>
@@ -34,7 +34,7 @@ const StudentDeviceCode = ({ variant = 'bar', className = '' }) => {
 
   if (variant === 'settings') {
     return (
-      <div className={`space-y-3 rounded-xl border-2 border-dashed border-brand-300 dark:border-brand-700 bg-brand-50 dark:bg-brand-950/40 p-4 ${className}`}>
+      <div className={`space-y-3 rounded-xl border-2 border-dashed border-brand-300 dark:border-chrome-700 bg-brand-50 dark:bg-chrome-900/40 p-4 ${className}`}>
         <div>
           <p className="text-sm font-medium">Mon code tablette</p>
           <p className="text-xs text-slate-500 mt-1">
@@ -54,7 +54,7 @@ const StudentDeviceCode = ({ variant = 'bar', className = '' }) => {
   }
 
   return (
-    <div className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border border-brand-200 dark:border-brand-800 bg-brand-50/80 dark:bg-brand-950/40 px-3 py-2 ${className}`}>
+    <div className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border border-brand-200 dark:border-chrome-800 bg-brand-50/80 dark:bg-chrome-900/40 px-3 py-2 ${className}`}>
       <div className="min-w-0 text-left">
         <p className="text-[11px] text-slate-500">Code tablette (autre prof)</p>
         <p className="text-lg font-bold tracking-widest text-brand-600">{deviceCode}</p>

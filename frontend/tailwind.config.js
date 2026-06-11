@@ -65,6 +65,19 @@ module.exports = {
           800: 'hsl(var(--brand-800) / <alpha-value>)',
           900: 'hsl(var(--brand-900) / <alpha-value>)',
           950: 'hsl(var(--brand-950) / <alpha-value>)',
+        },
+        chrome: {
+          50: 'hsl(var(--chrome-50) / <alpha-value>)',
+          100: 'hsl(var(--chrome-100) / <alpha-value>)',
+          200: 'hsl(var(--chrome-200) / <alpha-value>)',
+          300: 'hsl(var(--chrome-300) / <alpha-value>)',
+          400: 'hsl(var(--chrome-400) / <alpha-value>)',
+          500: 'hsl(var(--chrome-500) / <alpha-value>)',
+          600: 'hsl(var(--chrome-600) / <alpha-value>)',
+          700: 'hsl(var(--chrome-700) / <alpha-value>)',
+          800: 'hsl(var(--chrome-800) / <alpha-value>)',
+          900: 'hsl(var(--chrome-900) / <alpha-value>)',
+          950: 'hsl(var(--chrome-950) / <alpha-value>)',
         }
       },
       keyframes: {

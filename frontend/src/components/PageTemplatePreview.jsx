@@ -40,8 +40,8 @@ const PageTemplatePreview = ({ template, selected, onClick, size = 'md' }) => {
         isSm ? 'p-1.5' : 'p-2'
       } ${
         selected
-          ? 'border-brand-600 bg-brand-50 dark:bg-brand-950 scale-[1.02]'
-          : 'border-slate-200 dark:border-brand-700 hover:border-slate-400 dark:hover:border-slate-500 hover:bg-slate-50 dark:hover:bg-brand-800/50'
+          ? 'border-brand-600 bg-brand-50 dark:bg-chrome-800 scale-[1.02]'
+          : 'border-slate-200 dark:border-chrome-700 hover:border-slate-400 dark:hover:border-slate-500 hover:bg-slate-50 dark:hover:bg-chrome-800/50'
       }`}
       aria-label={template.name}
       aria-pressed={selected}

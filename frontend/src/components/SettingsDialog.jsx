@@ -55,8 +55,8 @@ const SettingsDialog = ({ trigger }) => {
                 onClick={() => theme !== 'light' && toggleTheme()}
                 className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${
                   theme === 'light'
-                    ? 'border-brand-600 bg-brand-50 dark:bg-brand-950'
-                    : 'border-slate-200 dark:border-brand-700 hover:border-slate-400'
+                    ? 'border-brand-600 bg-brand-50 dark:bg-chrome-800'
+                    : 'border-slate-200 dark:border-chrome-700 hover:border-slate-400'
                 }`}
               >
                 <Sun className="w-5 h-5" />
@@ -67,8 +67,8 @@ const SettingsDialog = ({ trigger }) => {
                 onClick={() => theme !== 'dark' && toggleTheme()}
                 className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${
                   theme === 'dark'
-                    ? 'border-brand-600 bg-brand-50 dark:bg-brand-950'
-                    : 'border-slate-200 dark:border-brand-700 hover:border-slate-400'
+                    ? 'border-brand-600 bg-brand-50 dark:bg-chrome-800'
+                    : 'border-slate-200 dark:border-chrome-700 hover:border-slate-400'
                 }`}
               >
                 <Moon className="w-5 h-5" />
@@ -86,8 +86,8 @@ const SettingsDialog = ({ trigger }) => {
                     onClick={() => setAccent(option.id)}
                     className={`flex flex-col items-center gap-1.5 p-2.5 rounded-lg border-2 transition-all ${
                       selected
-                        ? 'border-brand-600 bg-brand-50 dark:bg-brand-950'
-                        : 'border-slate-200 dark:border-brand-700 hover:border-slate-400'
+                        ? 'border-brand-600 bg-brand-50 dark:bg-chrome-800'
+                        : 'border-slate-200 dark:border-chrome-700 hover:border-slate-400'
                     }`}
                     aria-label={`Couleur ${option.label}`}
                     aria-pressed={selected}
@@ -113,8 +113,8 @@ const SettingsDialog = ({ trigger }) => {
                 onClick={() => updateSettings({ scrollDirection: 'vertical' })}
                 className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
                   settings.scrollDirection === 'vertical'
-                    ? 'border-brand-600 bg-brand-50 dark:bg-brand-950'
-                    : 'border-slate-200 dark:border-brand-700 hover:border-slate-400'
+                    ? 'border-brand-600 bg-brand-50 dark:bg-chrome-800'
+                    : 'border-slate-200 dark:border-chrome-700 hover:border-slate-400'
                 }`}
               >
                 <ArrowDown className="w-6 h-6" />
@@ -125,8 +125,8 @@ const SettingsDialog = ({ trigger }) => {
                 onClick={() => updateSettings({ scrollDirection: 'horizontal' })}
                 className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
                   settings.scrollDirection === 'horizontal'
-                    ? 'border-brand-600 bg-brand-50 dark:bg-brand-950'
-                    : 'border-slate-200 dark:border-brand-700 hover:border-slate-400'
+                    ? 'border-brand-600 bg-brand-50 dark:bg-chrome-800'
+                    : 'border-slate-200 dark:border-chrome-700 hover:border-slate-400'
                 }`}
               >
                 <ArrowLeft className="w-6 h-6" />
@@ -171,7 +171,7 @@ const SettingsDialog = ({ trigger }) => {
           <GoogleDriveSettings />
 
           {!isNativeApp() && (
-          <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-brand-800">
+          <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-chrome-800">
             <Label>Raccourci / installation</Label>
             {isInstalled ? (
               <p className="text-sm text-green-600 dark:text-green-400">

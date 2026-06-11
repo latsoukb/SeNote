@@ -505,7 +505,7 @@ export const NotesProvider = ({ children }) => {
 
   if (!ready) {
     return (
-      <div className="min-h-dvh flex items-center justify-center bg-slate-50 dark:bg-brand-950">
+      <div className="min-h-dvh flex items-center justify-center bg-slate-50 dark:bg-chrome-950">
         <p className="text-slate-500 text-sm">Chargement des cahiers…</p>
       </div>
     );

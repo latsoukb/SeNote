@@ -20,7 +20,7 @@ const DeadlineDoneButton = ({ commId, variant = 'block' }) => {
         className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
           done
             ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-200 dark:hover:bg-emerald-900'
-            : 'bg-slate-100 dark:bg-brand-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-brand-700'
+            : 'bg-slate-100 dark:bg-chrome-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-chrome-700'
         }`}
       >
         {done ? (

@@ -16,7 +16,7 @@ const StudentWaiting = () => {
         Bonjour {session?.displayName} — montre ce code à ton professeur pour qu&apos;il
         t&apos;inscrive sur JokkoNote.
       </p>
-      <div className="rounded-xl border-2 border-dashed border-brand-300 dark:border-brand-700 bg-brand-50 dark:bg-brand-950/50 px-8 py-4 mb-6">
+      <div className="rounded-xl border-2 border-dashed border-brand-300 dark:border-chrome-700 bg-brand-50 dark:bg-chrome-900/50 px-8 py-4 mb-6">
         <p className="text-xs text-slate-500 mb-1">Ton code appareil (8 caractères)</p>
         <p className="text-3xl font-bold tracking-widest text-brand-600">{deviceCode}</p>
         <p className="text-[11px] text-slate-400 mt-2">Valable uniquement sur cet appareil</p>
