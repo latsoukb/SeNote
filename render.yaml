@@ -1,0 +1,17 @@
+# Déploiement Render : proxy OAuth Google (dossier oauth-proxy)
+# Dashboard → New → Blueprint → ce dépôt, ou corriger Root Directory = oauth-proxy
+services:
+  - type: web
+    name: senote-oauth
+    runtime: node
+    rootDir: oauth-proxy
+    buildCommand: ""
+    startCommand: node server.js
+    plan: free
+    envVars:
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: https://latsoukb.github.io

@@ -5,9 +5,10 @@
 ## Déploiement Render (5 min)
 
 1. [render.com](https://render.com) → **New +** → **Web Service**
-2. Connectez le dépôt **SeNote**, dossier racine : laissez vide, **Root Directory** = `oauth-proxy`
-3. **Build command** : (vide)
-4. **Start command** : `node server.js`
+2. Connectez le dépôt **SeNote**
+3. **Root Directory** : `oauth-proxy` ← obligatoire (sinon erreur `Cannot find module server.js`)
+4. **Build command** : (vide)
+5. **Start command** : `node server.js`
 5. Variables d’environnement :
 
 | Variable | Valeur |
