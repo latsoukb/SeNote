@@ -80,8 +80,8 @@ const GoogleDriveSettings = () => {
   };
 
   const storageHint = isNativeApp()
-    ? 'Vos cahiers restent sur la tablette. Drive reçoit une copie de secours (fichier senote-workspace.json dans le dossier SeNote — tous les cahiers y sont regroupés).'
-    : 'Vos cahiers restent sur cet appareil. Drive reçoit une copie de secours (fichier senote-workspace.json dans le dossier SeNote — tous les cahiers y sont regroupés).';
+    ? 'Vos cahiers restent sur la tablette. Drive reçoit un PDF par cahier (dossier SeNote) à chaque synchronisation, plus une sauvegarde technique interne.'
+    : 'Vos cahiers restent sur cet appareil. Drive reçoit un PDF par cahier (dossier SeNote) à chaque synchronisation, plus une sauvegarde technique interne.';
 
   return (
     <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-chrome-800">
@@ -140,7 +140,8 @@ const GoogleDriveSettings = () => {
         <div className="space-y-0.5">
           <Label htmlFor="drive-auto">Synchronisation automatique</Label>
           <p className="text-xs text-slate-500 leading-relaxed">
-            Met à jour la copie cloud après chaque modification, puis toutes les 5 minutes.
+            Met à jour les PDF sur Drive toutes les 5 minutes et à la fermeture de l&apos;app.
+            Utilisez Synchroniser pour forcer l&apos;envoi immédiat.
           </p>
         </div>
         <Switch

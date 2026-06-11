@@ -46,7 +46,16 @@ const renderPageToCanvas = async (page, imageCache) => {
   return canvas;
 };
 
-export const exportNotebookToPdf = async (notebook) => {
+export const pdfFileName = (notebook) => {
+  const base =
+    (notebook?.title || 'Cahier')
+      .replace(/[/\\?%*:|"<>]/g, '-')
+      .trim()
+      .slice(0, 80) || 'Cahier';
+  return `${base}.pdf`;
+};
+
+export const buildNotebookPdf = async (notebook) => {
   const pdf = new jsPDF({
     orientation: 'portrait',
     unit: 'pt',
@@ -68,5 +77,15 @@ export const exportNotebookToPdf = async (notebook) => {
     pdf.addImage(data, 'JPEG', 0, 0, 595, 842);
   }
 
-  pdf.save(`${notebook.title || 'cahier'}.pdf`);
+  return pdf;
+};
+
+export const notebookToPdfBlob = async (notebook) => {
+  const pdf = await buildNotebookPdf(notebook);
+  return pdf.output('blob');
+};
+
+export const exportNotebookToPdf = async (notebook) => {
+  const pdf = await buildNotebookPdf(notebook);
+  pdf.save(pdfFileName(notebook));
 };

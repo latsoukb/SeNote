@@ -1,5 +1,6 @@
 import { isNativeApp } from './platform';
 import { wrapWorkspace, unwrapWorkspace } from './dataStore';
+import { notebookToPdfBlob, pdfFileName } from './exportNotebookPdf';
 import {
   ensureAppConfig,
   getGoogleNativeClientId,
@@ -15,6 +16,7 @@ const PREFS = {
   TOKEN: 'senote_drive_token',
   TOKEN_EXPIRY: 'senote_drive_token_expiry',
   REFRESH_TOKEN: 'senote_drive_refresh_token',
+  PDF_MAP: 'senote_drive_pdf_map',
 };
 
 const FOLDER_NAME = 'SeNote';
@@ -542,6 +544,127 @@ const getAccessToken = async () => {
   await ensureAppConfig();
   if (isNativeApp()) return getNativeAccessToken();
   return getWebAccessToken();
+};
+
+const getPdfMap = async () => {
+  const raw = await prefGet(PREFS.PDF_MAP);
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+};
+
+const savePdfMap = async (map) => {
+  await prefSet(PREFS.PDF_MAP, JSON.stringify(map));
+};
+
+const uploadPdfToDrive = async (token, folderId, fileName, blob, fileId, notebookId, updatedAt) => {
+  const appProperties = {
+    senoteNotebookId: notebookId,
+    senoteUpdatedAt: String(updatedAt),
+  };
+
+  if (fileId) {
+    await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/pdf',
+      },
+      body: blob,
+    }).then((res) => {
+      if (!res.ok) throw new Error(`Mise à jour PDF Drive échouée: ${res.status}`);
+    });
+    await driveFetch(
+      `/files/${fileId}?fields=id`,
+      token,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: fileName, appProperties }),
+      }
+    );
+    return fileId;
+  }
+
+  const metadata = {
+    name: fileName,
+    parents: [folderId],
+    mimeType: 'application/pdf',
+    appProperties,
+  };
+  const boundary = 'senote_pdf_boundary';
+  const encoder = new TextEncoder();
+  const preamble = encoder.encode(
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n` +
+      `--${boundary}\r\nContent-Type: application/pdf\r\n\r\n`
+  );
+  const closing = encoder.encode(`\r\n--${boundary}--`);
+  const pdfBytes = await blob.arrayBuffer();
+  const body = new Blob([preamble, pdfBytes, closing], {
+    type: `multipart/related; boundary=${boundary}`,
+  });
+
+  const res = await fetch(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': `multipart/related; boundary=${boundary}`,
+      },
+      body,
+    }
+  );
+  if (!res.ok) throw new Error(`Envoi PDF Drive échoué: ${res.status}`);
+  const created = await res.json();
+  return created.id;
+};
+
+/** Un PDF par cahier dans le dossier SeNote (lisible dans Drive). */
+export const syncNotebookPdfsToDrive = async (workspaceData) => {
+  await ensureAppConfig();
+  const token = await getAccessToken();
+  if (!token) throw new Error('Non connecté à Google Drive');
+
+  const folderId = await findOrCreateFolder(token);
+  const map = await getPdfMap();
+  const activeIds = new Set((workspaceData?.notebooks || []).map((n) => n.id));
+
+  for (const nb of workspaceData?.notebooks || []) {
+    const updatedAt = nb.updatedAt || 0;
+    if (map[nb.id]?.updatedAt >= updatedAt) continue;
+
+    const fileName = pdfFileName(nb);
+    const blob = await notebookToPdfBlob(nb);
+    const fileId = await uploadPdfToDrive(
+      token,
+      folderId,
+      fileName,
+      blob,
+      map[nb.id]?.fileId,
+      nb.id,
+      updatedAt
+    );
+    map[nb.id] = { fileId, fileName, updatedAt };
+  }
+
+  for (const id of Object.keys(map)) {
+    if (!activeIds.has(id)) {
+      try {
+        await driveFetch(`/files/${map[id].fileId}`, token, { method: 'DELETE' });
+      } catch {
+        /* déjà supprimé */
+      }
+      delete map[id];
+    }
+  }
+
+  await savePdfMap(map);
+  await prefSet(PREFS.LAST_SYNC, String(Date.now()));
+  return { count: Object.keys(map).length };
 };
 
 export const uploadToGoogleDrive = async (workspaceData) => {
