@@ -72,6 +72,7 @@ if [ ! -d android ]; then
 fi
 
 echo "Sync Capacitor…"
+"$ROOT/scripts/generate-android-icons.sh"
 npx cap sync android
 
 echo "Compilation APK…"
