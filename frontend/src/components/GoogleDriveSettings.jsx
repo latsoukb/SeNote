@@ -25,7 +25,7 @@ const formatSyncTime = (ts) => {
   });
 };
 
-const GoogleDriveSettings = ({ onBeforeConnect }) => {
+const GoogleDriveSettings = () => {
   const { driveSyncing, syncNowToDrive } = useNotes();
   const { settings, updateSettings } = useSettings();
   const [ready, setReady] = useState(false);
@@ -55,12 +55,8 @@ const GoogleDriveSettings = ({ onBeforeConnect }) => {
       return;
     }
     try {
-      onBeforeConnect?.();
-      await new Promise((r) => setTimeout(r, 350));
+      toast.message('Redirection vers Google…');
       await signInGoogleDrive();
-      await refresh();
-      await syncNowToDrive();
-      toast.success('Compte Google Drive connecté');
     } catch (e) {
       console.warn('Google Drive connect', e);
       toast.error(e.message || 'Connexion impossible');

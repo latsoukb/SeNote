@@ -12,6 +12,7 @@ import CommViewer from './pages/CommViewer';
 import StudentNotifications from './components/StudentNotifications';
 import { Toaster } from './components/ui/sonner';
 import AccessGate from './components/AccessGate';
+import GoogleDriveOAuthHandler from './components/GoogleDriveOAuthHandler';
 import { ensureAppConfig } from './lib/appConfig';
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
       <ThemeProvider>
         <SettingsProvider>
           <NotesProvider>
+            <GoogleDriveOAuthHandler />
             <OpenNotebooksProvider>
             <StudentClassProvider>
               <div className="App bg-slate-50 dark:bg-chrome-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">

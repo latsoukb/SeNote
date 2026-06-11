@@ -26,9 +26,12 @@ Sync optionnelle vers votre Drive personnel (gratuit, 15 Go). Les cahiers resten
      ```
      https://latsoukb.github.io
      ```
+   - **URI de redirection autorisées** (obligatoire) :
+     ```
+     https://latsoukb.github.io/SeNote/
+     http://localhost:3000/
+     ```
 6. Copiez le **Client ID** (se termine par `.apps.googleusercontent.com`)
-
-> Pas besoin de « URI de redirection » pour ce flux (token côté navigateur).
 
 ---
 

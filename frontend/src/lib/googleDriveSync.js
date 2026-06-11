@@ -19,6 +19,13 @@ const FOLDER_NAME = 'SeNote';
 const WORKSPACE_NAME = 'senote-workspace.json';
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
 const DRIVE_API = 'https://www.googleapis.com/drive/v3';
+const OAUTH_PENDING_KEY = 'senote_drive_oauth_pending';
+const OAUTH_STATE = 'senote_drive';
+
+const getOAuthRedirectUri = () => {
+  const base = (process.env.PUBLIC_URL || '').replace(/\/$/, '');
+  return `${window.location.origin}${base}/`;
+};
 
 export const isDriveConfigured = () =>
   isNativeApp() ? Boolean(getGoogleNativeClientId()) : Boolean(getGoogleWebClientId());
@@ -223,11 +230,59 @@ const storeWebToken = async (response) => {
 
 const signInWebGoogleDrive = async () => {
   await ensureAppConfig();
-  const response = await requestWebAccessToken('consent');
-  const token = await storeWebToken(response);
-  const email = await fetchGoogleEmail(token);
+  const clientId = getGoogleWebClientId();
+  if (!clientId) {
+    throw new Error('Sauvegarde cloud non configurée sur cet appareil.');
+  }
+
+  sessionStorage.setItem(OAUTH_PENDING_KEY, '1');
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: getOAuthRedirectUri(),
+    response_type: 'token',
+    scope: DRIVE_SCOPE,
+    include_granted_scopes: 'true',
+    prompt: 'consent',
+    state: OAUTH_STATE,
+  });
+  window.location.assign(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
+};
+
+/** Au retour de Google (#access_token=…), enregistre le jeton et nettoie l’URL. */
+export const completeWebOAuthRedirect = async () => {
+  if (isNativeApp()) return null;
+
+  const rawHash = window.location.hash?.replace(/^#/, '') || '';
+  if (!rawHash) return null;
+
+  const params = new URLSearchParams(rawHash);
+  const cleanUrl = window.location.pathname + window.location.search;
+  window.history.replaceState(null, '', cleanUrl);
+
+  const error = params.get('error');
+  if (error) {
+    sessionStorage.removeItem(OAUTH_PENDING_KEY);
+    const msg =
+      error === 'access_denied'
+        ? 'Accès refusé — ajoutez votre compte dans « Utilisateurs test » (Google Cloud).'
+        : params.get('error_description') || error;
+    throw new Error(msg);
+  }
+
+  const accessToken = params.get('access_token');
+  const state = params.get('state');
+  if (!accessToken || state !== OAUTH_STATE) return null;
+
+  const wasPending = sessionStorage.getItem(OAUTH_PENDING_KEY);
+  sessionStorage.removeItem(OAUTH_PENDING_KEY);
+  if (!wasPending) return null;
+
+  const expiresIn = Number(params.get('expires_in') || 3600);
+  await prefSet(PREFS.TOKEN, accessToken);
+  await prefSet(PREFS.TOKEN_EXPIRY, String(Date.now() + expiresIn * 1000));
+  const email = await fetchGoogleEmail(accessToken);
   await prefSet(PREFS.EMAIL, email);
-  return token;
+  return { email, accessToken };
 };
 
 const signOutWebGoogleDrive = async () => {
