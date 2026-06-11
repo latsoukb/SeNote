@@ -375,11 +375,22 @@ export const downloadFromGoogleDrive = async () => {
   return unwrapWorkspace(raw);
 };
 
-/** Au démarrage : prend la copie la plus récente (local vs Drive) */
+/** Au démarrage : prend la copie la plus récente (local vs Drive) et pousse la locale si elle est plus neuve */
 export const mergeWithGoogleDrive = async (localData) => {
   try {
     const remote = await downloadFromGoogleDrive();
-    if (!remote) return localData;
+    if (!remote) {
+      const hasLocal =
+        (localData?.notebooks?.length || 0) > 0 || (localData?.folders?.length || 0) > 0;
+      if (hasLocal) {
+        try {
+          await uploadToGoogleDrive(localData);
+        } catch (e) {
+          console.warn('Upload Drive initial ignoré', e);
+        }
+      }
+      return localData;
+    }
     const localAt = localData?.savedAt ?? 0;
     const remoteAt = remote.savedAt ?? 0;
     if (remoteAt > localAt) {
@@ -389,6 +400,13 @@ export const mergeWithGoogleDrive = async (localData) => {
         trash: remote.trash,
         savedAt: remoteAt,
       };
+    }
+    if (localAt > remoteAt) {
+      try {
+        await uploadToGoogleDrive(localData);
+      } catch (e) {
+        console.warn('Mise à jour Drive au démarrage ignorée', e);
+      }
     }
     return localData;
   } catch (e) {

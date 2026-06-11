@@ -139,7 +139,10 @@ const GoogleDriveSettings = () => {
       <div className="flex items-center justify-between gap-4">
         <div className="space-y-0.5">
           <Label htmlFor="drive-auto">Sync automatique</Label>
-          <p className="text-xs text-slate-500">Toutes les 60 s quand l&apos;app est ouverte</p>
+          <p className="text-xs text-slate-500">
+            Met à jour le fichier Drive ~2,5 s après chaque modification de cahier.
+          </p>
+          <p className="text-xs text-slate-500">Sauvegarde de secours toutes les 5 min</p>
         </div>
         <Switch
           id="drive-auto"

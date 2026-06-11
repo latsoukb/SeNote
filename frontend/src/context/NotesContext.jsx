@@ -55,6 +55,9 @@ export const NotesProvider = ({ children }) => {
   const [lastDriveSync, setLastDriveSync] = useState(null);
   const saveTimerRef = useRef(null);
   const driveTimerRef = useRef(null);
+  const driveDebounceRef = useRef(null);
+  const workspaceRef = useRef({ folders, notebooks, trash });
+  const driveSyncInFlightRef = useRef(false);
 
   const applyWorkspace = useCallback((data) => {
     if (!data) return;
@@ -110,6 +113,49 @@ export const NotesProvider = ({ children }) => {
     };
   }, [applyWorkspace]);
 
+  useEffect(() => {
+    workspaceRef.current = { folders, notebooks, trash };
+  }, [folders, notebooks, trash]);
+
+  const isAutoSyncEnabled = useCallback(() => {
+    try {
+      const raw = localStorage.getItem('senote-settings-v1');
+      if (!raw) return true;
+      return JSON.parse(raw).googleDriveAutoSync !== false;
+    } catch {
+      return true;
+    }
+  }, []);
+
+  const flushDriveSync = useCallback(async () => {
+    if (!isAutoSyncEnabled()) return false;
+    const status = await getDriveStatus();
+    if (!status.connected) return false;
+    if (driveSyncInFlightRef.current) return false;
+
+    driveSyncInFlightRef.current = true;
+    setDriveSyncing(true);
+    try {
+      await uploadToGoogleDrive(workspaceRef.current);
+      setLastDriveSync(Date.now());
+      return true;
+    } catch (e) {
+      console.warn('Sync Google Drive échouée', e);
+      return false;
+    } finally {
+      driveSyncInFlightRef.current = false;
+      setDriveSyncing(false);
+    }
+  }, [isAutoSyncEnabled]);
+
+  const scheduleDriveSync = useCallback(() => {
+    if (!isAutoSyncEnabled()) return;
+    if (driveDebounceRef.current) clearTimeout(driveDebounceRef.current);
+    driveDebounceRef.current = setTimeout(() => {
+      flushDriveSync();
+    }, 2500);
+  }, [isAutoSyncEnabled, flushDriveSync]);
+
   const persist = useCallback(
     async (payload, syncDrive = false) => {
       const saved = await saveWorkspace(payload);
@@ -145,43 +191,34 @@ export const NotesProvider = ({ children }) => {
   useEffect(() => {
     if (!ready) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => {
-      persist({ folders, notebooks, trash }, false);
+    saveTimerRef.current = setTimeout(async () => {
+      await persist({ folders, notebooks, trash }, false);
+      scheduleDriveSync();
     }, 400);
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  }, [folders, notebooks, trash, ready, persist]);
+  }, [folders, notebooks, trash, ready, persist, scheduleDriveSync]);
 
   useEffect(() => {
     if (!ready) return;
 
-    const isAutoSyncEnabled = () => {
-      try {
-        const raw = localStorage.getItem('senote-settings-v1');
-        if (!raw) return true;
-        return JSON.parse(raw).googleDriveAutoSync !== false;
-      } catch {
-        return true;
-      }
-    };
+    const runDriveSync = () => flushDriveSync();
 
-    const runDriveSync = async () => {
-      if (!isAutoSyncEnabled()) return;
-      const status = await getDriveStatus();
-      if (!status.connected) return;
-      await persist({ folders, notebooks, trash }, true);
-    };
+    driveTimerRef.current = setInterval(runDriveSync, 5 * 60_000);
 
-    driveTimerRef.current = setInterval(runDriveSync, 60_000);
+    const onHide = () => {
+      if (driveDebounceRef.current) clearTimeout(driveDebounceRef.current);
+      flushDriveSync();
+    };
+    document.addEventListener('visibilitychange', onHide);
+    window.addEventListener('pagehide', onHide);
 
     let removePause;
     (async () => {
       try {
         const { App } = await import('@capacitor/app');
-        const handle = await App.addListener('pause', () => {
-          runDriveSync();
-        });
+        const handle = await App.addListener('pause', onHide);
         removePause = () => handle.remove();
       } catch {
         /* web */
@@ -190,22 +227,18 @@ export const NotesProvider = ({ children }) => {
 
     return () => {
       if (driveTimerRef.current) clearInterval(driveTimerRef.current);
+      if (driveDebounceRef.current) clearTimeout(driveDebounceRef.current);
+      document.removeEventListener('visibilitychange', onHide);
+      window.removeEventListener('pagehide', onHide);
       removePause?.();
     };
-  }, [ready, folders, notebooks, trash, persist]);
+  }, [ready, flushDriveSync]);
 
   const syncNowToDrive = useCallback(async () => {
-    setDriveSyncing(true);
-    try {
-      await persist({ folders, notebooks, trash }, true);
-      return true;
-    } catch (e) {
-      console.warn(e);
-      return false;
-    } finally {
-      setDriveSyncing(false);
-    }
-  }, [folders, notebooks, trash, persist]);
+    if (driveDebounceRef.current) clearTimeout(driveDebounceRef.current);
+    await persist({ folders, notebooks, trash }, false);
+    return flushDriveSync();
+  }, [folders, notebooks, trash, persist, flushDriveSync]);
 
   const addNotebook = useCallback((title, cover, pageTemplate, folderId = null) => {
     const nb = createNotebook(title, cover, pageTemplate, folderId);
