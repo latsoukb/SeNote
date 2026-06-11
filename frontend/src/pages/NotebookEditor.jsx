@@ -8,6 +8,8 @@ import {
   PanelLeft,
   ArrowDown,
   ArrowLeft as ArrowLeftIcon,
+  ChevronLeft,
+  ChevronRight,
   LayoutTemplate,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
@@ -20,6 +22,7 @@ import { isPdfPage } from '../lib/pageTemplates';
 import Logo from '../components/Logo';
 import Toolbar from '../components/Toolbar';
 import PdfDocumentView from '../components/PdfDocumentView';
+import NativeSinglePageView from '../components/NativeSinglePageView';
 import PageTemplatePreview from '../components/PageTemplatePreview';
 import PageLiveThumbnail from '../components/PageLiveThumbnail';
 import SettingsDialog from '../components/SettingsDialog';
@@ -27,7 +30,6 @@ import OpenNotebookTabBar from '../components/OpenNotebookTabBar';
 import { useOpenNotebooks } from '../context/OpenNotebooksContext';
 import { getNotebookSections } from '../lib/notebookSections';
 import { clampPageIdx } from '../lib/notebookSession';
-import { exportNotebookToPdf } from '../lib/exportNotebookPdf';
 import { isNativeApp } from '../lib/platform';
 import { createRuler, createSetSquare } from '../lib/instrumentSnap';
 import { clampPan, focalPan } from '../lib/inkEngine';
@@ -79,7 +81,7 @@ const NotebookEditor = () => {
     () => initialSession?.currentPageIdx ?? 0
   );
   const [sidebarOpen, setSidebarOpen] = useState(
-    () => initialSession?.sidebarOpen ?? true
+    () => initialSession?.sidebarOpen ?? !isNativeApp()
   );
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
@@ -188,13 +190,18 @@ const NotebookEditor = () => {
     }
   }, []);
 
-  /** Clic miniature sidebar — scroll vers la page */
-  const handleSidebarPage = useCallback((idx) => {
+  const goToPage = useCallback((idx) => {
+    if (idx < 0 || idx >= pages.length) return;
     setCurrentPageIdx(idx);
     setWritePan({ x: 0, y: 0 });
     setWriteZoom(getDefaultWriteZoom());
-    scrollToPageRef.current?.(idx);
-  }, []);
+    if (!isNativeApp()) scrollToPageRef.current?.(idx);
+  }, [pages.length]);
+
+  /** Clic miniature sidebar — scroll vers la page */
+  const handleSidebarPage = useCallback((idx) => {
+    goToPage(idx);
+  }, [goToPage]);
 
   const handleAutoAddPage = useCallback(
     (template) => {
@@ -261,25 +268,33 @@ const NotebookEditor = () => {
 
     if (!currentSection) return;
 
-    if (addPageMode === 'end') {
-      addPage(notebook.id, currentSection.id, tpl);
-      setCurrentPageIdx(pages.length);
-    } else if (addPageMode === 'before') {
-      insertPageAt(notebook.id, currentSection.id, currentPageIdx, tpl);
-      setCurrentPageIdx(currentPageIdx);
-    } else {
-      insertPageAt(notebook.id, currentSection.id, currentPageIdx + 1, tpl);
-      setCurrentPageIdx(currentPageIdx + 1);
-    }
+    const apply = () => {
+      if (addPageMode === 'end') {
+        addPage(notebook.id, currentSection.id, tpl);
+        setCurrentPageIdx(pages.length);
+      } else if (addPageMode === 'before') {
+        insertPageAt(notebook.id, currentSection.id, currentPageIdx, tpl);
+        setCurrentPageIdx(currentPageIdx);
+      } else {
+        insertPageAt(notebook.id, currentSection.id, currentPageIdx + 1, tpl);
+        setCurrentPageIdx(currentPageIdx + 1);
+      }
+      setAddPageOpen(false);
+      toast.success(
+        addPageMode === 'before'
+          ? 'Page ajoutée avant'
+          : addPageMode === 'after'
+            ? 'Page ajoutée après'
+            : 'Page ajoutée'
+      );
+    };
 
     setAddPageOpen(false);
-    toast.success(
-      addPageMode === 'before'
-        ? 'Page ajoutée avant'
-        : addPageMode === 'after'
-          ? 'Page ajoutée après'
-          : 'Page ajoutée'
-    );
+    if (isNativeApp()) {
+      requestAnimationFrame(apply);
+    } else {
+      apply();
+    }
   };
 
   const handleDeletePage = (pageId) => {
@@ -378,13 +393,14 @@ const NotebookEditor = () => {
   const handleExport = async () => {
     if (isNativeApp()) {
       toast.error(
-        'Export PDF désactivé sur tablette (trop lourd). Utilisez le site web ou Google Drive.',
+        'Export PDF désactivé sur tablette (trop lourd). Utilisez le site web.',
         { id: 'export' }
       );
       return;
     }
     try {
       toast.loading('Export PDF…', { id: 'export' });
+      const { exportNotebookToPdf } = await import('../lib/exportNotebookPdf');
       await exportNotebookToPdf(notebook);
       toast.success('PDF exporté', { id: 'export' });
     } catch {
@@ -487,8 +503,32 @@ const NotebookEditor = () => {
               </div>
             </PopoverContent>
           </Popover>
-          <span className="text-xs text-slate-500 dark:text-slate-400">
+          <span className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
+            {isNativeApp() && (
+              <>
+                <button
+                  type="button"
+                  className="p-1 rounded hover:bg-slate-200 dark:hover:bg-chrome-800 disabled:opacity-30"
+                  disabled={currentPageIdx <= 0}
+                  onClick={() => goToPage(currentPageIdx - 1)}
+                  aria-label="Page précédente"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+              </>
+            )}
             {currentPageIdx + 1} / {pages.length}
+            {isNativeApp() && (
+              <button
+                type="button"
+                className="p-1 rounded hover:bg-slate-200 dark:hover:bg-chrome-800 disabled:opacity-30"
+                disabled={currentPageIdx >= pages.length - 1}
+                onClick={() => goToPage(currentPageIdx + 1)}
+                aria-label="Page suivante"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            )}
           </span>
           <SettingsDialog />
           <Button
@@ -576,20 +616,34 @@ const NotebookEditor = () => {
               </button>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto thin-scroll p-3 space-y-3">
+            <div className={`flex-1 overflow-y-auto thin-scroll ${isNativeApp() ? 'p-2 space-y-1' : 'p-3 space-y-3'}`}>
               {pages.map((p, idx) => (
                 <div key={p.id} className="group relative">
                   <button
                     onClick={() => handleSidebarPage(idx)}
-                    className={`w-full aspect-[3/4] rounded-md bg-white dark:bg-slate-100 border-2 transition-all overflow-hidden ${
-                      idx === currentPageIdx
-                        ? 'border-brand-600 shadow-md'
-                        : 'border-slate-200 dark:border-chrome-700 hover:border-slate-400'
-                    }`}
+                    className={
+                      isNativeApp()
+                        ? `w-full py-2 px-3 rounded-md text-sm text-left border transition-all ${
+                            idx === currentPageIdx
+                              ? 'border-brand-600 bg-brand-50 dark:bg-brand-950/30 font-medium'
+                              : 'border-slate-200 dark:border-chrome-700 hover:border-slate-400'
+                          }`
+                        : `w-full aspect-[3/4] rounded-md bg-white dark:bg-slate-100 border-2 transition-all overflow-hidden ${
+                            idx === currentPageIdx
+                              ? 'border-brand-600 shadow-md'
+                              : 'border-slate-200 dark:border-chrome-700 hover:border-slate-400'
+                          }`
+                    }
                   >
-                    <PageLiveThumbnail page={p} />
+                    {isNativeApp() ? (
+                      `Page ${idx + 1}`
+                    ) : (
+                      <PageLiveThumbnail page={p} />
+                    )}
                   </button>
+                  {!isNativeApp() && (
                   <p className="text-[11px] text-center mt-1 text-slate-500">{idx + 1}</p>
+                  )}
                   <div className="absolute top-1 right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                     {isPdfPage(p) ? (
                       <span className="px-1.5 py-0.5 rounded bg-brand-600/90 text-white text-[9px] font-medium">
@@ -647,6 +701,24 @@ const NotebookEditor = () => {
         )}
 
         <div className="flex-1 flex flex-col bg-slate-100 dark:bg-chrome-900 min-w-0 min-h-0">
+          {isNativeApp() ? (
+            <NativeSinglePageView
+              key={`${id}-${currentPage?.id}`}
+              page={currentPage}
+              tool={tool}
+              color={color}
+              thickness={thickness}
+              onPageUpdate={handlePageUpdate}
+              pushUndo={pushUndo}
+              writeZoom={writeZoom}
+              onWriteZoomChange={setWriteZoom}
+              writePan={writePan}
+              onWritePanChange={setWritePan}
+              stylusOnly={settings.stylusOnly !== false}
+              pageSyncRevision={pageSyncRevision}
+              scrollDirection={settings.scrollDirection}
+            />
+          ) : (
           <PdfDocumentView
             key={id}
             notebook={notebook}
@@ -671,6 +743,7 @@ const NotebookEditor = () => {
             stylusOnly={settings.stylusOnly !== false}
             pageSyncRevision={pageSyncRevision}
           />
+          )}
         </div>
       </div>
     </div>
