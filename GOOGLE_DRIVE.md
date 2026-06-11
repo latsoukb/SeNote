@@ -33,6 +33,8 @@ Sync optionnelle vers votre Drive personnel (gratuit, 15 Go). Les cahiers resten
      ```
 6. Copiez le **Client ID** (se termine par `.apps.googleusercontent.com`)
 
+Le flux utilise **OAuth code + PKCE** (pas de popup `gsi/transform`). L’URI de redirection doit correspondre **exactement** à celle utilisée par l’app.
+
 ---
 
 ## 2. Activer Google Drive sur le site / l'APK

@@ -13,6 +13,7 @@ const PREFS = {
   LAST_SYNC: 'senote_drive_last_sync',
   TOKEN: 'senote_drive_token',
   TOKEN_EXPIRY: 'senote_drive_token_expiry',
+  REFRESH_TOKEN: 'senote_drive_refresh_token',
 };
 
 const FOLDER_NAME = 'SeNote';
@@ -20,11 +21,84 @@ const WORKSPACE_NAME = 'senote-workspace.json';
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
 const DRIVE_API = 'https://www.googleapis.com/drive/v3';
 const OAUTH_PENDING_KEY = 'senote_drive_oauth_pending';
+const PKCE_VERIFIER_KEY = 'senote_pkce_verifier';
 const OAUTH_STATE = 'senote_drive';
 
 const getOAuthRedirectUri = () => {
   const base = (process.env.PUBLIC_URL || '').replace(/\/$/, '');
   return `${window.location.origin}${base}/`;
+};
+
+const base64UrlEncode = (bytes) => {
+  let str = '';
+  bytes.forEach((b) => {
+    str += String.fromCharCode(b);
+  });
+  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+};
+
+const generatePkcePair = async () => {
+  const random = new Uint8Array(32);
+  crypto.getRandomValues(random);
+  const verifier = base64UrlEncode(random);
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+  const challenge = base64UrlEncode(new Uint8Array(digest));
+  return { verifier, challenge };
+};
+
+const parseOAuthReturn = () => {
+  const query = new URLSearchParams(window.location.search);
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const get = (key) => query.get(key) || hash.get(key);
+  return {
+    code: get('code'),
+    state: get('state'),
+    error: get('error'),
+    errorDescription: get('error_description'),
+    accessToken: get('access_token'),
+    expiresIn: get('expires_in'),
+  };
+};
+
+const cleanOAuthUrl = () => {
+  const cleanUrl = window.location.pathname + window.location.search;
+  window.history.replaceState(null, '', cleanUrl);
+};
+
+const exchangeAuthCode = async (code, verifier) => {
+  const clientId = getGoogleWebClientId();
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      code,
+      client_id: clientId,
+      redirect_uri: getOAuthRedirectUri(),
+      grant_type: 'authorization_code',
+      code_verifier: verifier,
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg =
+      data.error === 'invalid_client' || data.error === 'unauthorized_client'
+        ? 'Configuration OAuth incomplète. Vérifiez le client Google (type Web + URI de redirection).'
+        : data.error_description || data.error || 'Échange du code Google impossible';
+    throw new Error(msg);
+  }
+  return data;
+};
+
+const persistWebTokens = async (tokenResponse) => {
+  await prefSet(PREFS.TOKEN, tokenResponse.access_token);
+  const expiresIn = Number(tokenResponse.expires_in || 3600);
+  await prefSet(PREFS.TOKEN_EXPIRY, String(Date.now() + expiresIn * 1000));
+  if (tokenResponse.refresh_token) {
+    await prefSet(PREFS.REFRESH_TOKEN, tokenResponse.refresh_token);
+  }
+  const email = await fetchGoogleEmail(tokenResponse.access_token);
+  await prefSet(PREFS.EMAIL, email);
+  return { email, accessToken: tokenResponse.access_token };
 };
 
 export const isDriveConfigured = () =>
@@ -235,54 +309,68 @@ const signInWebGoogleDrive = async () => {
     throw new Error('Sauvegarde cloud non configurée sur cet appareil.');
   }
 
+  const { verifier, challenge } = await generatePkcePair();
   sessionStorage.setItem(OAUTH_PENDING_KEY, '1');
+  sessionStorage.setItem(PKCE_VERIFIER_KEY, verifier);
+
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: getOAuthRedirectUri(),
-    response_type: 'token',
+    response_type: 'code',
     scope: DRIVE_SCOPE,
     include_granted_scopes: 'true',
+    access_type: 'offline',
     prompt: 'consent',
     state: OAUTH_STATE,
+    code_challenge: challenge,
+    code_challenge_method: 'S256',
   });
   window.location.assign(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
 };
 
-/** Au retour de Google (#access_token=…), enregistre le jeton et nettoie l’URL. */
+/** Au retour de Google (?code=…), échange le code et nettoie l’URL. */
 export const completeWebOAuthRedirect = async () => {
   if (isNativeApp()) return null;
 
-  const rawHash = window.location.hash?.replace(/^#/, '') || '';
-  if (!rawHash) return null;
+  const returned = parseOAuthReturn();
+  if (!returned.code && !returned.error && !returned.accessToken) return null;
 
-  const params = new URLSearchParams(rawHash);
-  const cleanUrl = window.location.pathname + window.location.search;
-  window.history.replaceState(null, '', cleanUrl);
+  cleanOAuthUrl();
 
-  const error = params.get('error');
-  if (error) {
+  if (returned.error) {
     sessionStorage.removeItem(OAUTH_PENDING_KEY);
+    sessionStorage.removeItem(PKCE_VERIFIER_KEY);
     const msg =
-      error === 'access_denied'
+      returned.error === 'access_denied'
         ? 'Accès refusé — ajoutez votre compte dans « Utilisateurs test » (Google Cloud).'
-        : params.get('error_description') || error;
+        : returned.errorDescription || returned.error;
     throw new Error(msg);
   }
 
-  const accessToken = params.get('access_token');
-  const state = params.get('state');
-  if (!accessToken || state !== OAUTH_STATE) return null;
+  if (returned.accessToken) {
+    const wasPending = sessionStorage.getItem(OAUTH_PENDING_KEY);
+    sessionStorage.removeItem(OAUTH_PENDING_KEY);
+    sessionStorage.removeItem(PKCE_VERIFIER_KEY);
+    if (!wasPending || returned.state !== OAUTH_STATE) return null;
+    const expiresIn = Number(returned.expiresIn || 3600);
+    await prefSet(PREFS.TOKEN, returned.accessToken);
+    await prefSet(PREFS.TOKEN_EXPIRY, String(Date.now() + expiresIn * 1000));
+    const email = await fetchGoogleEmail(returned.accessToken);
+    await prefSet(PREFS.EMAIL, email);
+    return { email, accessToken: returned.accessToken };
+  }
+
+  if (returned.state !== OAUTH_STATE) return null;
 
   const wasPending = sessionStorage.getItem(OAUTH_PENDING_KEY);
+  const verifier = sessionStorage.getItem(PKCE_VERIFIER_KEY);
   sessionStorage.removeItem(OAUTH_PENDING_KEY);
-  if (!wasPending) return null;
+  sessionStorage.removeItem(PKCE_VERIFIER_KEY);
+  if (!wasPending || !verifier || !returned.code) return null;
 
-  const expiresIn = Number(params.get('expires_in') || 3600);
-  await prefSet(PREFS.TOKEN, accessToken);
-  await prefSet(PREFS.TOKEN_EXPIRY, String(Date.now() + expiresIn * 1000));
-  const email = await fetchGoogleEmail(accessToken);
-  await prefSet(PREFS.EMAIL, email);
-  return { email, accessToken };
+  await ensureAppConfig();
+  const tokenResponse = await exchangeAuthCode(returned.code, verifier);
+  return persistWebTokens(tokenResponse);
 };
 
 const signOutWebGoogleDrive = async () => {
@@ -299,6 +387,32 @@ const signOutWebGoogleDrive = async () => {
   }
 };
 
+const refreshWebAccessToken = async () => {
+  const refreshToken = await prefGet(PREFS.REFRESH_TOKEN);
+  if (!refreshToken) return null;
+
+  const clientId = getGoogleWebClientId();
+  if (!clientId) return null;
+
+  try {
+    const res = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: clientId,
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.access_token) return null;
+    await storeWebToken(data);
+    return data.access_token;
+  } catch {
+    return null;
+  }
+};
+
 const getWebAccessToken = async () => {
   const token = await prefGet(PREFS.TOKEN);
   const expiry = Number((await prefGet(PREFS.TOKEN_EXPIRY)) || 0);
@@ -307,12 +421,7 @@ const getWebAccessToken = async () => {
   const email = await prefGet(PREFS.EMAIL);
   if (!email) return null;
 
-  try {
-    const response = await requestWebAccessToken('');
-    return storeWebToken(response);
-  } catch {
-    return null;
-  }
+  return refreshWebAccessToken();
 };
 
 /* ── API Drive (commun web + native) ── */
