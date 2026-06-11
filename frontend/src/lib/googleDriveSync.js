@@ -183,13 +183,15 @@ const loadGoogleAuth = async () => {
     authModule = mod.GoogleAuth;
     await ensureAppConfig();
     const clientId = getGoogleNativeClientId();
-    if (clientId) {
-      await authModule.initialize({
+    if (!clientId) {
+      authModule = null;
+      return null;
+    }
+    await authModule.initialize({
         clientId,
         scopes: [DRIVE_SCOPE],
         grantOfflineAccess: true,
-      });
-    }
+    });
     return authModule;
   } catch (e) {
     console.warn('Google Auth non disponible', e);
@@ -222,6 +224,7 @@ const signOutNativeGoogleDrive = async () => {
 };
 
 const getNativeAccessToken = async () => {
+  if (!getGoogleNativeClientId()) return null;
   const GoogleAuth = await loadGoogleAuth();
   if (!GoogleAuth) return null;
   try {
@@ -619,8 +622,9 @@ const uploadPdfToDrive = async (token, folderId, fileName, blob, fileId, previou
   return created.id;
 };
 
-/** Un PDF par cahier dans le dossier SeNote (lisible dans Drive). */
+/** Un PDF par cahier dans le dossier SeNote (web uniquement — trop lourd sur APK). */
 export const syncNotebookPdfsToDrive = async (workspaceData) => {
+  if (isNativeApp()) return { count: 0 };
   await ensureAppConfig();
   const token = await getAccessToken();
   if (!token) throw new Error('Non connecté à Google Drive');

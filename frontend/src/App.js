@@ -12,6 +12,7 @@ import CommViewer from './pages/CommViewer';
 import StudentNotifications from './components/StudentNotifications';
 import { Toaster } from './components/ui/sonner';
 import AccessGate from './components/AccessGate';
+import ErrorBoundary from './components/ErrorBoundary';
 import GoogleDriveOAuthHandler from './components/GoogleDriveOAuthHandler';
 import { ensureAppConfig } from './lib/appConfig';
 
@@ -20,6 +21,7 @@ function App() {
     ensureAppConfig();
   }, []);
   return (
+    <ErrorBoundary>
     <AccessGate>
       <ThemeProvider>
         <SettingsProvider>
@@ -45,6 +47,7 @@ function App() {
         </SettingsProvider>
       </ThemeProvider>
     </AccessGate>
+    </ErrorBoundary>
   );
 }
 

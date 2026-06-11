@@ -28,6 +28,7 @@ import { useOpenNotebooks } from '../context/OpenNotebooksContext';
 import { getNotebookSections } from '../lib/notebookSections';
 import { clampPageIdx } from '../lib/notebookSession';
 import { exportNotebookToPdf } from '../lib/exportNotebookPdf';
+import { isNativeApp } from '../lib/platform';
 import { createRuler, createSetSquare } from '../lib/instrumentSnap';
 import { clampPan, focalPan } from '../lib/inkEngine';
 import {
@@ -375,6 +376,13 @@ const NotebookEditor = () => {
   };
 
   const handleExport = async () => {
+    if (isNativeApp()) {
+      toast.error(
+        'Export PDF désactivé sur tablette (trop lourd). Utilisez le site web ou Google Drive.',
+        { id: 'export' }
+      );
+      return;
+    }
     try {
       toast.loading('Export PDF…', { id: 'export' });
       await exportNotebookToPdf(notebook);

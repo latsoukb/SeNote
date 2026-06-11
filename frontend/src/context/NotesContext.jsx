@@ -144,7 +144,7 @@ export const NotesProvider = ({ children }) => {
     setDriveSyncing(true);
     try {
       await uploadToGoogleDrive(workspaceRef.current);
-      if (includePdfs) {
+      if (includePdfs && !isNativeApp()) {
         await syncNotebookPdfsToDrive(workspaceRef.current);
       }
       setLastDriveSync(Date.now());
@@ -213,13 +213,14 @@ export const NotesProvider = ({ children }) => {
   useEffect(() => {
     if (!ready) return;
 
-    const runDriveSync = () => flushDriveSync(true);
+    const runDriveSync = () => flushDriveSync(!isNativeApp());
 
-    driveTimerRef.current = setInterval(runDriveSync, 5 * 60_000);
+    const intervalMs = isNativeApp() ? 10 * 60_000 : 5 * 60_000;
+    driveTimerRef.current = setInterval(runDriveSync, intervalMs);
 
     const onHide = () => {
       if (driveDebounceRef.current) clearTimeout(driveDebounceRef.current);
-      flushDriveSync(true);
+      flushDriveSync(!isNativeApp());
     };
     document.addEventListener('visibilitychange', onHide);
     window.addEventListener('pagehide', onHide);
@@ -247,7 +248,7 @@ export const NotesProvider = ({ children }) => {
   const syncNowToDrive = useCallback(async () => {
     if (driveDebounceRef.current) clearTimeout(driveDebounceRef.current);
     await persist({ folders, notebooks, trash }, false);
-    return flushDriveSync(true);
+    return flushDriveSync(!isNativeApp());
   }, [folders, notebooks, trash, persist, flushDriveSync]);
 
   const addNotebook = useCallback((title, cover, pageTemplate, folderId = null) => {

@@ -11,6 +11,14 @@ window.addEventListener("error", (e) => {
 });
 window.addEventListener("unhandledrejection", (e) => {
   if (e.reason?.message && roErr.test(e.reason.message)) e.preventDefault();
+  try {
+    if (window.Capacitor?.isNativePlatform?.()) {
+      console.error("Erreur non gérée (APK)", e.reason);
+      e.preventDefault();
+    }
+  } catch {
+    /* ignore */
+  }
 });
 
 const queryClient = new QueryClient({

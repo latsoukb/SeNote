@@ -64,6 +64,15 @@ jobs:
           if (tokenUrl) cfg.googleTokenExchangeUrl = tokenUrl;
           fs.writeFileSync(path, JSON.stringify(cfg, null, 2) + '\n');
           "
+          if [ -n "$REACT_APP_GOOGLE_WEB_CLIENT_ID" ]; then
+            node -e "
+            const fs = require('fs');
+            const p = 'capacitor.config.json';
+            const c = JSON.parse(fs.readFileSync(p, 'utf8'));
+            c.plugins.GoogleAuth.serverClientId = process.env.REACT_APP_GOOGLE_WEB_CLIENT_ID.trim();
+            fs.writeFileSync(p, JSON.stringify(c, null, 2) + '\n');
+            "
+          fi
 
       - name: Sync Capacitor
         working-directory: frontend
