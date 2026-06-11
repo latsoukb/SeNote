@@ -3,6 +3,7 @@ import { wrapWorkspace, unwrapWorkspace } from './dataStore';
 import {
   ensureAppConfig,
   getGoogleNativeClientId,
+  getGoogleTokenExchangeUrl,
   getGoogleWebClientId,
 } from './appConfig';
 
@@ -65,29 +66,62 @@ const cleanOAuthUrl = () => {
   window.history.replaceState(null, '', cleanUrl);
 };
 
-const exchangeAuthCode = async (code, verifier) => {
+const postTokenExchange = async (payload) => {
+  const proxyUrl = getGoogleTokenExchangeUrl();
+  if (proxyUrl) {
+    const res = await fetch(proxyUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(
+        data.error_description ||
+          data.error ||
+          'Échange du jeton Google impossible (proxy).'
+      );
+    }
+    return data;
+  }
+
   const clientId = getGoogleWebClientId();
+  const params = new URLSearchParams({ client_id: clientId });
+  if (payload.grant_type === 'refresh_token') {
+    params.set('grant_type', 'refresh_token');
+    params.set('refresh_token', payload.refresh_token);
+  } else {
+    params.set('code', payload.code);
+    params.set('redirect_uri', payload.redirect_uri);
+    params.set('grant_type', 'authorization_code');
+    if (payload.code_verifier) params.set('code_verifier', payload.code_verifier);
+  }
+
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      code,
-      client_id: clientId,
-      redirect_uri: getOAuthRedirectUri(),
-      grant_type: 'authorization_code',
-      code_verifier: verifier,
-    }),
+    body: params,
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const msg =
-      data.error === 'invalid_client' || data.error === 'unauthorized_client'
-        ? 'Configuration OAuth incomplète. Vérifiez le client Google (type Web + URI de redirection).'
-        : data.error_description || data.error || 'Échange du code Google impossible';
+    const needsProxy =
+      !proxyUrl &&
+      (String(data.error_description || data.error || '').includes('client_secret') ||
+        data.error === 'invalid_client');
+    const msg = needsProxy
+      ? 'Sauvegarde cloud : le proxy OAuth n’est pas encore activé. Contactez l’administrateur.'
+      : data.error_description || data.error || 'Échange du code Google impossible';
     throw new Error(msg);
   }
   return data;
 };
+
+const exchangeAuthCode = async (code, verifier) =>
+  postTokenExchange({
+    code,
+    redirect_uri: getOAuthRedirectUri(),
+    code_verifier: verifier,
+  });
 
 const persistWebTokens = async (tokenResponse) => {
   await prefSet(PREFS.TOKEN, tokenResponse.access_token);
@@ -389,23 +423,14 @@ const signOutWebGoogleDrive = async () => {
 
 const refreshWebAccessToken = async () => {
   const refreshToken = await prefGet(PREFS.REFRESH_TOKEN);
-  if (!refreshToken) return null;
-
-  const clientId = getGoogleWebClientId();
-  if (!clientId) return null;
+  if (!refreshToken || !getGoogleWebClientId()) return null;
 
   try {
-    const res = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: clientId,
-        grant_type: 'refresh_token',
-        refresh_token: refreshToken,
-      }),
+    const data = await postTokenExchange({
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
     });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.access_token) return null;
+    if (!data.access_token) return null;
     await storeWebToken(data);
     return data.access_token;
   } catch {

@@ -35,6 +35,8 @@ Sync optionnelle vers votre Drive personnel (gratuit, 15 Go). Les cahiers resten
 
 Le flux utilise **OAuth code + PKCE** (pas de popup `gsi/transform`). L’URI de redirection doit correspondre **exactement** à celle utilisée par l’app.
 
+Le **client_secret** ne doit jamais être dans l’app : déployez le mini-serveur `oauth-proxy/` sur Render (voir [oauth-proxy/README.md](./oauth-proxy/README.md)), puis ajoutez le secret GitHub `REACT_APP_GOOGLE_TOKEN_URL` (URL du proxy + `/google/token`).
+
 ---
 
 ## 2. Activer Google Drive sur le site / l'APK
