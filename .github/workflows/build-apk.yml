@@ -38,6 +38,8 @@ jobs:
         env:
           REACT_APP_KIOSK_MODE: 'true'
           REACT_APP_USE_BACKEND: 'false'
+          REACT_APP_GOOGLE_CLIENT_ID: ${{ secrets.REACT_APP_GOOGLE_CLIENT_ID }}
+          REACT_APP_GOOGLE_WEB_CLIENT_ID: ${{ secrets.REACT_APP_GOOGLE_WEB_CLIENT_ID }}
           CI: false
         run: npm run build
 

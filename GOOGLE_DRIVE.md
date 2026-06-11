@@ -22,7 +22,7 @@ Sync optionnelle vers votre Drive personnel (gratuit, 15 Go). Les cahiers resten
      ```
      http://localhost:3000
      ```
-   - (Optionnel, pour le site GitHub Pages) :
+   - **Obligatoire pour le site en ligne** :
      ```
      https://latsoukb.github.io
      ```
@@ -32,7 +32,19 @@ Sync optionnelle vers votre Drive personnel (gratuit, 15 Go). Les cahiers resten
 
 ---
 
-## 2. Configurer SeNote
+## 2. Déploiement GitHub Pages (site en ligne)
+
+Dans [Settings → Secrets → Actions](https://github.com/latsoukb/SeNote/settings/secrets/actions), créez :
+
+| Secret | Valeur |
+|--------|--------|
+| `REACT_APP_GOOGLE_WEB_CLIENT_ID` | Votre Client ID Web (`.apps.googleusercontent.com`) |
+
+Puis repoussez sur `main` ou relancez le workflow **Deploy GitHub Pages**. Sans ce secret, le bouton **Connecter Google Drive** reste grisé sur https://latsoukb.github.io/SeNote/
+
+---
+
+## 3. Configurer SeNote (local)
 
 Éditez `frontend/.env` :
 
@@ -49,7 +61,7 @@ npm start
 
 ---
 
-## 3. Connecter votre compte
+## 4. Connecter votre compte
 
 1. Ouvrez http://localhost:3000
 2. **Paramètres** (icône engrenage)
@@ -59,7 +71,7 @@ npm start
 
 ---
 
-## 4. Vérifier que ça marche
+## 5. Vérifier que ça marche
 
 - Créez un cahier, écrivez quelques traits
 - Cliquez **Sync maintenant** dans les paramètres
@@ -85,5 +97,7 @@ Pour la tablette, il faut en plus un client OAuth **Android** (`REACT_APP_GOOGLE
 |--------|----------|
 | `redirect_uri_mismatch` | Vérifiez `http://localhost:3000` dans les origines JavaScript |
 | `access_denied` | Ajoutez votre Gmail dans « Utilisateurs test » de l'écran de consentement |
-| Bouton grisé | `REACT_APP_GOOGLE_WEB_CLIENT_ID` vide → remplir `.env` et relancer `npm start` |
+| Bouton grisé | Secret GitHub `REACT_APP_GOOGLE_WEB_CLIENT_ID` manquant (site en ligne) ou `.env` vide (local) |
+| Popup ne s’ouvre pas | Fermez les paramètres et réessayez ; autorisez les popups pour le site |
+| `origin_mismatch` | Ajoutez `https://latsoukb.github.io` dans les origines JavaScript OAuth |
 | `Non connecté à Google Drive` | Reconnectez via Paramètres (token expiré) |

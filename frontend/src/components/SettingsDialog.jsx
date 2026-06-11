@@ -168,7 +168,7 @@ const SettingsDialog = ({ trigger }) => {
             />
           </div>
 
-          <GoogleDriveSettings />
+          <GoogleDriveSettings onBeforeConnect={() => setOpen(false)} />
 
           {!isNativeApp() && (
           <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-chrome-800">

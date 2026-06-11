@@ -24,7 +24,7 @@ const formatSyncTime = (ts) => {
   });
 };
 
-const GoogleDriveSettings = () => {
+const GoogleDriveSettings = ({ onBeforeConnect }) => {
   const { driveSyncing, syncNowToDrive, storageLabel } = useNotes();
   const { settings, updateSettings } = useSettings();
   const [status, setStatus] = useState({
@@ -53,11 +53,14 @@ const GoogleDriveSettings = () => {
       return;
     }
     try {
+      onBeforeConnect?.();
+      await new Promise((r) => setTimeout(r, 350));
       await signInGoogleDrive();
       await refresh();
       await syncNowToDrive();
       toast.success('Connecté à Google Drive');
     } catch (e) {
+      console.warn('Google Drive connect', e);
       toast.error(e.message || 'Connexion impossible');
     }
   };
@@ -91,9 +94,11 @@ const GoogleDriveSettings = () => {
       </p>
 
       {!isDriveConfigured() && (
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          Client Google non configuré — voir{' '}
-          {isNativeApp() ? 'ANDROID.md' : 'GOOGLE_DRIVE.md'} (section Google Cloud).
+        <p className="text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2">
+          Client Google non configuré sur cette version du site. Sur GitHub Pages, ajoutez le secret{' '}
+          <code className="text-[10px]">REACT_APP_GOOGLE_WEB_CLIENT_ID</code> dans les paramètres du
+          dépôt, et l&apos;origine <code className="text-[10px]">https://latsoukb.github.io</code> dans
+          Google Cloud. Voir {isNativeApp() ? 'ANDROID.md' : 'GOOGLE_DRIVE.md'}.
         </p>
       )}
 

@@ -148,13 +148,37 @@ const fetchGoogleEmail = async (token) => {
   }
 };
 
+const OAUTH_TIMEOUT_MS = 120_000;
+
 const requestWebAccessToken = async (prompt = '') =>
   new Promise((resolve, reject) => {
     const clientId = getWebClientId();
     if (!clientId) {
-      reject(new Error('REACT_APP_GOOGLE_WEB_CLIENT_ID manquant (voir GOOGLE_DRIVE.md)'));
+      reject(
+        new Error(
+          'Client Google non configuré sur ce site. Ajoutez REACT_APP_GOOGLE_WEB_CLIENT_ID (voir GOOGLE_DRIVE.md).'
+        )
+      );
       return;
     }
+
+    let settled = false;
+    const finish = (fn, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeoutId);
+      fn(value);
+    };
+
+    const timeoutId = setTimeout(() => {
+      finish(
+        reject,
+        new Error(
+          'Connexion Google expirée ou bloquée. Autorisez les popups pour ce site, puis réessayez.'
+        )
+      );
+    }, OAUTH_TIMEOUT_MS);
+
     loadGoogleGsi()
       .then((google) => {
         const client = google.accounts.oauth2.initTokenClient({
@@ -162,15 +186,28 @@ const requestWebAccessToken = async (prompt = '') =>
           scope: DRIVE_SCOPE,
           callback: (response) => {
             if (response.error) {
-              reject(new Error(response.error_description || response.error));
+              const msg =
+                response.error === 'access_denied'
+                  ? 'Accès refusé — ajoutez votre compte dans « Utilisateurs test » (Google Cloud).'
+                  : response.error_description || response.error;
+              finish(reject, new Error(msg));
               return;
             }
-            resolve(response);
+            finish(resolve, response);
+          },
+          error_callback: (err) => {
+            finish(
+              reject,
+              new Error(
+                err?.message ||
+                  'Connexion Google impossible — vérifiez l’origine autorisée (https://latsoukb.github.io).'
+              )
+            );
           },
         });
         client.requestAccessToken(prompt ? { prompt } : {});
       })
-      .catch(reject);
+      .catch((err) => finish(reject, err));
   });
 
 const storeWebToken = async (response) => {
