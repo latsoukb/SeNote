@@ -41,6 +41,23 @@ jobs:
           CI: false
         run: npm run build
 
+      - name: Inject Google OAuth into app-config.json
+        working-directory: frontend
+        env:
+          REACT_APP_GOOGLE_WEB_CLIENT_ID: ${{ secrets.REACT_APP_GOOGLE_WEB_CLIENT_ID }}
+          REACT_APP_GOOGLE_CLIENT_ID: ${{ secrets.REACT_APP_GOOGLE_CLIENT_ID }}
+        run: |
+          node -e "
+          const fs = require('fs');
+          const path = 'build/app-config.json';
+          const cfg = JSON.parse(fs.readFileSync(path, 'utf8'));
+          const web = (process.env.REACT_APP_GOOGLE_WEB_CLIENT_ID || '').trim();
+          const native = (process.env.REACT_APP_GOOGLE_CLIENT_ID || '').trim();
+          if (web) cfg.googleWebClientId = web;
+          if (native) cfg.googleNativeClientId = native;
+          fs.writeFileSync(path, JSON.stringify(cfg, null, 2) + '\n');
+          "
+
       - name: SPA fallback (routes React)
         run: cp frontend/build/index.html frontend/build/404.html
 

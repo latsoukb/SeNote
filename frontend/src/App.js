@@ -12,8 +12,12 @@ import CommViewer from './pages/CommViewer';
 import StudentNotifications from './components/StudentNotifications';
 import { Toaster } from './components/ui/sonner';
 import AccessGate from './components/AccessGate';
+import { ensureAppConfig } from './lib/appConfig';
 
 function App() {
+  React.useEffect(() => {
+    ensureAppConfig();
+  }, []);
   return (
     <AccessGate>
       <ThemeProvider>

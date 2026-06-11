@@ -1,5 +1,10 @@
 import { isNativeApp } from './platform';
 import { wrapWorkspace, unwrapWorkspace } from './dataStore';
+import {
+  ensureAppConfig,
+  getGoogleNativeClientId,
+  getGoogleWebClientId,
+} from './appConfig';
 
 const PREFS = {
   FILE_ID: 'senote_drive_file_id',
@@ -15,11 +20,8 @@ const WORKSPACE_NAME = 'senote-workspace.json';
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
 const DRIVE_API = 'https://www.googleapis.com/drive/v3';
 
-const getWebClientId = () => process.env.REACT_APP_GOOGLE_WEB_CLIENT_ID || '';
-const getNativeClientId = () => process.env.REACT_APP_GOOGLE_CLIENT_ID || '';
-
 export const isDriveConfigured = () =>
-  isNativeApp() ? Boolean(getNativeClientId()) : Boolean(getWebClientId());
+  isNativeApp() ? Boolean(getGoogleNativeClientId()) : Boolean(getGoogleWebClientId());
 
 const PREF_PREFIX = 'senote-pref-';
 
@@ -60,7 +62,8 @@ const loadGoogleAuth = async () => {
   try {
     const mod = await import('@codetrix-studio/capacitor-google-auth');
     authModule = mod.GoogleAuth;
-    const clientId = getNativeClientId();
+    await ensureAppConfig();
+    const clientId = getGoogleNativeClientId();
     if (clientId) {
       await authModule.initialize({
         clientId,
@@ -76,6 +79,7 @@ const loadGoogleAuth = async () => {
 };
 
 const signInNativeGoogleDrive = async () => {
+  await ensureAppConfig();
   const GoogleAuth = await loadGoogleAuth();
   if (!GoogleAuth) {
     throw new Error(
@@ -109,7 +113,7 @@ const getNativeAccessToken = async () => {
   }
 };
 
-/* ── Web (Mac / navigateur) — Google Identity Services ── */
+/* ── Web (navigateur) — Google Identity Services ── */
 
 let gsiPromise = null;
 
@@ -152,11 +156,11 @@ const OAUTH_TIMEOUT_MS = 120_000;
 
 const requestWebAccessToken = async (prompt = '') =>
   new Promise((resolve, reject) => {
-    const clientId = getWebClientId();
+    const clientId = getGoogleWebClientId();
     if (!clientId) {
       reject(
         new Error(
-          'Client Google non configuré sur ce site. Ajoutez REACT_APP_GOOGLE_WEB_CLIENT_ID (voir GOOGLE_DRIVE.md).'
+          'Sauvegarde cloud non configurée. Contactez l\'administrateur de votre établissement.'
         )
       );
       return;
@@ -218,6 +222,7 @@ const storeWebToken = async (response) => {
 };
 
 const signInWebGoogleDrive = async () => {
+  await ensureAppConfig();
   const response = await requestWebAccessToken('consent');
   const token = await storeWebToken(response);
   const email = await fetchGoogleEmail(token);
@@ -316,6 +321,7 @@ const findWorkspaceFile = async (token, folderId) => {
 };
 
 export const getDriveStatus = async () => {
+  await ensureAppConfig();
   const email = await prefGet(PREFS.EMAIL);
   const lastSync = await prefGet(PREFS.LAST_SYNC);
   return {
@@ -328,6 +334,10 @@ export const getDriveStatus = async () => {
 };
 
 export const signInGoogleDrive = async () => {
+  await ensureAppConfig();
+  if (!isDriveConfigured()) {
+    throw new Error('Sauvegarde cloud non configurée sur cet appareil.');
+  }
   if (isNativeApp()) return signInNativeGoogleDrive();
   return signInWebGoogleDrive();
 };
@@ -339,11 +349,13 @@ export const signOutGoogleDrive = async () => {
 };
 
 const getAccessToken = async () => {
+  await ensureAppConfig();
   if (isNativeApp()) return getNativeAccessToken();
   return getWebAccessToken();
 };
 
 export const uploadToGoogleDrive = async (workspaceData) => {
+  await ensureAppConfig();
   const token = await getAccessToken();
   if (!token) throw new Error('Non connecté à Google Drive');
 
@@ -399,6 +411,7 @@ export const uploadToGoogleDrive = async (workspaceData) => {
 };
 
 export const downloadFromGoogleDrive = async () => {
+  await ensureAppConfig();
   const token = await getAccessToken();
   if (!token) throw new Error('Non connecté à Google Drive');
 

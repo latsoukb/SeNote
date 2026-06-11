@@ -32,15 +32,24 @@ Sync optionnelle vers votre Drive personnel (gratuit, 15 Go). Les cahiers resten
 
 ---
 
-## 2. Déploiement GitHub Pages (site en ligne)
+## 2. Activer Google Drive sur le site / l'APK
 
-Dans [Settings → Secrets → Actions](https://github.com/latsoukb/SeNote/settings/secrets/actions), créez :
+Éditez `frontend/public/app-config.json` :
 
-| Secret | Valeur |
-|--------|--------|
-| `REACT_APP_GOOGLE_WEB_CLIENT_ID` | Votre Client ID Web (`.apps.googleusercontent.com`) |
+```json
+{
+  "googleWebClientId": "VOTRE_CLIENT_ID_WEB.apps.googleusercontent.com",
+  "googleNativeClientId": "VOTRE_CLIENT_ID_ANDROID.apps.googleusercontent.com"
+}
+```
 
-Puis repoussez sur `main` ou relancez le workflow **Deploy GitHub Pages**. Sans ce secret, le bouton **Connecter Google Drive** reste grisé sur https://latsoukb.github.io/SeNote/
+Puis `git push` sur `main`. Le Client ID OAuth est **public** (pas un mot de passe).
+
+**Ou** ajoutez le secret GitHub `REACT_APP_GOOGLE_WEB_CLIENT_ID` (Settings → Secrets → Actions) : il sera injecté au déploiement sans modifier le dépôt.
+
+```bash
+gh secret set REACT_APP_GOOGLE_WEB_CLIENT_ID --body "VOTRE_CLIENT_ID_WEB.apps.googleusercontent.com"
+```
 
 ---
 
@@ -97,7 +106,9 @@ Pour la tablette, il faut en plus un client OAuth **Android** (`REACT_APP_GOOGLE
 |--------|----------|
 | `redirect_uri_mismatch` | Vérifiez `http://localhost:3000` dans les origines JavaScript |
 | `access_denied` | Ajoutez votre Gmail dans « Utilisateurs test » de l'écran de consentement |
-| Bouton grisé | Secret GitHub `REACT_APP_GOOGLE_WEB_CLIENT_ID` manquant (site en ligne) ou `.env` vide (local) |
+| Connexion indisponible | Renseigner `googleWebClientId` dans `frontend/public/app-config.json` puis redéployer |
+| Popup bloquée | Autoriser les popups pour le site |
+| Accès refusé | Ajouter le compte Google dans « Utilisateurs test » (Google Cloud) |
 | Popup ne s’ouvre pas | Fermez les paramètres et réessayez ; autorisez les popups pour le site |
 | `origin_mismatch` | Ajoutez `https://latsoukb.github.io` dans les origines JavaScript OAuth |
 | `Non connecté à Google Drive` | Reconnectez via Paramètres (token expiré) |

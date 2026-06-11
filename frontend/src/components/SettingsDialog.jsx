@@ -133,18 +133,17 @@ const SettingsDialog = ({ trigger }) => {
                 <span className="text-sm font-medium">Vers la gauche</span>
               </button>
             </div>
-            <p className="text-xs text-slate-500">
-              Choisissez comment faire défiler les pages dans un cahier. L&apos;ajout automatique
-              de page suit la même direction.
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Sens de défilement dans le cahier. Les nouvelles pages ajoutées suivent la même
+              direction.
             </p>
           </div>
 
           <div className="flex items-center justify-between gap-4">
             <div className="space-y-0.5">
-              <Label htmlFor="stylus-only">Stylet uniquement pour écrire</Label>
-              <p className="text-xs text-slate-500">
-                Comme GoodNotes : le stylet écrit, le doigt fait défiler la page. La paume est
-                ignorée.
+              <Label htmlFor="stylus-only">Écriture au stylet</Label>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Le stylet écrit et efface. Le doigt sert uniquement à faire défiler la page.
               </p>
             </div>
             <Switch
@@ -156,9 +155,9 @@ const SettingsDialog = ({ trigger }) => {
 
           <div className="flex items-center justify-between gap-4">
             <div className="space-y-0.5">
-              <Label htmlFor="auto-add">Ajout auto de page</Label>
-              <p className="text-xs text-slate-500">
-                Nouvelle page au même style en fin de défilement
+              <Label htmlFor="auto-add">Nouvelle page automatique</Label>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Ajoute une page à la fin du cahier lorsque vous atteignez la dernière page.
               </p>
             </div>
             <Switch
@@ -170,23 +169,18 @@ const SettingsDialog = ({ trigger }) => {
 
           <GoogleDriveSettings onBeforeConnect={() => setOpen(false)} />
 
-          {!isNativeApp() && (
+          {!isNativeApp() && (canInstall || isInstalled) && (
           <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-chrome-800">
-            <Label>Raccourci / installation</Label>
+            <Label>Application</Label>
             {isInstalled ? (
               <p className="text-sm text-green-600 dark:text-green-400">
-                SeNote est installé sur cet appareil.
+                SeNote est installé sur cette tablette.
               </p>
-            ) : canInstall ? (
+            ) : (
               <Button onClick={handleInstall} className="w-full gap-2 bg-brand-600 hover:bg-brand-700">
                 <Download className="w-4 h-4" />
-                Installer SeNote (raccourci)
+                Installer sur la tablette
               </Button>
-            ) : (
-              <p className="text-xs text-slate-500">
-                Sur iPad/iPhone : partage Safari → « Sur l&apos;écran d&apos;accueil ».
-                Sur Android/Chrome : menu → « Installer l&apos;application ».
-              </p>
             )}
           </div>
           )}
