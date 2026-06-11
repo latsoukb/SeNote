@@ -509,7 +509,7 @@ const Library = () => {
 
   const trashCount = (trash?.notebooks?.length || 0) + (trash?.pages?.length || 0);
   const { pendingCount: deadlinePendingCount, items: deadlineItems } = useDeadlineItems();
-  const hasDeadlines = deadlineItems.length > 0;
+  const hasDeadlines = deadlinePendingCount > 0;
 
   const handleMove = (notebookId, folderId) => {
     moveNotebookToFolder(notebookId, folderId);

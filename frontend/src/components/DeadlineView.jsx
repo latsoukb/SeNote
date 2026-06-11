@@ -63,9 +63,9 @@ const DeadlineView = () => {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
         <CalendarClock className="w-12 h-12 text-slate-300 mb-4" />
-        <h3 className="font-medium text-lg">Aucune échéance</h3>
+        <h3 className="font-medium text-lg">Aucune échéance en cours</h3>
         <p className="text-slate-500 dark:text-slate-400 mt-1">
-          Les travaux avec date limite apparaîtront ici.
+          Les travaux terminés (bouton « Fait ») disparaissent ici.
         </p>
       </div>
     );
@@ -80,8 +80,8 @@ const DeadlineView = () => {
         </h1>
         <p className="text-slate-500 dark:text-slate-400 mt-1">
           {pendingCount > 0
-            ? `${pendingCount} travail${pendingCount > 1 ? 'x' : ''} en cours sur ${items.length}`
-            : `${items.length} travail${items.length > 1 ? 'x' : ''} — tout est terminé`}
+            ? `${pendingCount} travail${pendingCount > 1 ? 'x' : ''} en cours`
+            : 'Les travaux terminés disparaissent de cette liste.'}
         </p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

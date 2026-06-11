@@ -69,41 +69,44 @@ export const NotesProvider = ({ children }) => {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      let data = (await loadWorkspace()) || defaultData();
+      const local = (await loadWorkspace()) || defaultData();
+      if (cancelled) return;
+      applyWorkspace(local);
+      setReady(true);
 
-      const driveStatus = await getDriveStatus();
-      if (driveStatus.connected) {
-        data = await mergeWithGoogleDrive(data);
+      try {
+        const driveStatus = await getDriveStatus();
+        if (driveStatus.connected) {
+          const merged = await mergeWithGoogleDrive(local);
+          if (!cancelled) applyWorkspace(merged);
+        }
+      } catch (e) {
+        console.warn('Sync Drive au démarrage ignorée', e);
       }
 
-      const online = await checkBackend();
-      if (online && !cancelled) {
-        try {
+      try {
+        const online = await checkBackend();
+        if (online && !cancelled) {
           const remote = await fetchWorkspace();
           const hasRemote =
             (remote.notebooks?.length || 0) > 0 || (remote.folders?.length || 0) > 0;
           if (hasRemote) {
-            data = {
+            applyWorkspace({
               folders: remote.folders ?? initialFolders,
               notebooks: (remote.notebooks ?? []).map(migrateNotebook),
               trash: remote.trash ?? emptyTrash(),
               savedAt: Date.now(),
-            };
+            });
           } else {
             await saveWorkspaceApi({
-              folders: data.folders,
-              notebooks: data.notebooks,
-              trash: data.trash,
+              folders: local.folders,
+              notebooks: local.notebooks,
+              trash: local.trash,
             });
           }
-        } catch (e) {
-          console.warn('Sync backend échouée, mode local', e);
         }
-      }
-
-      if (!cancelled) {
-        applyWorkspace(data);
-        setReady(true);
+      } catch (e) {
+        console.warn('Sync backend échouée, mode local', e);
       }
     })();
     return () => {

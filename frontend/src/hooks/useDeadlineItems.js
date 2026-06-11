@@ -25,7 +25,7 @@ export const useDeadlineItems = () => {
           urgency: getDeadlineDisplayUrgency(c.deadlineAt, done),
         };
       })
-      .filter((x) => x.urgency)
+      .filter((x) => x.urgency && !x.done)
       .sort((a, b) => {
         const oa = URGENCY_ORDER[a.urgency] ?? 9;
         const ob = URGENCY_ORDER[b.urgency] ?? 9;
@@ -34,7 +34,7 @@ export const useDeadlineItems = () => {
       });
   }, [communications, tick, isCommunicationDone]);
 
-  const pendingCount = items.filter((x) => !x.done).length;
+  const pendingCount = items.length;
 
   return { items, pendingCount, enrolled };
 };
