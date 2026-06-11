@@ -24,6 +24,7 @@ const WORKSPACE_NAME = 'senote-workspace.json';
 const DRIVE_SCOPE =
   'https://www.googleapis.com/auth/drive.file openid https://www.googleapis.com/auth/userinfo.email';
 const DRIVE_API = 'https://www.googleapis.com/drive/v3';
+const DRIVE_UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
 const OAUTH_PENDING_KEY = 'senote_drive_oauth_pending';
 const PKCE_VERIFIER_KEY = 'senote_pkce_verifier';
 const OAUTH_STATE = 'senote_drive';
@@ -469,6 +470,22 @@ const driveFetch = async (path, token, options = {}) => {
   return res;
 };
 
+/** Mises à jour du contenu fichier (JSON, PDF) — endpoint upload, pas metadata. */
+const driveUploadFetch = async (path, token, options = {}) => {
+  const res = await fetch(`${DRIVE_UPLOAD_API}${path}`, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(options.headers || {}),
+    },
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Drive upload ${res.status}: ${err}`);
+  }
+  return res;
+};
+
 const findOrCreateFolder = async (token) => {
   const cached = await prefGet(PREFS.FOLDER_ID);
   if (cached) return cached;
@@ -562,21 +579,11 @@ const savePdfMap = async (map) => {
 
 const uploadPdfToDrive = async (token, folderId, fileName, blob, fileId, previousName) => {
   if (fileId) {
-    const mediaRes = await fetch(
-      `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
-      {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/pdf',
-        },
-        body: blob,
-      }
-    );
-    if (!mediaRes.ok) {
-      const err = await mediaRes.text();
-      throw new Error(`Mise à jour PDF Drive échouée: ${mediaRes.status} ${err}`);
-    }
+    await driveUploadFetch(`/files/${fileId}?uploadType=media`, token, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/pdf' },
+      body: blob,
+    });
     if (previousName !== fileName) {
       await driveFetch(`/files/${fileId}?fields=id`, token, {
         method: 'PATCH',
@@ -603,18 +610,11 @@ const uploadPdfToDrive = async (token, folderId, fileName, blob, fileId, previou
     type: `multipart/related; boundary=${boundary}`,
   });
 
-  const res = await fetch(
-    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': `multipart/related; boundary=${boundary}`,
-      },
-      body,
-    }
-  );
-  if (!res.ok) throw new Error(`Envoi PDF Drive échoué: ${res.status}`);
+  const res = await driveUploadFetch('/files?uploadType=multipart&fields=id', token, {
+    method: 'POST',
+    headers: { 'Content-Type': `multipart/related; boundary=${boundary}` },
+    body,
+  });
   const created = await res.json();
   return created.id;
 };
@@ -673,7 +673,7 @@ export const uploadToGoogleDrive = async (workspaceData) => {
   let fileId = await findWorkspaceFile(token, folderId);
 
   if (fileId) {
-    await driveFetch(`/files/${fileId}?uploadType=media`, token, {
+    await driveUploadFetch(`/files/${fileId}?uploadType=media`, token, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body,
@@ -682,7 +682,6 @@ export const uploadToGoogleDrive = async (workspaceData) => {
     const metadata = {
       name: WORKSPACE_NAME,
       parents: [folderId],
-      mimeType: 'application/json',
     };
     const boundary = 'senote_boundary';
     const multipart = [
@@ -697,18 +696,11 @@ export const uploadToGoogleDrive = async (workspaceData) => {
       `--${boundary}--`,
     ].join('\r\n');
 
-    const res = await fetch(
-      'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': `multipart/related; boundary=${boundary}`,
-        },
-        body: multipart,
-      }
-    );
-    if (!res.ok) throw new Error(`Upload Drive échoué: ${res.status}`);
+    const res = await driveUploadFetch('/files?uploadType=multipart&fields=id', token, {
+      method: 'POST',
+      headers: { 'Content-Type': `multipart/related; boundary=${boundary}` },
+      body: multipart,
+    });
     const created = await res.json();
     fileId = created.id;
     await prefSet(PREFS.FILE_ID, fileId);
