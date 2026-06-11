@@ -3,12 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@capacitor/android": "^7.2.0",
-    "@capacitor/app": "^7.0.1",
-    "@capacitor/core": "^7.2.0",
-    "@capacitor/filesystem": "^7.1.1",
-    "@capacitor/preferences": "^7.0.1",
-    "@codetrix-studio/capacitor-google-auth": "3.4.0-rc.4",
     "@hookform/resolvers": "5.0.1",
     "@radix-ui/react-accordion": "1.2.8",
     "@radix-ui/react-alert-dialog": "1.1.11",
@@ -71,10 +65,7 @@
   "scripts": {
     "start": "craco start",
     "build": "craco build",
-    "test": "craco test",
-    "cap:sync": "npm run build && npx cap sync",
-    "android:open": "npx cap open android",
-    "android:apk": "cd ../.. && ./scripts/build-apk.sh"
+    "test": "craco test"
   },
   "browserslist": {
     "production": [
@@ -90,7 +81,6 @@
   },
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "7.21.11",
-    "@capacitor/cli": "^7.2.0",
     "@craco/craco": "7.1.0",
     "@emergentbase/visual-edits": "https://assets.emergent.sh/npm/emergentbase-visual-edits-1.0.8.tgz",
     "@eslint/js": "9.23.0",

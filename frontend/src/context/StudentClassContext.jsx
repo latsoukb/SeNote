@@ -18,7 +18,6 @@ import {
   markCommunicationSeen,
   saveStoredStudentName,
 } from '../lib/classSync';
-import { isNativeApp } from '../lib/platform';
 
 const SEEN_KEY = 'senote-seen-comms';
 const ANNOUNCED_KEY = 'senote-announced-comms';
@@ -168,7 +167,7 @@ export const StudentClassProvider = ({ children }) => {
   }, [deviceId]);
 
   useEffect(() => {
-    if (!deviceId || !isSyncConfigured() || isNativeApp()) return undefined;
+    if (!deviceId || !isSyncConfigured()) return undefined;
     syncNow();
     const tick = () => syncNow();
     const id = setInterval(tick, enrolled ? 15_000 : 5_000);

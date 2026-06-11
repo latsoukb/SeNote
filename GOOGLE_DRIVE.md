@@ -39,14 +39,13 @@ Le **client_secret** ne doit jamais être dans l’app : déployez le mini-serve
 
 ---
 
-## 2. Activer Google Drive sur le site / l'APK
+## 2. Activer Google Drive sur le site
 
 Éditez `frontend/public/app-config.json` :
 
 ```json
 {
-  "googleWebClientId": "VOTRE_CLIENT_ID_WEB.apps.googleusercontent.com",
-  "googleNativeClientId": "VOTRE_CLIENT_ID_ANDROID.apps.googleusercontent.com"
+  "googleWebClientId": "VOTRE_CLIENT_ID_WEB.apps.googleusercontent.com"
 }
 ```
 
@@ -93,17 +92,6 @@ npm start
 - Cliquez **Sync maintenant** dans les paramètres
 - Sur [drive.google.com](https://drive.google.com) → dossier **SeNote** → fichier `senote-workspace.json`
 - Ouvrez SeNote dans un autre navigateur (ou videz le localStorage) → reconnectez Drive → vos cahiers reviennent
-
----
-
-## APK Android (tablette)
-
-Pour la tablette, il faut en plus un client OAuth **Android** (`REACT_APP_GOOGLE_CLIENT_ID`). Voir [ANDROID.md](./ANDROID.md) section Google Cloud.
-
-| Variable | Usage |
-|----------|--------|
-| `REACT_APP_GOOGLE_WEB_CLIENT_ID` | Mac / navigateur |
-| `REACT_APP_GOOGLE_CLIENT_ID` | APK Android |
 
 ---
 

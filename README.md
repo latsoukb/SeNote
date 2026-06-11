@@ -13,21 +13,6 @@ Ouvre **http://localhost:3000** — notes sauvegardées dans le navigateur.
 
 Guide de test complet : [TEST.md](./TEST.md)
 
-## Tablette Android (APK — sans Play Store)
-
-Pour une tablette dédiée à la prise de notes (projet éducatif Sénégal) :
-
-- Stockage **mémoire interne** de la tablette
-- Sync **Google Drive** gratuite (optionnelle)
-- Installation directe de l'APK
-
-**Guide : [ANDROID.md](./ANDROID.md)**
-
-```bash
-./scripts/build-apk.sh
-adb install -r SeNote-tablet.apk
-```
-
 ## Google Drive (test sur Mac)
 
 1. Configurer OAuth Web : [GOOGLE_DRIVE.md](./GOOGLE_DRIVE.md)
@@ -44,7 +29,7 @@ adb install -r SeNote-tablet.apk
 ./scripts/share.sh
 ```
 
-Ouvrez l'adresse affichée (ex. `http://192.168.1.x:3000`) sur la tablette.
+Ouvrez l'adresse affichée (ex. `http://192.168.1.x:3000`) sur la tablette dans Chrome.
 
 ## Fonctionnalités
 

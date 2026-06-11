@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">SeNote</string>
-    <string name="title_activity_main">SeNote</string>
-    <string name="package_name">com.senote.tablet</string>
-    <string name="custom_url_scheme">com.senote.tablet</string>
-</resources>

@@ -17,7 +17,6 @@ import {
   mergeWithGoogleDrive,
   getDriveStatus,
 } from '../lib/googleDriveSync';
-import { isNativeApp } from '../lib/platform';
 
 const NotesContext = createContext(null);
 
@@ -73,34 +72,32 @@ export const NotesProvider = ({ children }) => {
       let data = (await loadWorkspace()) || defaultData();
 
       const driveStatus = await getDriveStatus();
-      if (driveStatus.connected && !isNativeApp()) {
+      if (driveStatus.connected) {
         data = await mergeWithGoogleDrive(data);
       }
 
-      if (!isNativeApp()) {
-        const online = await checkBackend();
-        if (online && !cancelled) {
-          try {
-            const remote = await fetchWorkspace();
-            const hasRemote =
-              (remote.notebooks?.length || 0) > 0 || (remote.folders?.length || 0) > 0;
-            if (hasRemote) {
-              data = {
-                folders: remote.folders ?? initialFolders,
-                notebooks: (remote.notebooks ?? []).map(migrateNotebook),
-                trash: remote.trash ?? emptyTrash(),
-                savedAt: Date.now(),
-              };
-            } else {
-              await saveWorkspaceApi({
-                folders: data.folders,
-                notebooks: data.notebooks,
-                trash: data.trash,
-              });
-            }
-          } catch (e) {
-            console.warn('Sync backend échouée, mode local', e);
+      const online = await checkBackend();
+      if (online && !cancelled) {
+        try {
+          const remote = await fetchWorkspace();
+          const hasRemote =
+            (remote.notebooks?.length || 0) > 0 || (remote.folders?.length || 0) > 0;
+          if (hasRemote) {
+            data = {
+              folders: remote.folders ?? initialFolders,
+              notebooks: (remote.notebooks ?? []).map(migrateNotebook),
+              trash: remote.trash ?? emptyTrash(),
+              savedAt: Date.now(),
+            };
+          } else {
+            await saveWorkspaceApi({
+              folders: data.folders,
+              notebooks: data.notebooks,
+              trash: data.trash,
+            });
           }
+        } catch (e) {
+          console.warn('Sync backend échouée, mode local', e);
         }
       }
 
@@ -129,9 +126,6 @@ export const NotesProvider = ({ children }) => {
   }, []);
 
   const flushDriveSync = useCallback(async (includePdfs = false) => {
-    if (isNativeApp()) {
-      return { ok: false, error: 'Google Drive sera disponible sur tablette prochainement.' };
-    }
     if (!isAutoSyncEnabled()) {
       return { ok: false, error: 'Synchronisation automatique désactivée.' };
     }
@@ -147,7 +141,7 @@ export const NotesProvider = ({ children }) => {
     setDriveSyncing(true);
     try {
       await uploadToGoogleDrive(workspaceRef.current);
-      if (includePdfs && !isNativeApp()) {
+      if (includePdfs) {
         await syncNotebookPdfsToDrive(workspaceRef.current);
       }
       setLastDriveSync(Date.now());
@@ -162,7 +156,7 @@ export const NotesProvider = ({ children }) => {
   }, [isAutoSyncEnabled]);
 
   const scheduleDriveSync = useCallback(() => {
-    if (isNativeApp() || !isAutoSyncEnabled()) return;
+    if (!isAutoSyncEnabled()) return;
     if (driveDebounceRef.current) clearTimeout(driveDebounceRef.current);
     driveDebounceRef.current = setTimeout(() => {
       flushDriveSync(false);
@@ -172,15 +166,13 @@ export const NotesProvider = ({ children }) => {
   const persist = useCallback(
     async (payload, syncDrive = false) => {
       const saved = await saveWorkspace(payload);
-      if (!isNativeApp()) {
-        try {
-          const online = await checkBackend();
-          if (online) {
-            await saveWorkspaceApi(payload);
-          }
-        } catch (e) {
-          console.warn('Sauvegarde backend échouée', e);
+      try {
+        const online = await checkBackend();
+        if (online) {
+          await saveWorkspaceApi(payload);
         }
+      } catch (e) {
+        console.warn('Sauvegarde backend échouée', e);
       }
       if (syncDrive) {
         const status = await getDriveStatus();
@@ -214,7 +206,7 @@ export const NotesProvider = ({ children }) => {
   }, [folders, notebooks, trash, ready, persist, scheduleDriveSync]);
 
   useEffect(() => {
-    if (!ready || isNativeApp()) return;
+    if (!ready) return;
 
     const runDriveSync = () => flushDriveSync(true);
     driveTimerRef.current = setInterval(runDriveSync, 5 * 60_000);
@@ -226,23 +218,11 @@ export const NotesProvider = ({ children }) => {
     document.addEventListener('visibilitychange', onHide);
     window.addEventListener('pagehide', onHide);
 
-    let removePause;
-    (async () => {
-      try {
-        const { App } = await import('@capacitor/app');
-        const handle = await App.addListener('pause', onHide);
-        removePause = () => handle.remove();
-      } catch {
-        /* web */
-      }
-    })();
-
     return () => {
       if (driveTimerRef.current) clearInterval(driveTimerRef.current);
       if (driveDebounceRef.current) clearTimeout(driveDebounceRef.current);
       document.removeEventListener('visibilitychange', onHide);
       window.removeEventListener('pagehide', onHide);
-      removePause?.();
     };
   }, [ready, flushDriveSync]);
 

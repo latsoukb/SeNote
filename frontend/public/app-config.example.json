@@ -1,4 +1,4 @@
 {
   "googleWebClientId": "123456789-xxxx.apps.googleusercontent.com",
-  "googleNativeClientId": "123456789-yyyy.apps.googleusercontent.com"
+  "googleTokenExchangeUrl": "https://votre-proxy.onrender.com/google/token"
 }

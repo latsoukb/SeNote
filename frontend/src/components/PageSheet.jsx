@@ -33,7 +33,6 @@ import {
 import { strokeToSvgPath } from '../lib/strokeSvg';
 import InkSvgLayer from './InkSvgLayer';
 import { MIN_ZOOM, MAX_ZOOM } from './NoteCanvas';
-import { isNativeApp } from '../lib/platform';
 
 const SHAPE_DELAY_MS = 650;
 
@@ -993,7 +992,7 @@ const PageSheet = ({
           width: contentW,
           height: contentH,
           transform: panX || panY ? `translate(${panX}px, ${panY}px)` : undefined,
-          willChange: !isNativeApp() && effectiveZoom > 1 ? 'transform' : undefined,
+          willChange: effectiveZoom > 1 ? 'transform' : undefined,
         }}
       >
         <div className="relative" style={{ width: contentW, height: contentH }}>

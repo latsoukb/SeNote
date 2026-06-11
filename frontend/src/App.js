@@ -15,25 +15,23 @@ import AccessGate from './components/AccessGate';
 import ErrorBoundary from './components/ErrorBoundary';
 import GoogleDriveOAuthHandler from './components/GoogleDriveOAuthHandler';
 import { ensureAppConfig } from './lib/appConfig';
-import { isNativeApp } from './lib/platform';
 
 function App() {
   React.useEffect(() => {
     ensureAppConfig();
   }, []);
-  const native = isNativeApp();
   return (
     <ErrorBoundary>
     <AccessGate>
       <ThemeProvider>
         <SettingsProvider>
           <NotesProvider>
-            {!native && <GoogleDriveOAuthHandler />}
+            <GoogleDriveOAuthHandler />
             <OpenNotebooksProvider>
             <StudentClassProvider>
               <div className="App bg-slate-50 dark:bg-chrome-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">
                 <BrowserRouter basename={process.env.PUBLIC_URL || ''}>
-                  {!native && <StudentNotifications />}
+                  <StudentNotifications />
                   <Routes>
                     <Route path="/" element={<Library />} />
                     <Route path="/view/:id" element={<CommViewer />} />

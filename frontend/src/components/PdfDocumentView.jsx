@@ -1,30 +1,8 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import PageSheet from './PageSheet';
 import { PAGE_W, PAGE_H } from '../lib/pageDimensions';
-import { isNativeApp } from '../lib/platform';
 
 const GAP = 16;
-/** Sur APK : au plus 3 PageSheet montées (courante ± 1) pour éviter OOM WebView */
-const NATIVE_RENDER_RADIUS = 1;
-
-const shouldMountPageSheet = (idx, currentPageIdx) => {
-  if (!isNativeApp()) return true;
-  return Math.abs(idx - currentPageIdx) <= NATIVE_RENDER_RADIUS;
-};
-
-const PagePlaceholder = ({ idx, onActivate }) => (
-  <div
-    role="button"
-    tabIndex={0}
-    onClick={onActivate}
-    onKeyDown={(e) => e.key === 'Enter' && onActivate?.()}
-    className="relative bg-white dark:bg-chrome-900 overflow-hidden shadow-lg border border-slate-200 dark:border-chrome-700 w-full flex items-center justify-center text-slate-400 text-xs cursor-pointer"
-    style={{ aspectRatio: `${PAGE_W} / ${PAGE_H}` }}
-    aria-label={`Page ${idx + 1}`}
-  >
-    {idx + 1}
-  </div>
-);
 
 /** Page la plus visible dans le viewport (gère 2 pages partiellement à l'écran) */
 const pickVisiblePageIndex = (root, pageEls, isVertical) => {
@@ -106,7 +84,7 @@ const PdfDocumentView = ({
     const el = pageRefs.current[idx];
     if (el) {
       el.scrollIntoView({
-        behavior: smooth ? 'smooth' : isNativeApp() ? 'auto' : 'instant',
+        behavior: smooth ? 'smooth' : 'instant',
         block: 'start',
         inline: 'start',
       });
@@ -178,7 +156,6 @@ const PdfDocumentView = ({
     };
   }, [notebook?.id, pages.length, currentPageIdx, scrollToPage]);
 
-  // Détection automatique au scroll + IntersectionObserver
   useEffect(() => {
     const root = scrollRef.current;
     if (!root) return;
@@ -253,52 +230,40 @@ const PdfDocumentView = ({
         }`}
         style={{ gap: GAP }}
       >
-        {pages.map((page, idx) => {
-          const mountSheet = shouldMountPageSheet(idx, currentPageIdx);
-          return (
-            <div
-              key={page.id}
-              ref={(el) => {
-                pageRefs.current[idx] = el;
+        {pages.map((page, idx) => (
+          <div
+            key={page.id}
+            ref={(el) => {
+              pageRefs.current[idx] = el;
+            }}
+            data-page-idx={idx}
+            className="shrink-0 w-full min-w-0"
+          >
+            <PageSheet
+              page={page}
+              displayWidth={0}
+              tool={tool}
+              color={color}
+              thickness={thickness}
+              onChange={(patch) => onPageUpdate(page.id, patch)}
+              pushUndo={(snap) => pushUndo(page.id, snap)}
+              isActive={idx === currentPageIdx}
+              writeZoom={idx === currentPageIdx ? writeZoom : 1}
+              writePan={idx === currentPageIdx ? writePan : { x: 0, y: 0 }}
+              onWritePanChange={idx === currentPageIdx ? onWritePanChange : undefined}
+              onWriteZoomChange={idx === currentPageIdx ? onWriteZoomChange : undefined}
+              stylusOnly={stylusOnly}
+              pageSyncRevision={pageSyncRevision}
+              scrollDirection={scrollDirection}
+              onPenActiveChange={setPenLock}
+              penLock={penLock}
+              onRequestActivate={() => {
+                if (idx !== currentPageIdxRef.current) onPageChange(idx);
               }}
-              data-page-idx={idx}
-              className="shrink-0 w-full min-w-0"
-            >
-              {mountSheet ? (
-                <PageSheet
-                  page={page}
-                  displayWidth={0}
-                  tool={tool}
-                  color={color}
-                  thickness={thickness}
-                  onChange={(patch) => onPageUpdate(page.id, patch)}
-                  pushUndo={(snap) => pushUndo(page.id, snap)}
-                  isActive={idx === currentPageIdx}
-                  writeZoom={idx === currentPageIdx ? writeZoom : 1}
-                  writePan={idx === currentPageIdx ? writePan : { x: 0, y: 0 }}
-                  onWritePanChange={idx === currentPageIdx ? onWritePanChange : undefined}
-                  onWriteZoomChange={idx === currentPageIdx ? onWriteZoomChange : undefined}
-                  stylusOnly={stylusOnly}
-                  pageSyncRevision={pageSyncRevision}
-                  scrollDirection={scrollDirection}
-                  onPenActiveChange={setPenLock}
-                  penLock={penLock}
-                  onRequestActivate={() => {
-                    if (idx !== currentPageIdxRef.current) onPageChange(idx);
-                  }}
-                  onScrollChain={idx === currentPageIdx ? handleScrollChain : undefined}
-                />
-              ) : (
-                <PagePlaceholder
-                  idx={idx}
-                  onActivate={() => {
-                    if (idx !== currentPageIdxRef.current) onPageChange(idx);
-                  }}
-                />
-              )}
-            </div>
-          );
-        })}
+              onScrollChain={idx === currentPageIdx ? handleScrollChain : undefined}
+            />
+          </div>
+        ))}
         {autoAddPage && (
           <div
             className={`shrink-0 flex items-center justify-center text-slate-400 text-xs border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-md bg-white/40 dark:bg-chrome-900/20 ${

@@ -3,13 +3,12 @@
 ## Option 1 — Navigateur (30 secondes, sur ton Mac)
 
 ```bash
-chmod +x scripts/test-tablet.sh
-./scripts/test-tablet.sh web
+chmod +x scripts/dev.sh
+./scripts/dev.sh
 ```
 
 Ouvre **http://localhost:3000**
 
-- Pas de code PIN (mode tablette)
 - Écris au stylet ou à la souris
 - Les cahiers sont sauvegardés dans le navigateur
 
@@ -19,45 +18,18 @@ Ouvre **http://localhost:3000**
 ./scripts/share.sh
 ```
 
-Ouvre l'adresse affichée (ex. `http://192.168.1.x:3000`) sur la tablette.
+Ouvre l'adresse affichée (ex. `http://192.168.1.x:3000`) sur la tablette dans Chrome.
 
 ---
 
-## Option 2 — APK Android (vraie app tablette)
-
-### Télécharger l'APK (build automatique GitHub)
-
-1. Va sur [Actions → Build APK Android](https://github.com/latsoukb/SeNote/actions/workflows/build-apk.yml)
-2. Clique **Run workflow** (ou attends le build après un push)
-3. Quand c'est vert → clique le run → section **Artifacts** → télécharge **SeNote-tablet-apk**
-
-### Installer sur la tablette
-
-**USB :**
-```bash
-adb install -r ~/Downloads/app-debug.apk
-```
-
-**Sans USB :** copie le fichier `.apk` sur la tablette → ouvre-le → autorise « sources inconnues » → installer.
-
-### Compiler en local (si Android Studio installé)
-
-```bash
-./scripts/test-tablet.sh apk
-```
-
----
-
-## Option 3 — Site en ligne (iPad / iPhone — pour tester avec un ami)
+## Option 2 — Site en ligne (iPad / iPhone / tablette Android)
 
 **https://latsoukb.github.io/SeNote/**
 
-1. Ouvre ce lien dans **Safari** sur l'iPad
+1. Ouvre ce lien dans **Chrome** ou **Safari** sur la tablette
 2. Mode stylet activé par défaut (stylet écrit, doigt défile)
 3. Pas de code PIN si `REACT_APP_BETA_PIN` n'est pas configuré sur GitHub
 4. Après chaque `git push` sur `main`, le site se met à jour en ~2 min
-
-> Stockage navigateur — pour une tablette dédiée sans navigateur, préférer l'APK Android.
 
 ---
 
@@ -78,5 +50,3 @@ adb install -r ~/Downloads/app-debug.apk
 1. Suivre [GOOGLE_DRIVE.md](./GOOGLE_DRIVE.md) (Google Cloud + `REACT_APP_GOOGLE_WEB_CLIENT_ID` dans `frontend/.env`)
 2. Relancer `npm start`
 3. Dans l'app : **Paramètres → Connecter Google Drive**
-
-Pour l'APK tablette : voir [ANDROID.md](./ANDROID.md).
