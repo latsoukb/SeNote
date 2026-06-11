@@ -198,13 +198,8 @@ const LibrarySidebar = ({
   className = '',
 }) => (
   <div className={`space-y-1 ${className}`}>
-    <p className="text-xs uppercase tracking-wide font-medium text-slate-500 px-2 mb-2 flex items-center justify-between gap-2">
-      <span>JokkoNote</span>
-      {newCount > 0 && (
-        <span className="bg-red-600 text-white text-[10px] font-bold min-w-[1.25rem] h-5 px-1.5 rounded-full flex items-center justify-center">
-          {newCount}
-        </span>
-      )}
+    <p className="text-xs uppercase tracking-wide font-medium text-slate-500 px-2 mb-2">
+      JokkoNote
     </p>
     <button
       type="button"

@@ -2,8 +2,6 @@ import React, { useRef, useLayoutEffect, useState, useCallback, useEffect } from
 import { makeId } from '../lib/id';
 import { PAGE_W, PAGE_H } from '../lib/pageDimensions';
 import { getPageBackground, getPaperZoomStyle } from '../lib/pageTemplates';
-import { detectShape, shapeToStroke, looksLikeHandwriting } from '../lib/shapeDetection';
-import { drawShape } from '../lib/shapeGeometry';
 import { snapToInstruments, instrumentEdgeKey } from '../lib/instrumentSnap';
 import {
   eraseStrokes,
@@ -33,8 +31,6 @@ import {
 import { strokeToSvgPath } from '../lib/strokeSvg';
 import InkSvgLayer from './InkSvgLayer';
 import { MIN_ZOOM, MAX_ZOOM } from './NoteCanvas';
-
-const SHAPE_DELAY_MS = 650;
 
 const PageSheet = ({
   page,
@@ -70,8 +66,6 @@ const PageSheet = ({
   const [editingTextId, setEditingTextId] = useState(null);
   const [selectedTextId, setSelectedTextId] = useState(null);
   const [dragFrame, setDragFrame] = useState(0);
-  const shapeTimerRef = useRef(null);
-  const pendingStrokeIdRef = useRef(null);
   const eraserPathRef = useRef([]);
   const strokesRef = useRef(page.strokes || []);
   const liveStrokesRef = useRef(null);
@@ -79,7 +73,6 @@ const PageSheet = ({
   const liveInstrumentsRef = useRef(null);
   const [erasePreview, setErasePreview] = useState(null);
   const rafRef = useRef(null);
-  const constraintRef = useRef(false);
   const pageIdRef = useRef(page.id);
   const lastSyncRevRef = useRef(pageSyncRevision);
   const textTapRef = useRef(null);
@@ -484,63 +477,6 @@ const PageSheet = ({
     writePan.y,
   ]);
 
-  useEffect(() => {
-    const onTouch = (e) => {
-      if (pendingStrokeIdRef.current && e.touches.length >= 2) {
-        constraintRef.current = true;
-      }
-    };
-    window.addEventListener('touchstart', onTouch, { passive: true });
-    window.addEventListener('touchmove', onTouch, { passive: true });
-    return () => {
-      window.removeEventListener('touchstart', onTouch);
-      window.removeEventListener('touchmove', onTouch);
-    };
-  }, []);
-
-  const clearShapeTimer = () => {
-    if (shapeTimerRef.current) {
-      clearTimeout(shapeTimerRef.current);
-      shapeTimerRef.current = null;
-    }
-    pendingStrokeIdRef.current = null;
-  };
-
-  const applyShapeConversion = (strokeId) => {
-    const list = strokesRef.current || [];
-    const idx = list.findIndex((s) => s.id === strokeId);
-    if (idx < 0) return;
-    const stroke = list[idx];
-    if (!stroke.points || stroke.points.length < 20 || stroke.shape) return;
-    if (looksLikeHandwriting(stroke.points)) return;
-
-    const shape = detectShape(stroke.points, {
-      forceSquare: constraintRef.current,
-      forceCircle: constraintRef.current,
-    });
-    if (!shape) return;
-
-    const snapped = shapeToStroke(shape, stroke.color, stroke.thickness, stroke.type);
-    if (!snapped) return;
-
-    snapped.id = stroke.id;
-    const next = [...list];
-    next[idx] = snapped;
-    strokesRef.current = next;
-    onChange({ strokes: next });
-    bumpInk();
-  };
-
-  const scheduleShapeConversion = (strokeId) => {
-    clearShapeTimer();
-    pendingStrokeIdRef.current = strokeId;
-    shapeTimerRef.current = setTimeout(() => {
-      shapeTimerRef.current = null;
-      pendingStrokeIdRef.current = null;
-      applyShapeConversion(strokeId);
-    }, SHAPE_DELAY_MS);
-  };
-
   const strokeList = strokesRef.current ?? page.strokes ?? [];
   void dragFrame;
   const selectedTextBox = (page.textBoxes || []).find((t) => t.id === selectedTextId);
@@ -635,9 +571,6 @@ const PageSheet = ({
     e.preventDefault();
     pointerLayerRef.current?.setPointerCapture(e.pointerId);
     setPenActive(true, e.pointerType);
-
-    clearShapeTimer();
-    constraintRef.current = false;
 
     const pos = getPos(e);
 
@@ -817,10 +750,6 @@ const PageSheet = ({
       strokesRef.current = nextStrokes;
       onChange({ strokes: nextStrokes });
       bumpInk();
-
-      if (tool === 'pen' && saved.points.length >= 20 && !looksLikeHandwriting(saved.points)) {
-        scheduleShapeConversion(saved.id);
-      }
     }
   };
 
