@@ -560,40 +560,36 @@ const savePdfMap = async (map) => {
   await prefSet(PREFS.PDF_MAP, JSON.stringify(map));
 };
 
-const uploadPdfToDrive = async (token, folderId, fileName, blob, fileId, notebookId, updatedAt) => {
-  const appProperties = {
-    senoteNotebookId: notebookId,
-    senoteUpdatedAt: String(updatedAt),
-  };
-
+const uploadPdfToDrive = async (token, folderId, fileName, blob, fileId, previousName) => {
   if (fileId) {
-    await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/pdf',
-      },
-      body: blob,
-    }).then((res) => {
-      if (!res.ok) throw new Error(`Mise à jour PDF Drive échouée: ${res.status}`);
-    });
-    await driveFetch(
-      `/files/${fileId}?fields=id`,
-      token,
+    const mediaRes = await fetch(
+      `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
       {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: fileName, appProperties }),
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/pdf',
+        },
+        body: blob,
       }
     );
+    if (!mediaRes.ok) {
+      const err = await mediaRes.text();
+      throw new Error(`Mise à jour PDF Drive échouée: ${mediaRes.status} ${err}`);
+    }
+    if (previousName !== fileName) {
+      await driveFetch(`/files/${fileId}?fields=id`, token, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: fileName }),
+      });
+    }
     return fileId;
   }
 
   const metadata = {
     name: fileName,
     parents: [folderId],
-    mimeType: 'application/pdf',
-    appProperties,
   };
   const boundary = 'senote_pdf_boundary';
   const encoder = new TextEncoder();
@@ -645,8 +641,7 @@ export const syncNotebookPdfsToDrive = async (workspaceData) => {
       fileName,
       blob,
       map[nb.id]?.fileId,
-      nb.id,
-      updatedAt
+      map[nb.id]?.fileName
     );
     map[nb.id] = { fileId, fileName, updatedAt };
   }
