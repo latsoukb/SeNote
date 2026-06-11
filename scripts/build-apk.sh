@@ -9,7 +9,7 @@ if ! command -v java &>/dev/null; then
   exit 1
 fi
 
-# Gradle Android nécessite JDK 17 (pas JDK 21+)
+# Capacitor Android nécessite JDK 21 (fourni avec Android Studio récent)
 if [ -d "/Applications/Android Studio.app/Contents/jbr/Contents/Home" ]; then
   export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 fi
@@ -51,6 +51,20 @@ fi
 
 echo "Build web…"
 REACT_APP_KIOSK_MODE=true CI=false npm run build
+
+node -e "
+const fs=require('fs');
+const path='build/app-config.json';
+if (!fs.existsSync(path)) process.exit(0);
+const cfg=JSON.parse(fs.readFileSync(path,'utf8'));
+const web=(process.env.REACT_APP_GOOGLE_WEB_CLIENT_ID||'').trim();
+const native=(process.env.REACT_APP_GOOGLE_CLIENT_ID||'').trim();
+const tokenUrl=(process.env.REACT_APP_GOOGLE_TOKEN_URL||'').trim();
+if (web) cfg.googleWebClientId=web;
+if (native) cfg.googleNativeClientId=native;
+if (tokenUrl) cfg.googleTokenExchangeUrl=tokenUrl;
+fs.writeFileSync(path, JSON.stringify(cfg,null,2)+'\n');
+"
 
 if [ ! -d android ]; then
   echo "Initialisation Android…"

@@ -24,7 +24,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -40,8 +40,30 @@ jobs:
           REACT_APP_USE_BACKEND: 'false'
           REACT_APP_GOOGLE_CLIENT_ID: ${{ secrets.REACT_APP_GOOGLE_CLIENT_ID }}
           REACT_APP_GOOGLE_WEB_CLIENT_ID: ${{ secrets.REACT_APP_GOOGLE_WEB_CLIENT_ID }}
+          REACT_APP_GOOGLE_TOKEN_URL: ${{ secrets.REACT_APP_GOOGLE_TOKEN_URL }}
+          REACT_APP_JOKKO_SYNC_URL: ${{ secrets.REACT_APP_JOKKO_SYNC_URL }}
           CI: false
         run: npm run build
+
+      - name: Inject Google config into app-config.json
+        working-directory: frontend
+        env:
+          REACT_APP_GOOGLE_WEB_CLIENT_ID: ${{ secrets.REACT_APP_GOOGLE_WEB_CLIENT_ID }}
+          REACT_APP_GOOGLE_CLIENT_ID: ${{ secrets.REACT_APP_GOOGLE_CLIENT_ID }}
+          REACT_APP_GOOGLE_TOKEN_URL: ${{ secrets.REACT_APP_GOOGLE_TOKEN_URL }}
+        run: |
+          node -e "
+          const fs = require('fs');
+          const path = 'build/app-config.json';
+          const cfg = JSON.parse(fs.readFileSync(path, 'utf8'));
+          const web = (process.env.REACT_APP_GOOGLE_WEB_CLIENT_ID || '').trim();
+          const native = (process.env.REACT_APP_GOOGLE_CLIENT_ID || '').trim();
+          const tokenUrl = (process.env.REACT_APP_GOOGLE_TOKEN_URL || '').trim();
+          if (web) cfg.googleWebClientId = web;
+          if (native) cfg.googleNativeClientId = native;
+          if (tokenUrl) cfg.googleTokenExchangeUrl = tokenUrl;
+          fs.writeFileSync(path, JSON.stringify(cfg, null, 2) + '\n');
+          "
 
       - name: Sync Capacitor
         working-directory: frontend
