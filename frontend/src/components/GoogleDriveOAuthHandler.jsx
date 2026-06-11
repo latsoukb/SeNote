@@ -13,8 +13,13 @@ const GoogleDriveOAuthHandler = () => {
       try {
         const result = await completeWebOAuthRedirect();
         if (!result) return;
-        await syncNowToDrive();
-        toast.success(`Compte Google Drive connecté : ${result.email}`);
+        const sync = await syncNowToDrive();
+        if (sync?.ok) {
+          toast.success(`Compte Google Drive connecté : ${result.email}`);
+        } else {
+          toast.success(`Compte Google Drive connecté : ${result.email}`);
+          toast.error(sync?.error || 'Première synchronisation impossible — utilisez Synchroniser.');
+        }
       } catch (e) {
         console.warn('Google Drive OAuth return', e);
         toast.error(e.message || 'Connexion Google Drive impossible');

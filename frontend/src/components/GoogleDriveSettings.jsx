@@ -70,18 +70,18 @@ const GoogleDriveSettings = () => {
   };
 
   const handleSync = async () => {
-    const ok = await syncNowToDrive();
-    if (ok) {
+    const result = await syncNowToDrive();
+    if (result?.ok) {
       await refresh();
-      toast.success('Cahiers synchronisés');
+      toast.success('Cahiers synchronisés vers Drive');
     } else {
-      toast.error('Synchronisation impossible');
+      toast.error(result?.error || 'Synchronisation impossible');
     }
   };
 
   const storageHint = isNativeApp()
-    ? 'Vos cahiers sont enregistrés sur la tablette. Google Drive conserve une copie de secours dans le cloud (15 Go gratuits par compte).'
-    : 'Vos cahiers sont enregistrés sur cet appareil. Google Drive conserve une copie de secours dans le cloud (15 Go gratuits par compte).';
+    ? 'Vos cahiers restent sur la tablette. Drive reçoit une copie de secours (fichier senote-workspace.json dans le dossier SeNote — tous les cahiers y sont regroupés).'
+    : 'Vos cahiers restent sur cet appareil. Drive reçoit une copie de secours (fichier senote-workspace.json dans le dossier SeNote — tous les cahiers y sont regroupés).';
 
   return (
     <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-chrome-800">

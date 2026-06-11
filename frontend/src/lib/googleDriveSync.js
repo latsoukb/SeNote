@@ -19,7 +19,8 @@ const PREFS = {
 
 const FOLDER_NAME = 'SeNote';
 const WORKSPACE_NAME = 'senote-workspace.json';
-const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+const DRIVE_SCOPE =
+  'https://www.googleapis.com/auth/drive.file openid https://www.googleapis.com/auth/userinfo.email';
 const DRIVE_API = 'https://www.googleapis.com/drive/v3';
 const OAUTH_PENDING_KEY = 'senote_drive_oauth_pending';
 const PKCE_VERIFIER_KEY = 'senote_pkce_verifier';

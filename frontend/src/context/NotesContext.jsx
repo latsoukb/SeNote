@@ -128,20 +128,26 @@ export const NotesProvider = ({ children }) => {
   }, []);
 
   const flushDriveSync = useCallback(async () => {
-    if (!isAutoSyncEnabled()) return false;
+    if (!isAutoSyncEnabled()) {
+      return { ok: false, error: 'Synchronisation automatique désactivée.' };
+    }
     const status = await getDriveStatus();
-    if (!status.connected) return false;
-    if (driveSyncInFlightRef.current) return false;
+    if (!status.connected) {
+      return { ok: false, error: 'Compte Google Drive non connecté.' };
+    }
+    if (driveSyncInFlightRef.current) {
+      return { ok: false, error: 'Synchronisation déjà en cours…' };
+    }
 
     driveSyncInFlightRef.current = true;
     setDriveSyncing(true);
     try {
       await uploadToGoogleDrive(workspaceRef.current);
       setLastDriveSync(Date.now());
-      return true;
+      return { ok: true };
     } catch (e) {
       console.warn('Sync Google Drive échouée', e);
-      return false;
+      return { ok: false, error: e.message || 'Synchronisation impossible' };
     } finally {
       driveSyncInFlightRef.current = false;
       setDriveSyncing(false);
