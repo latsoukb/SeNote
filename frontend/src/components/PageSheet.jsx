@@ -33,6 +33,7 @@ import {
 import { strokeToSvgPath } from '../lib/strokeSvg';
 import InkSvgLayer from './InkSvgLayer';
 import { MIN_ZOOM, MAX_ZOOM } from './NoteCanvas';
+import { isNativeApp } from '../lib/platform';
 
 const SHAPE_DELAY_MS = 650;
 
@@ -162,16 +163,20 @@ const PageSheet = ({
   useEffect(() => {
     const el = viewportRef.current;
     if (!el) return undefined;
+    let rafId = 0;
     const update = () => {
-      const w = el.clientWidth;
-      if (w > 0) setLayoutWidth(w);
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        const w = el.clientWidth;
+        if (w > 0) setLayoutWidth(w);
+      });
     };
     update();
     const ro = new ResizeObserver(update);
     ro.observe(el);
-    if (el.parentElement) ro.observe(el.parentElement);
     window.addEventListener('resize', update);
     return () => {
+      cancelAnimationFrame(rafId);
       ro.disconnect();
       window.removeEventListener('resize', update);
     };
@@ -988,7 +993,7 @@ const PageSheet = ({
           width: contentW,
           height: contentH,
           transform: panX || panY ? `translate(${panX}px, ${panY}px)` : undefined,
-          willChange: effectiveZoom > 1 ? 'transform' : undefined,
+          willChange: !isNativeApp() && effectiveZoom > 1 ? 'transform' : undefined,
         }}
       >
         <div className="relative" style={{ width: contentW, height: contentH }}>

@@ -1,6 +1,5 @@
 import { isNativeApp } from './platform';
 import { wrapWorkspace, unwrapWorkspace } from './dataStore';
-import { notebookToPdfBlob, pdfFileName } from './exportNotebookPdf';
 import {
   ensureAppConfig,
   getGoogleNativeClientId,
@@ -625,6 +624,7 @@ const uploadPdfToDrive = async (token, folderId, fileName, blob, fileId, previou
 /** Un PDF par cahier dans le dossier SeNote (web uniquement — trop lourd sur APK). */
 export const syncNotebookPdfsToDrive = async (workspaceData) => {
   if (isNativeApp()) return { count: 0 };
+  const { notebookToPdfBlob, pdfFileName } = await import('./exportNotebookPdf');
   await ensureAppConfig();
   const token = await getAccessToken();
   if (!token) throw new Error('Non connecté à Google Drive');

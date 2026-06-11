@@ -37,7 +37,7 @@ import {
   thicknessForTool,
 } from '../lib/toolThickness';
 import { loadToolColors, saveToolColors, colorForTool } from '../lib/toolColors';
-import { MIN_ZOOM, MAX_ZOOM, DEFAULT_WRITE_ZOOM } from '../components/NoteCanvas';
+import { MIN_ZOOM, MAX_ZOOM, getDefaultWriteZoom } from '../components/NoteCanvas';
 import {
   Popover,
   PopoverContent,
@@ -113,7 +113,7 @@ const NotebookEditor = () => {
 
   const thickness = thicknessForTool(toolThickness, tool);
   const [writeZoom, setWriteZoom] = useState(
-    () => initialSession?.writeZoom ?? DEFAULT_WRITE_ZOOM
+    () => initialSession?.writeZoom ?? getDefaultWriteZoom()
   );
   const [writePan, setWritePan] = useState(
     () => initialSession?.writePan ?? { x: 0, y: 0 }
@@ -192,7 +192,7 @@ const NotebookEditor = () => {
   const handleSidebarPage = useCallback((idx) => {
     setCurrentPageIdx(idx);
     setWritePan({ x: 0, y: 0 });
-    setWriteZoom(DEFAULT_WRITE_ZOOM);
+    setWriteZoom(getDefaultWriteZoom());
     scrollToPageRef.current?.(idx);
   }, []);
 
@@ -339,7 +339,7 @@ const NotebookEditor = () => {
   };
 
   const handleWriteZoomReset = () => {
-    setWriteZoom(DEFAULT_WRITE_ZOOM);
+    setWriteZoom(getDefaultWriteZoom());
     setWritePan({ x: 0, y: 0 });
   };
 

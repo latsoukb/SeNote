@@ -73,7 +73,7 @@ export const NotesProvider = ({ children }) => {
       let data = (await loadWorkspace()) || defaultData();
 
       const driveStatus = await getDriveStatus();
-      if (driveStatus.connected) {
+      if (driveStatus.connected && !isNativeApp()) {
         data = await mergeWithGoogleDrive(data);
       }
 
@@ -129,6 +129,9 @@ export const NotesProvider = ({ children }) => {
   }, []);
 
   const flushDriveSync = useCallback(async (includePdfs = false) => {
+    if (isNativeApp()) {
+      return { ok: false, error: 'Google Drive sera disponible sur tablette prochainement.' };
+    }
     if (!isAutoSyncEnabled()) {
       return { ok: false, error: 'Synchronisation automatique désactivée.' };
     }
@@ -159,7 +162,7 @@ export const NotesProvider = ({ children }) => {
   }, [isAutoSyncEnabled]);
 
   const scheduleDriveSync = useCallback(() => {
-    if (!isAutoSyncEnabled()) return;
+    if (isNativeApp() || !isAutoSyncEnabled()) return;
     if (driveDebounceRef.current) clearTimeout(driveDebounceRef.current);
     driveDebounceRef.current = setTimeout(() => {
       flushDriveSync(false);
@@ -211,16 +214,14 @@ export const NotesProvider = ({ children }) => {
   }, [folders, notebooks, trash, ready, persist, scheduleDriveSync]);
 
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || isNativeApp()) return;
 
-    const runDriveSync = () => flushDriveSync(!isNativeApp());
-
-    const intervalMs = isNativeApp() ? 10 * 60_000 : 5 * 60_000;
-    driveTimerRef.current = setInterval(runDriveSync, intervalMs);
+    const runDriveSync = () => flushDriveSync(true);
+    driveTimerRef.current = setInterval(runDriveSync, 5 * 60_000);
 
     const onHide = () => {
       if (driveDebounceRef.current) clearTimeout(driveDebounceRef.current);
-      flushDriveSync(!isNativeApp());
+      flushDriveSync(true);
     };
     document.addEventListener('visibilitychange', onHide);
     window.addEventListener('pagehide', onHide);
@@ -248,7 +249,7 @@ export const NotesProvider = ({ children }) => {
   const syncNowToDrive = useCallback(async () => {
     if (driveDebounceRef.current) clearTimeout(driveDebounceRef.current);
     await persist({ folders, notebooks, trash }, false);
-    return flushDriveSync(!isNativeApp());
+    return flushDriveSync(true);
   }, [folders, notebooks, trash, persist, flushDriveSync]);
 
   const addNotebook = useCallback((title, cover, pageTemplate, folderId = null) => {
