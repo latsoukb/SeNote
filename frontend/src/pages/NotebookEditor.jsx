@@ -20,7 +20,9 @@ import { isPdfPage } from '../lib/pageTemplates';
 import Logo from '../components/Logo';
 import Toolbar from '../components/Toolbar';
 import PdfDocumentView from '../components/PdfDocumentView';
+import NativeSinglePageView from '../components/NativeSinglePageView';
 import PageTemplatePreview from '../components/PageTemplatePreview';
+import { isNativeApp } from '../lib/platform';
 import PageLiveThumbnail from '../components/PageLiveThumbnail';
 import SettingsDialog from '../components/SettingsDialog';
 import OpenNotebookTabBar from '../components/OpenNotebookTabBar';
@@ -638,30 +640,49 @@ const NotebookEditor = () => {
         )}
 
         <div className="flex-1 flex flex-col bg-slate-100 dark:bg-chrome-900 min-w-0 min-h-0">
-          <PdfDocumentView
-            key={id}
-            notebook={notebook}
-            pages={pages}
-            currentPageIdx={currentPageIdx}
-            onPageChange={handlePageChange}
-            onRegisterScrollToPage={(fn) => {
-              scrollToPageRef.current = fn;
-            }}
-            scrollDirection={settings.scrollDirection}
-            autoAddPage={settings.autoAddPage}
-            onAutoAddPage={handleAutoAddPage}
-            tool={tool}
-            color={color}
-            thickness={thickness}
-            onPageUpdate={handlePageUpdate}
-            pushUndo={pushUndo}
-            writeZoom={writeZoom}
-            onWriteZoomChange={setWriteZoom}
-            writePan={writePan}
-            onWritePanChange={setWritePan}
-            stylusOnly={settings.stylusOnly !== false}
-            pageSyncRevision={pageSyncRevision}
-          />
+          {isNativeApp() ? (
+            // APK : une seule page en mémoire à la fois pour éviter les crashs WebView
+            <NativeSinglePageView
+              page={currentPage}
+              tool={tool}
+              color={color}
+              thickness={thickness}
+              onPageUpdate={handlePageUpdate}
+              pushUndo={pushUndo}
+              writeZoom={writeZoom}
+              onWriteZoomChange={setWriteZoom}
+              writePan={writePan}
+              onWritePanChange={setWritePan}
+              stylusOnly={settings.stylusOnly !== false}
+              pageSyncRevision={pageSyncRevision}
+              scrollDirection={settings.scrollDirection}
+            />
+          ) : (
+            <PdfDocumentView
+              key={id}
+              notebook={notebook}
+              pages={pages}
+              currentPageIdx={currentPageIdx}
+              onPageChange={handlePageChange}
+              onRegisterScrollToPage={(fn) => {
+                scrollToPageRef.current = fn;
+              }}
+              scrollDirection={settings.scrollDirection}
+              autoAddPage={settings.autoAddPage}
+              onAutoAddPage={handleAutoAddPage}
+              tool={tool}
+              color={color}
+              thickness={thickness}
+              onPageUpdate={handlePageUpdate}
+              pushUndo={pushUndo}
+              writeZoom={writeZoom}
+              onWriteZoomChange={setWriteZoom}
+              writePan={writePan}
+              onWritePanChange={setWritePan}
+              stylusOnly={settings.stylusOnly !== false}
+              pageSyncRevision={pageSyncRevision}
+            />
+          )}
         </div>
       </div>
     </div>
