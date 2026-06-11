@@ -20,6 +20,7 @@ import {
   Inbox,
   RefreshCw,
   LogOut,
+  CalendarClock,
 } from 'lucide-react';
 import {
   Sheet,
@@ -59,7 +60,7 @@ import StudentInbox from '../components/StudentInbox';
 import StudentLogin from '../components/StudentLogin';
 import StudentWaiting from '../components/StudentWaiting';
 import StudentDeviceCode from '../components/StudentDeviceCode';
-import DeadlineSidebarSection from '../components/DeadlineSidebarSection';
+import DeadlineView, { DeadlineSidebarLink } from '../components/DeadlineView';
 import { useDeadlineItems } from '../hooks/useDeadlineItems';
 import OpenNotebookTabBar from '../components/OpenNotebookTabBar';
 import { useStudentClass } from '../context/StudentClassContext';
@@ -226,7 +227,11 @@ const LibrarySidebar = ({
         <StudentDeviceCode />
       </div>
     )}
-    <DeadlineSidebarSection />
+    <DeadlineSidebarLink
+      mainView={mainView}
+      setMainView={setMainView}
+      onNavigate={onNavigate}
+    />
     <div className="h-px bg-slate-200 dark:bg-slate-800 my-3" />
     <p className="text-xs uppercase tracking-wide font-medium text-slate-500 px-2 mb-3">
       Organisation
@@ -394,10 +399,13 @@ const Library = () => {
     emptyTrash,
   } = useNotes();
   const [searchParams, setSearchParams] = useSearchParams();
-  const mainView = searchParams.get('view') === 'reception' ? 'inbox' : 'library';
+  const viewParam = searchParams.get('view');
+  const mainView =
+    viewParam === 'reception' ? 'inbox' : viewParam === 'echeances' ? 'deadlines' : 'library';
 
   const setMainView = (view) => {
     if (view === 'inbox') setSearchParams({ view: 'reception' }, { replace: true });
+    else if (view === 'deadlines') setSearchParams({ view: 'echeances' }, { replace: true });
     else setSearchParams({}, { replace: true });
   };
 
@@ -500,7 +508,8 @@ const Library = () => {
   };
 
   const trashCount = (trash?.notebooks?.length || 0) + (trash?.pages?.length || 0);
-  const { pendingCount: deadlinePendingCount } = useDeadlineItems();
+  const { pendingCount: deadlinePendingCount, items: deadlineItems } = useDeadlineItems();
+  const hasDeadlines = deadlineItems.length > 0;
 
   const handleMove = (notebookId, folderId) => {
     moveNotebookToFolder(notebookId, folderId);
@@ -658,6 +667,27 @@ const Library = () => {
                 <span className="bg-red-600 text-white px-1.5 rounded-full text-[10px] font-bold">{newCount}</span>
               )}
           </button>
+          {enrolled && hasDeadlines && (
+            <button
+              type="button"
+              onClick={() => setMainView('deadlines')}
+              className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                mainView === 'deadlines'
+                  ? 'bg-brand-600 text-white border-brand-600'
+                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'
+              }`}
+            >
+              <CalendarClock className="w-3.5 h-3.5" />
+              Échéances
+              {deadlinePendingCount > 0 && (
+                <span className={`px-1.5 rounded-full text-[10px] font-bold ${
+                  mainView === 'deadlines' ? 'bg-white/20 text-white' : 'bg-red-600 text-white'
+                }`}>
+                  {deadlinePendingCount}
+                </span>
+              )}
+            </button>
+          )}
           {mainView === 'library' && [
             { id: 'all', label: 'Tous', icon: BookOpen },
             { id: 'pinned', label: 'Raccourcis', icon: Pin },
@@ -716,6 +746,12 @@ const Library = () => {
               <div className="flex flex-col flex-1 min-h-0 -mx-4 sm:-mx-6 -my-6 sm:-my-10">
                 <StudentInbox />
               </div>
+            )
+          ) : mainView === 'deadlines' ? (
+            enrolled ? (
+              <DeadlineView />
+            ) : (
+              <StudentWaiting />
             )
           ) : selectedFolder === 'trash' ? (
             <>
