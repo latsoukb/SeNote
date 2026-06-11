@@ -65,9 +65,6 @@ jobs:
           fs.writeFileSync(path, JSON.stringify(cfg, null, 2) + '\n');
           "
 
-      - name: Generate Android icons
-        run: ./scripts/generate-android-icons.sh
-
       - name: Sync Capacitor
         working-directory: frontend
         run: npx cap sync android
