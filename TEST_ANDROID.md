@@ -1,95 +1,112 @@
-# Tester SeNote en APK Android
+# Tester SeNote en APK — sans Android Studio
 
-## Option A — Émulateur Android Studio (recommandé sur Mac)
+Android Studio refuse parfois de s'installer (macOS récent, manque d'espace, permissions). **Vous n'en avez pas besoin** pour tester SeNote.
 
-### 1. Installer Android Studio
+---
 
-1. Téléchargez [Android Studio](https://developer.android.com/studio)
-2. À la première ouverture : installez le **SDK Android** (API 35)
-3. Ajoutez dans `~/.zshrc` :
+## Option 1 — Tablette ou téléphone Android (recommandé)
+
+C'est la cible réelle du projet (tablette au Sénégal).
+
+### Télécharger l'APK
 
 ```bash
-export ANDROID_HOME="$HOME/Library/Android/sdk"
-export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
+chmod +x scripts/download-apk.sh
+./scripts/download-apk.sh
 ```
 
-Puis `source ~/.zshrc`
+Fichier obtenu : **`SeNote-tablet.apk`** à la racine du projet.
 
-### 2. Créer un émulateur tablette
+**Ou** manuellement : [GitHub Actions → Build APK Android](https://github.com/latsoukb/SeNote/actions/workflows/build-apk.yml) → dernier run vert → **Artifacts** → `SeNote-tablet-apk`.
 
-Android Studio → **Tools** → **Device Manager** → **Create device**
+### Installer sur la tablette
 
-- Catégorie : **Tablet**
-- Modèle : **Pixel Tablet** (ou équivalent)
-- Image système : **API 35** (Android 15)
-- Nom : `SeNote_Tablet`
+1. Envoyez `SeNote-tablet.apk` sur la tablette (Google Drive, clé USB, email, AirDrop vers un téléphone Android, etc.)
+2. Sur la tablette : ouvrez le fichier **SeNote-tablet.apk**
+3. Si demandé : **Paramètres** → autoriser l'installation depuis cette source
+4. **Installer** → ouvrir **SeNote**
 
-### 3. Configurer l'app (une fois)
+### Mises à jour
+
+Re-téléchargez l'APK et réinstallez par-dessus. Les cahiers locaux sont conservés.
+
+---
+
+## Option 2 — Site web sur tablette Android (déjà prêt)
+
+Sans APK, le site fonctionne dans Chrome :
+
+**https://latsoukb.github.io/SeNote/**
+
+- Écriture au stylet
+- Google Drive (déjà configuré)
+- Menu Chrome → **Installer l'application** pour un raccourci plein écran
+
+L'APK ajoute surtout : stockage natif plus fiable, icône app, mode tablette dédié.
+
+---
+
+## Option 3 — Émulateur léger sur Mac (si pas de tablette)
+
+Si Android Studio bloque, essayez dans cet ordre :
+
+### A. BlueStacks (plus simple qu'Android Studio)
+
+1. [bluestacks.com](https://www.bluestacks.com) → installer BlueStacks pour Mac
+2. Téléchargez `SeNote-tablet.apk` (script ci-dessus)
+3. Glissez l'APK dans la fenêtre BlueStacks → installer → lancer SeNote
+
+### B. SDK en ligne de commande (sans l'IDE Android Studio)
+
+Uniquement les outils Google, pas l'application Android Studio :
 
 ```bash
-cp frontend/.env.example frontend/.env
-```
+# Outils adb (installer APK si tablette branchée en USB)
+brew install --cask android-platform-tools
 
-Remplissez au minimum (déjà configuré pour le site) :
-
-```bash
-REACT_APP_KIOSK_MODE=true
-REACT_APP_GOOGLE_WEB_CLIENT_ID=votre_client_web.apps.googleusercontent.com
-REACT_APP_GOOGLE_TOKEN_URL=https://senote.onrender.com/google/token
-REACT_APP_JOKKO_SYNC_URL=https://jokko-sync.onrender.com
-```
-
-Pour Google Drive **dans l'APK**, créez aussi un client OAuth **Android** dans Google Cloud (package `com.senote.tablet`, SHA-1 debug — voir [ANDROID.md](./ANDROID.md)).
-
-### 4. Build + test automatique
-
-```bash
-chmod +x scripts/emulator-test.sh scripts/build-apk.sh
-./scripts/emulator-test.sh SeNote_Tablet
-```
-
-L'APK est aussi copiée à la racine : `SeNote-tablet.apk`
-
-### Commandes utiles
-
-```bash
-# Build seul
-./scripts/build-apk.sh
-
-# Liste des émulateurs
-emulator -list-avds
-
-# Démarrer un émulateur manuellement
-emulator -avd SeNote_Tablet &
-
-# Installer sur émulateur / tablette USB
+# Vérifier tablette connectée
+adb devices
 adb install -r SeNote-tablet.apk
-
-# Voir les logs SeNote
-adb logcat | grep -i senote
 ```
 
----
-
-## Option B — APK depuis GitHub (sans Android Studio local)
-
-1. GitHub → **Actions** → **Build APK Android** → **Run workflow**
-2. Quand c'est vert, ouvrez le run → section **Artifacts** → téléchargez `SeNote-tablet-apk`
-3. Installez sur une tablette réelle (fichier APK) ou utilisez Android Studio uniquement pour l'émulateur
+Pour un émulateur sans Android Studio, téléchargez les [Command line tools](https://developer.android.com/studio#command-line-tools-only) (section « Command line tools only », pas le gros installateur Android Studio).
 
 ---
 
-## Option C — Tablette physique (USB)
+## Option 4 — Tester l'APK dans le navigateur (cloud)
 
-1. Tablette → **Options développeur** → **Débogage USB** activé
-2. Branchez en USB
-3. ```bash
-   ./scripts/build-apk.sh
-   adb install -r SeNote-tablet.apk
-   ```
+Services qui exécutent une APK dans le navigateur (compte gratuit limité) :
+
+- [Appetize.io](https://appetize.io) — uploadez `SeNote-tablet.apk`, testez en ligne
+- Utile pour un aperçu rapide ; le stylet ne sera pas réaliste
 
 ---
 
-## Alternative rapide (sans APK)
+## Pourquoi Android Studio échoue souvent
 
-Le site https://latsoukb.github.io/SeNote/ fonctionne déjà sur tablette Android dans Chrome. L'APK apporte le stockage natif, le plein écran et Google Drive natif.
+| Cause | Piste |
+|-------|--------|
+| macOS très récent (ex. 26.x) | Attendre une mise à jour Android Studio, ou utiliser BlueStacks / tablette réelle |
+| Espace disque | Libérer ≥ 15 Go |
+| Téléchargement corrompu | Re-télécharger depuis le site officiel |
+| Mac Apple Silicon | Prendre la version **Apple Chip**, pas Intel |
+
+---
+
+## Compiler l'APK vous-même (sans Android Studio local)
+
+Déjà automatisé sur GitHub à chaque push :
+
+```bash
+gh workflow run build-apk.yml
+# Attendre ~4 min, puis :
+./scripts/download-apk.sh
+```
+
+Pas besoin de Java, Gradle ou SDK sur votre Mac.
+
+---
+
+## Google Drive dans l'APK
+
+Le site web utilise déjà Drive. Pour l'APK native, il faut en plus un client OAuth **Android** dans Google Cloud (SHA-1 + package `com.senote.tablet`) — voir [ANDROID.md](./ANDROID.md). En attendant, tout le reste de l'app fonctionne hors ligne sur la tablette.
