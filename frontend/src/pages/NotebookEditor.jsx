@@ -79,7 +79,7 @@ const NotebookEditor = () => {
     () => initialSession?.currentPageIdx ?? 0
   );
   const [sidebarOpen, setSidebarOpen] = useState(
-    () => initialSession?.sidebarOpen ?? true
+    () => initialSession?.sidebarOpen ?? false
   );
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');

@@ -4,7 +4,7 @@ export const createNotebookSession = () => ({
   currentPageIdx: 0,
   writeZoom: DEFAULT_WRITE_ZOOM,
   writePan: { x: 0, y: 0 },
-  sidebarOpen: true,
+  sidebarOpen: false,
   pageSyncRevision: 0,
 });
 

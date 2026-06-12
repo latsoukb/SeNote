@@ -245,7 +245,7 @@ const Toolbar = ({
           }`}
           title={
             zoomCustom
-              ? 'Réinitialiser le zoom (150 %) · Tactile : pincez pour zoomer, 1 doigt pour déplacer'
+              ? `Réinitialiser le zoom (${Math.round(DEFAULT_WRITE_ZOOM * 100)} %) · Tactile : pincez pour zoomer, 1 doigt pour déplacer`
               : 'Zoom avant · Ordinateur : Ctrl + molette ou pincement trackpad'
           }
         >
