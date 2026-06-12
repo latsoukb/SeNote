@@ -4,6 +4,7 @@
  */
 const fromEnv = {
   googleWebClientId: (process.env.REACT_APP_GOOGLE_WEB_CLIENT_ID || '').trim(),
+  googleNativeClientId: (process.env.REACT_APP_GOOGLE_CLIENT_ID || '').trim(),
   googleTokenExchangeUrl: (process.env.REACT_APP_GOOGLE_TOKEN_URL || '').trim(),
 };
 
@@ -25,6 +26,9 @@ export const ensureAppConfig = async () => {
         if (data.googleWebClientId) {
           merged.googleWebClientId = String(data.googleWebClientId).trim();
         }
+        if (data.googleNativeClientId) {
+          merged.googleNativeClientId = String(data.googleNativeClientId).trim();
+        }
         if (data.googleTokenExchangeUrl) {
           merged.googleTokenExchangeUrl = String(data.googleTokenExchangeUrl).trim();
         }
@@ -38,4 +42,5 @@ export const ensureAppConfig = async () => {
 };
 
 export const getGoogleWebClientId = () => merged.googleWebClientId;
+export const getGoogleNativeClientId = () => merged.googleNativeClientId;
 export const getGoogleTokenExchangeUrl = () => merged.googleTokenExchangeUrl;

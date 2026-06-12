@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import { isNativeApp } from '../lib/platform';
 import {
   initialNotebooks,
   initialFolders,
@@ -75,17 +74,15 @@ export const NotesProvider = ({ children }) => {
       applyWorkspace(local);
       setReady(true);
 
-      // Drive sync désactivé sur APK : évite les crashs WebView liés aux requêtes réseau lourdes
-      if (!isNativeApp()) {
-        try {
-          const driveStatus = await getDriveStatus();
-          if (driveStatus.connected) {
-            const merged = await mergeWithGoogleDrive(local);
-            if (!cancelled) applyWorkspace(merged);
-          }
-        } catch (e) {
-          console.warn('Sync Drive au démarrage ignorée', e);
+      // Sync Drive au démarrage (web + APK)
+      try {
+        const driveStatus = await getDriveStatus();
+        if (driveStatus.connected) {
+          const merged = await mergeWithGoogleDrive(local);
+          if (!cancelled) applyWorkspace(merged);
         }
+      } catch (e) {
+        console.warn('Sync Drive au démarrage ignorée', e);
       }
 
       try {
@@ -133,9 +130,6 @@ export const NotesProvider = ({ children }) => {
   }, []);
 
   const flushDriveSync = useCallback(async (includePdfs = false) => {
-    if (isNativeApp()) {
-      return { ok: false, error: 'Drive non disponible en mode APK.' };
-    }
     if (!isAutoSyncEnabled()) {
       return { ok: false, error: 'Synchronisation automatique désactivée.' };
     }

@@ -5,6 +5,7 @@ import { Switch } from './ui/switch';
 import { Cloud, CloudOff, RefreshCw } from 'lucide-react';
 import { useNotes } from '../context/NotesContext';
 import { useSettings } from '../context/SettingsContext';
+import { isNativeApp } from '../lib/platform';
 import { ensureAppConfig } from '../lib/appConfig';
 import {
   getDriveStatus,
@@ -54,8 +55,13 @@ const GoogleDriveSettings = () => {
       return;
     }
     try {
-      toast.message('Redirection vers Google…');
-      await signInGoogleDrive();
+      toast.message(isNativeApp() ? 'Connexion Google…' : 'Redirection vers Google…');
+      const result = await signInGoogleDrive();
+      if (isNativeApp()) {
+        await refresh();
+        toast.success('Compte Google Drive connecté');
+      }
+      return result;
     } catch (e) {
       console.warn('Google Drive connect', e);
       toast.error(e.message || 'Connexion impossible');

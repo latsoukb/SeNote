@@ -13,8 +13,13 @@
   "plugins": {
     "SplashScreen": {
       "launchShowDuration": 1000,
-      "backgroundColor": "#1e293b",
+      "backgroundColor": "#000000",
       "showSpinner": false
+    },
+    "GoogleAuth": {
+      "scopes": ["https://www.googleapis.com/auth/drive.file"],
+      "serverClientId": "",
+      "forceCodeForRefreshToken": true
     }
   }
 }

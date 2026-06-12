@@ -1,6 +1,8 @@
+import { isNativeApp } from './platform';
 import { wrapWorkspace, unwrapWorkspace } from './dataStore';
 import {
   ensureAppConfig,
+  getGoogleNativeClientId,
   getGoogleTokenExchangeUrl,
   getGoogleWebClientId,
 } from './appConfig';
@@ -136,18 +138,101 @@ const persistWebTokens = async (tokenResponse) => {
   return { email, accessToken: tokenResponse.access_token };
 };
 
-export const isDriveConfigured = () => Boolean(getGoogleWebClientId());
+export const isDriveConfigured = () =>
+  isNativeApp() ? Boolean(getGoogleNativeClientId()) : Boolean(getGoogleWebClientId());
 
 const PREF_PREFIX = 'senote-pref-';
 
-const prefGet = async (key) => localStorage.getItem(PREF_PREFIX + key);
+const prefGet = async (key) => {
+  if (isNativeApp()) {
+    const { Preferences } = await import('@capacitor/preferences');
+    const { value } = await Preferences.get({ key });
+    return value;
+  }
+  return localStorage.getItem(PREF_PREFIX + key);
+};
 
 const prefSet = async (key, value) => {
+  if (isNativeApp()) {
+    const { Preferences } = await import('@capacitor/preferences');
+    await Preferences.set({ key, value });
+    return;
+  }
   localStorage.setItem(PREF_PREFIX + key, value);
 };
 
 const prefRemove = async (key) => {
+  if (isNativeApp()) {
+    const { Preferences } = await import('@capacitor/preferences');
+    await Preferences.remove({ key });
+    return;
+  }
   localStorage.removeItem(PREF_PREFIX + key);
+};
+
+/* ── Native (APK Android) — sélecteur de compte Google in-app ── */
+
+let authModule = null;
+
+const loadGoogleAuth = async () => {
+  if (!isNativeApp()) return null;
+  if (authModule) return authModule;
+  try {
+    const mod = await import('@codetrix-studio/capacitor-google-auth');
+    authModule = mod.GoogleAuth;
+    await ensureAppConfig();
+    const clientId = getGoogleNativeClientId();
+    if (!clientId) {
+      authModule = null;
+      return null;
+    }
+    await authModule.initialize({
+      clientId,
+      scopes: [DRIVE_SCOPE],
+      grantOfflineAccess: true,
+    });
+    return authModule;
+  } catch (e) {
+    console.warn('Google Auth non disponible', e);
+    return null;
+  }
+};
+
+const signInNativeGoogleDrive = async () => {
+  await ensureAppConfig();
+  const GoogleAuth = await loadGoogleAuth();
+  if (!GoogleAuth) {
+    throw new Error(
+      'Google Drive indisponible — vérifiez REACT_APP_GOOGLE_CLIENT_ID (client Android OAuth).'
+    );
+  }
+  const result = await GoogleAuth.signIn();
+  const token = result?.authentication?.accessToken;
+  if (!token) throw new Error('Connexion Google échouée');
+  const email = result.email || 'compte Google';
+  await prefSet(PREFS.EMAIL, email);
+  return { email, accessToken: token };
+};
+
+const signOutNativeGoogleDrive = async () => {
+  try {
+    const GoogleAuth = await loadGoogleAuth();
+    if (GoogleAuth) await GoogleAuth.signOut();
+  } catch {
+    /* ignore */
+  }
+};
+
+const getNativeAccessToken = async () => {
+  if (!getGoogleNativeClientId()) return null;
+  const GoogleAuth = await loadGoogleAuth();
+  if (!GoogleAuth) return null;
+  try {
+    const auth = await GoogleAuth.refresh();
+    return auth?.accessToken || null;
+  } catch {
+    return null;
+  }
 };
 
 /* ── Web (navigateur) — Google Identity Services ── */
@@ -463,16 +548,19 @@ export const signInGoogleDrive = async () => {
   if (!isDriveConfigured()) {
     throw new Error('Sauvegarde cloud non configurée sur cet appareil.');
   }
+  if (isNativeApp()) return signInNativeGoogleDrive();
   return signInWebGoogleDrive();
 };
 
 export const signOutGoogleDrive = async () => {
-  await signOutWebGoogleDrive();
+  if (isNativeApp()) await signOutNativeGoogleDrive();
+  else await signOutWebGoogleDrive();
   await Promise.all(Object.values(PREFS).map((k) => prefRemove(k)));
 };
 
 const getAccessToken = async () => {
   await ensureAppConfig();
+  if (isNativeApp()) return getNativeAccessToken();
   return getWebAccessToken();
 };
 
