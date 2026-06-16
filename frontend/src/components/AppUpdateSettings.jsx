@@ -56,7 +56,10 @@ const AppUpdateSettings = () => {
       toast.message('Téléchargement de la mise à jour…');
       await downloadAndInstallUpdate(remote.downloadUrl, (phase) => {
         if (phase === 'install') {
-          toast.message('Confirmez l’installation Android…');
+          toast.message(
+            'Chrome va s’ouvrir — touchez le fichier téléchargé, puis Installez.',
+            { duration: 8000 }
+          );
         }
       });
     } catch (e) {
@@ -77,8 +80,8 @@ const AppUpdateSettings = () => {
         Mise à jour SeNote
       </Label>
       <p className="text-xs text-slate-500 leading-relaxed">
-        Vérifiez si une nouvelle version est disponible et installez-la directement sur
-        cette tablette (Wi‑Fi requis).
+        Vérifiez si une nouvelle version est disponible. L&apos;installation ouvre Chrome
+        (comme un téléchargement GitHub) — touchez le fichier APK puis Installez.
       </p>
       {installed && (
         <p className="text-sm text-slate-600 dark:text-slate-300">
@@ -95,8 +98,7 @@ const AppUpdateSettings = () => {
           </p>
           <p className="text-xs text-slate-500 leading-relaxed">
             Si Android refuse l&apos;installation (« conflit de package »), désinstallez
-            SeNote puis réinstallez — nécessaire une seule fois après changement de
-            signature.
+            SeNote une fois puis réinstallez depuis GitHub Releases.
           </p>
           {remote.releaseNotes && (
             <p className="text-xs text-slate-600 dark:text-slate-400 whitespace-pre-wrap">
