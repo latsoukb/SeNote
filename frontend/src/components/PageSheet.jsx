@@ -80,6 +80,10 @@ const PageSheet = ({
   const [layoutWidth, setLayoutWidth] = useState(displayWidth);
   const pinchRef = useRef(null);
   const touchPanRef = useRef(null);
+  const activeTouchCountRef = useRef(0);
+  const isDrawingRef = useRef(false);
+  const isPanningRef = useRef(false);
+  const cancelDrawRef = useRef(() => {});
   const writeZoomRef = useRef(writeZoom);
   const writePanRef = useRef(writePan);
   const onZoomRef = useRef(onWriteZoomChange);
@@ -224,6 +228,10 @@ const PageSheet = ({
     };
 
     const onTouchStart = (e) => {
+      activeTouchCountRef.current = e.touches.length;
+      if (e.touches.length >= 2) {
+        cancelDrawRef.current?.(e);
+      }
       if (isPenSessionActive()) {
         e.preventDefault();
         return;
@@ -315,6 +323,7 @@ const PageSheet = ({
     };
 
     const onTouchEnd = (e) => {
+      activeTouchCountRef.current = e.touches.length;
       if (e.touches.length === 0) touchPanRef.current = null;
       if (e.touches.length < 2) pinchRef.current = null;
     };
@@ -377,6 +386,14 @@ const PageSheet = ({
       el.removeEventListener('wheel', onWheel, { capture: true });
     };
   }, [isActive]);
+
+  useEffect(() => {
+    isDrawingRef.current = isDrawing;
+  }, [isDrawing]);
+
+  useEffect(() => {
+    isPanningRef.current = isPanning;
+  }, [isPanning]);
 
   useEffect(
     () => () => {
@@ -534,8 +551,48 @@ const PageSheet = ({
     }
   };
 
+  const isGestureBlockingDraw = () =>
+    activeTouchCountRef.current >= 2 ||
+    Boolean(pinchRef.current) ||
+    Boolean(touchPanRef.current);
+
+  const cancelActiveDraw = (e) => {
+    if (isPanningRef.current) {
+      setIsPanning(false);
+      e?.currentTarget?.releasePointerCapture?.(e.pointerId);
+      setPenActive(false, e?.pointerType);
+      return;
+    }
+    if (!isDrawingRef.current) return;
+
+    setIsDrawing(false);
+    pointerLayerRef.current?.releasePointerCapture?.(e?.pointerId);
+    setPenActive(false, e?.pointerType);
+
+    if (tool === 'eraser') {
+      liveStrokesRef.current = null;
+      liveTextBoxesRef.current = null;
+      liveInstrumentsRef.current = null;
+      eraserPathRef.current = [];
+      setErasePreview(null);
+      setEraserRing(null);
+      applyStrokesFromProps();
+      bumpInk();
+    }
+
+    currentStrokeRef.current = null;
+    instrumentStartRef.current = null;
+    instrumentEdgeRef.current = null;
+    if (livePathRef.current) livePathRef.current.setAttribute('d', '');
+  };
+  cancelDrawRef.current = cancelActiveDraw;
+
   const startDraw = (e) => {
     if (isPalmTouch(e)) return;
+    if (isGestureBlockingDraw()) return;
+
+    // Zoomé : doigt = pan/pinch uniquement (évite trait avant touchstart)
+    if (stylusOnly && writeZoomRef.current > 1.01 && e.pointerType === 'touch') return;
 
     // Doigt / paume : scroll natif (même sur une page non « courante »)
     if (stylusOnly && shouldIgnoreDrawPointer(e, stylusOnly)) return;
@@ -609,6 +666,10 @@ const PageSheet = ({
   };
 
   const moveDraw = (e) => {
+    if (isDrawing && isGestureBlockingDraw()) {
+      cancelActiveDraw(e);
+      return;
+    }
     if (isPanning && onWritePanChange) {
       e.preventDefault();
       onWritePanChange(

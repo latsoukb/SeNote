@@ -1,5 +1,7 @@
 /** Détection stylet / doigt / paume — comportement type GoodNotes */
 
+import { isNativeApp } from './platform';
+
 const PALM_SIZE_PX = 28;
 const FINGER_MAX_PX = 24;
 
@@ -15,6 +17,13 @@ export const endPenSession = () => {
 };
 
 export const isPenSessionActive = () => penSessionCount > 0;
+
+/** Android WebView / Chrome : le doigt est touch, le stylet est pen — pas d'heuristique pression */
+const isStrictPenOnlyPlatform = () => {
+  if (isNativeApp()) return true;
+  if (typeof navigator === 'undefined') return false;
+  return /android/i.test(navigator.userAgent);
+};
 
 export const isPalmTouch = (e) => {
   if (!e || e.pointerType !== 'touch') return false;
@@ -58,6 +67,9 @@ export const shouldIgnoreDrawPointer = (e, stylusOnly) => {
   if (!stylusOnly) return false;
   if (isPalmTouch(e)) return true;
   if (isPenSessionActive() && e.pointerType === 'touch') return true;
+  if (isStrictPenOnlyPlatform()) {
+    return e.pointerType !== 'pen';
+  }
   return isFingerPointer(e);
 };
 
@@ -65,5 +77,8 @@ export const canDrawWithPointer = (e, stylusOnly) => {
   if (isPalmTouch(e)) return false;
   if (isPenSessionActive() && e.pointerType === 'touch') return false;
   if (!stylusOnly) return true;
+  if (isStrictPenOnlyPlatform()) {
+    return e.pointerType === 'pen';
+  }
   return isStylusPointer(e);
 };
