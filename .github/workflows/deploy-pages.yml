@@ -58,7 +58,7 @@ jobs:
           if (tokenUrl) cfg.googleTokenExchangeUrl = tokenUrl;
           fs.writeFileSync(path, JSON.stringify(cfg, null, 2) + '\n');
           "
-          node scripts/inject-app-config-update.mjs frontend/build/app-config.json
+          node ../scripts/inject-app-config-update.mjs build/app-config.json
 
       - name: SPA fallback (routes React)
         run: cp frontend/build/index.html frontend/build/404.html
