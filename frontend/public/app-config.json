@@ -3,6 +3,6 @@
   "googleTokenExchangeUrl": "",
   "latestApkVersion": "1.1",
   "latestApkVersionCode": 2,
-  "apkDownloadUrl": "https://github.com/latsoukb/SeNote/releases/latest/download/SeNote-tablet.apk",
+  "apkDownloadUrl": "https://latsoukb.github.io/SeNote/SeNote-tablet.apk",
   "releaseNotes": "Mise a jour in-app depuis Parametres. Connexion Google Drive native et logo SeNote."
 }

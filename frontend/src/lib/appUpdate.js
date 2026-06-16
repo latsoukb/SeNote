@@ -1,6 +1,7 @@
 import { isNativeApp } from './platform';
 
 const DEFAULT_CONFIG_URL = 'https://latsoukb.github.io/SeNote/app-config.json';
+const APK_FILE_NAME = 'senote-update.apk';
 
 const remoteConfigUrl = () => {
   const fromEnv = (process.env.REACT_APP_UPDATE_CONFIG_URL || '').trim();
@@ -85,37 +86,77 @@ const blobToBase64 = (blob) =>
     reader.readAsDataURL(blob);
   });
 
+const downloadApkNative = async (downloadUrl) => {
+  const { Filesystem, Directory } = await import('@capacitor/filesystem');
+
+  await Filesystem.deleteFile({
+    path: APK_FILE_NAME,
+    directory: Directory.Cache,
+  }).catch(() => {});
+
+  const result = await Filesystem.downloadFile({
+    url: downloadUrl,
+    path: APK_FILE_NAME,
+    directory: Directory.Cache,
+    recursive: true,
+  });
+
+  const savedPath = result.path || APK_FILE_NAME;
+  const { uri } = await Filesystem.getUri({
+    path: savedPath,
+    directory: Directory.Cache,
+  });
+  return uri;
+};
+
+const downloadApkViaFetch = async (downloadUrl) => {
+  let res;
+  try {
+    res = await fetch(downloadUrl, { cache: 'no-store' });
+  } catch {
+    throw new Error(
+      'Téléchargement impossible. Vérifiez le Wi‑Fi ou réessayez dans quelques minutes.'
+    );
+  }
+  if (!res.ok) throw new Error('Téléchargement de la mise à jour impossible.');
+
+  const blob = await res.blob();
+  const base64 = await blobToBase64(blob);
+  const { Filesystem, Directory } = await import('@capacitor/filesystem');
+  const writeResult = await Filesystem.writeFile({
+    path: APK_FILE_NAME,
+    data: base64,
+    directory: Directory.Cache,
+    recursive: true,
+  });
+  if (writeResult.uri) return writeResult.uri;
+  const { uri } = await Filesystem.getUri({
+    path: APK_FILE_NAME,
+    directory: Directory.Cache,
+  });
+  return uri;
+};
+
 export const downloadAndInstallUpdate = async (downloadUrl, onProgress) => {
   if (!isNativeApp()) {
     throw new Error('Mise à jour disponible uniquement sur l’application tablette.');
   }
 
   onProgress?.('download');
-  const res = await fetch(downloadUrl, { cache: 'no-store' });
-  if (!res.ok) throw new Error('Téléchargement de la mise à jour impossible.');
 
-  const blob = await res.blob();
-  const base64 = await blobToBase64(blob);
+  let fileUri;
+  try {
+    fileUri = await downloadApkNative(downloadUrl);
+  } catch (nativeErr) {
+    console.warn('Native APK download failed, trying fetch fallback', nativeErr);
+    fileUri = await downloadApkViaFetch(downloadUrl);
+  }
 
   onProgress?.('install');
-  const { Filesystem, Directory } = await import('@capacitor/filesystem');
-  const fileName = 'senote-update.apk';
-
-  await Filesystem.writeFile({
-    path: fileName,
-    data: base64,
-    directory: Directory.Cache,
-    recursive: true,
-  });
-
-  const { uri } = await Filesystem.getUri({
-    path: fileName,
-    directory: Directory.Cache,
-  });
 
   const { FileOpener } = await import('@capawesome-team/capacitor-file-opener');
   await FileOpener.openFile({
-    path: uri,
+    path: fileUri,
     mimeType: 'application/vnd.android.package-archive',
   });
 };

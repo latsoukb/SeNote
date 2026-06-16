@@ -60,6 +60,15 @@ jobs:
           "
           node ../scripts/inject-app-config-update.mjs build/app-config.json
 
+      - name: Bundle latest APK for in-app update (CORS-safe URL)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download --repo "${{ github.repository }}" \
+            --pattern 'SeNote-tablet.apk' \
+            --dir frontend/build \
+            --clobber
+
       - name: SPA fallback (routes React)
         run: cp frontend/build/index.html frontend/build/404.html
 

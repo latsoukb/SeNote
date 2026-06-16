@@ -29,9 +29,8 @@ if (!versionCode || !versionName) {
 const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 cfg.latestApkVersion = versionName;
 cfg.latestApkVersionCode = Number(versionCode);
-cfg.apkDownloadUrl =
-  cfg.apkDownloadUrl ||
-  'https://github.com/latsoukb/SeNote/releases/latest/download/SeNote-tablet.apk';
+// GitHub Pages (CORS *) — fetch WebView échoue sur github.com/releases
+cfg.apkDownloadUrl = 'https://latsoukb.github.io/SeNote/SeNote-tablet.apk';
 
 fs.writeFileSync(configPath, `${JSON.stringify(cfg, null, 2)}\n`);
 console.log(`app-config: APK v${versionName} (${versionCode})`);
