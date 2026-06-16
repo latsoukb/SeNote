@@ -90,9 +90,9 @@ jobs:
         working-directory: frontend
         run: npx cap sync android
 
-      - name: Build APK (debug)
+      - name: Build APK (release, signature fixe)
         working-directory: frontend/android
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: Publish GitHub Release
         env:
@@ -100,7 +100,7 @@ jobs:
         run: |
           VERSION_NAME=$(grep -oP 'versionName "\K[^"]+' frontend/android/app/build.gradle)
           VERSION_CODE=$(grep -oP 'versionCode \K\d+' frontend/android/app/build.gradle)
-          APK_SRC="frontend/android/app/build/outputs/apk/debug/app-debug.apk"
+          APK_SRC="frontend/android/app/build/outputs/apk/release/app-release.apk"
           cp "$APK_SRC" /tmp/SeNote-tablet.apk
           TAG="v${VERSION_NAME}"
           if gh release view "$TAG" >/dev/null 2>&1; then
@@ -115,5 +115,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: SeNote-apk
-          path: frontend/android/app/build/outputs/apk/debug/app-debug.apk
+          path: frontend/android/app/build/outputs/apk/release/app-release.apk
           retention-days: 30

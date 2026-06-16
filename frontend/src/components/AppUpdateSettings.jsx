@@ -93,6 +93,11 @@ const AppUpdateSettings = () => {
           <p className="text-sm font-medium text-brand-800 dark:text-brand-200">
             Version {remote.versionName} disponible
           </p>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Si Android refuse l&apos;installation (« conflit de package »), désinstallez
+            SeNote puis réinstallez — nécessaire une seule fois après changement de
+            signature.
+          </p>
           {remote.releaseNotes && (
             <p className="text-xs text-slate-600 dark:text-slate-400 whitespace-pre-wrap">
               {remote.releaseNotes}
