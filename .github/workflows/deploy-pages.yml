@@ -60,14 +60,37 @@ jobs:
           "
           node ../scripts/inject-app-config-update.mjs build/app-config.json
 
-      - name: Bundle latest APK for in-app update (CORS-safe URL)
+      - name: Bundle APK for in-app update (CORS-safe URL)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release download --repo "${{ github.repository }}" \
-            --pattern 'SeNote-tablet.apk' \
-            --dir frontend/build \
-            --clobber
+          VERSION_NAME=$(grep -oP 'versionName "\K[^"]+' frontend/android/app/build.gradle)
+          TAG="v${VERSION_NAME}"
+          echo "Attente release ${TAG} (build APK parallele)..."
+          for i in $(seq 1 30); do
+            if gh release download "$TAG" --repo "${{ github.repository }}" \
+              --pattern 'SeNote-tablet.apk' \
+              --dir frontend/build \
+              --clobber 2>/dev/null; then
+              echo "APK ${TAG} recupere (tentative ${i})"
+              break
+            fi
+            if [ "$i" -eq 30 ]; then
+              echo "Release ${TAG} introuvable apres 7 min"
+              exit 1
+            fi
+            sleep 15
+          done
+          jarsigner -verify -verbose -certs frontend/build/SeNote-tablet.apk > /tmp/apk-sig.txt 2>&1 || true
+          if grep -q "Android Debug" /tmp/apk-sig.txt; then
+            echo "ERREUR: APK debug detecte sur Pages — refus de deployer"
+            exit 1
+          fi
+          if ! grep -q "SeNote Tablet" /tmp/apk-sig.txt; then
+            echo "ERREUR: signature release SeNote Tablet absente"
+            exit 1
+          fi
+          echo "Signature release OK"
 
       - name: SPA fallback (routes React)
         run: cp frontend/build/index.html frontend/build/404.html
