@@ -1,12 +1,14 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Button } from './ui/button';
 import { Label } from './ui/label';
-import { Download, RefreshCw, Smartphone } from 'lucide-react';
+import { Download, ExternalLink, RefreshCw, Smartphone } from 'lucide-react';
 import { isNativeApp } from '../lib/platform';
 import {
   checkForAppUpdate,
   downloadAndInstallUpdate,
   getInstalledAppInfo,
+  openApkInSystemBrowser,
+  GITHUB_LATEST_APK_URL,
 } from '../lib/appUpdate';
 import { toast } from 'sonner';
 
@@ -49,15 +51,14 @@ const AppUpdateSettings = () => {
     }
   };
 
-  const handleInstall = async () => {
-    if (!remote?.downloadUrl) return;
+  const handleInstall = async (url) => {
     setInstalling(true);
     try {
-      toast.message('Téléchargement de la mise à jour…');
-      await downloadAndInstallUpdate(remote.downloadUrl, (phase) => {
+      toast.message('Ouverture du navigateur…');
+      await downloadAndInstallUpdate(url, (phase) => {
         if (phase === 'install') {
           toast.message(
-            'Chrome va s’ouvrir — touchez le fichier téléchargé, puis Installez.',
+            'Touchez le fichier téléchargé dans Chrome, puis Installez.',
             { duration: 8000 }
           );
         }
@@ -65,6 +66,19 @@ const AppUpdateSettings = () => {
     } catch (e) {
       console.warn('App update install', e);
       toast.error(e.message || 'Installation impossible');
+    } finally {
+      setInstalling(false);
+    }
+  };
+
+  const handleOpenGithub = async () => {
+    setInstalling(true);
+    try {
+      toast.message('Ouverture de GitHub…');
+      await openApkInSystemBrowser(GITHUB_LATEST_APK_URL);
+      toast.message('Touchez SeNote-tablet.apk puis Installez.', { duration: 8000 });
+    } catch (e) {
+      toast.error(e.message || 'Impossible d’ouvrir le navigateur');
     } finally {
       setInstalling(false);
     }
@@ -80,8 +94,8 @@ const AppUpdateSettings = () => {
         Mise à jour SeNote
       </Label>
       <p className="text-xs text-slate-500 leading-relaxed">
-        Vérifiez si une nouvelle version est disponible. L&apos;installation ouvre Chrome
-        (comme un téléchargement GitHub) — touchez le fichier APK puis Installez.
+        Vérifiez les mises à jour (Wi‑Fi requis). L&apos;installation ouvre Chrome — touchez
+        le fichier APK téléchargé puis Installez.
       </p>
       {installed && (
         <p className="text-sm text-slate-600 dark:text-slate-300">
@@ -96,10 +110,6 @@ const AppUpdateSettings = () => {
           <p className="text-sm font-medium text-brand-800 dark:text-brand-200">
             Version {remote.versionName} disponible
           </p>
-          <p className="text-xs text-slate-500 leading-relaxed">
-            Si Android refuse l&apos;installation (« conflit de package »), désinstallez
-            SeNote une fois puis réinstallez depuis GitHub Releases.
-          </p>
           {remote.releaseNotes && (
             <p className="text-xs text-slate-600 dark:text-slate-400 whitespace-pre-wrap">
               {remote.releaseNotes}
@@ -108,25 +118,38 @@ const AppUpdateSettings = () => {
           <Button
             type="button"
             className="w-full gap-2 bg-brand-600 hover:bg-brand-700"
-            onClick={handleInstall}
+            onClick={() => handleInstall(remote.downloadUrl)}
             disabled={installing}
           >
             <Download className={`w-4 h-4 ${installing ? 'animate-pulse' : ''}`} />
-            {installing ? 'Téléchargement…' : 'Télécharger et installer'}
+            {installing ? 'Ouverture…' : 'Télécharger et installer'}
           </Button>
         </div>
       )}
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="gap-1"
-        onClick={handleCheck}
-        disabled={checking || installing}
-      >
-        <RefreshCw className={`w-3.5 h-3.5 ${checking ? 'animate-spin' : ''}`} />
-        Vérifier les mises à jour
-      </Button>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="gap-1 flex-1"
+          onClick={handleCheck}
+          disabled={checking || installing}
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${checking ? 'animate-spin' : ''}`} />
+          Vérifier les mises à jour
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="gap-1 flex-1"
+          onClick={handleOpenGithub}
+          disabled={checking || installing}
+        >
+          <ExternalLink className="w-3.5 h-3.5" />
+          Installer depuis GitHub
+        </Button>
+      </div>
     </div>
   );
 };
