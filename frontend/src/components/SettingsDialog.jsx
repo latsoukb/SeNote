@@ -16,6 +16,7 @@ import { ACCENT_OPTIONS } from '../lib/accentThemes';
 import { useStudentClass } from '../context/StudentClassContext';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import GoogleDriveSettings from './GoogleDriveSettings';
+import AppUpdateSettings from './AppUpdateSettings';
 import StudentDeviceCode from './StudentDeviceCode';
 
 const SettingsDialog = ({ trigger }) => {
@@ -167,6 +168,8 @@ const SettingsDialog = ({ trigger }) => {
           </div>
 
           <GoogleDriveSettings />
+
+          <AppUpdateSettings />
 
           {(canInstall || isInstalled) && (
           <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-chrome-800">

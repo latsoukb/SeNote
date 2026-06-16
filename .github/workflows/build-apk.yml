@@ -11,6 +11,10 @@ on:
       - 'frontend/capacitor.config.json'
       - 'frontend/android/**'
       - '.github/workflows/build-apk.yml'
+      - 'scripts/inject-app-config-update.mjs'
+
+permissions:
+  contents: write
 
 jobs:
   apk:
@@ -45,6 +49,7 @@ jobs:
           REACT_APP_GOOGLE_WEB_CLIENT_ID: ${{ secrets.REACT_APP_GOOGLE_WEB_CLIENT_ID }}
           REACT_APP_GOOGLE_TOKEN_URL: ${{ secrets.REACT_APP_GOOGLE_TOKEN_URL }}
           REACT_APP_JOKKO_SYNC_URL: ${{ secrets.REACT_APP_JOKKO_SYNC_URL }}
+          REACT_APP_UPDATE_CONFIG_URL: 'https://latsoukb.github.io/SeNote/app-config.json'
           PUBLIC_URL: ''
           CI: false
         run: npm run build
@@ -79,6 +84,7 @@ jobs:
             fs.writeFileSync(p, JSON.stringify(c, null, 2) + '\n');
             "
           fi
+          node ../scripts/inject-app-config-update.mjs build/app-config.json
 
       - name: Sync Capacitor
         working-directory: frontend
@@ -87,6 +93,23 @@ jobs:
       - name: Build APK (debug)
         working-directory: frontend/android
         run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION_NAME=$(grep -oP 'versionName "\K[^"]+' frontend/android/app/build.gradle)
+          VERSION_CODE=$(grep -oP 'versionCode \K\d+' frontend/android/app/build.gradle)
+          APK_SRC="frontend/android/app/build/outputs/apk/debug/app-debug.apk"
+          cp "$APK_SRC" /tmp/SeNote-tablet.apk
+          TAG="v${VERSION_NAME}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" /tmp/SeNote-tablet.apk --clobber
+          else
+            gh release create "$TAG" /tmp/SeNote-tablet.apk \
+              --title "SeNote ${VERSION_NAME}" \
+              --notes "Build ${VERSION_CODE} — mise à jour via Paramètres → Vérifier les mises à jour dans l'app."
+          fi
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
