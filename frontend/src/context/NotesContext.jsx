@@ -12,7 +12,6 @@ import { ensureNotebookSections } from '../lib/notebookSections';
 import { checkBackend, fetchWorkspace, saveWorkspace as saveWorkspaceApi } from '../lib/api';
 import { loadWorkspace, saveWorkspace, getStorageLabel } from '../lib/dataStore';
 import {
-  uploadToGoogleDrive,
   syncNotebookPdfsToDrive,
   mergeWithGoogleDrive,
   getDriveStatus,
@@ -129,7 +128,7 @@ export const NotesProvider = ({ children }) => {
     }
   }, []);
 
-  const flushDriveSync = useCallback(async (includePdfs = false) => {
+  const flushDriveSync = useCallback(async () => {
     if (!isAutoSyncEnabled()) {
       return { ok: false, error: 'Synchronisation automatique désactivée.' };
     }
@@ -144,10 +143,7 @@ export const NotesProvider = ({ children }) => {
     driveSyncInFlightRef.current = true;
     setDriveSyncing(true);
     try {
-      await uploadToGoogleDrive(workspaceRef.current);
-      if (includePdfs) {
-        await syncNotebookPdfsToDrive(workspaceRef.current);
-      }
+      await syncNotebookPdfsToDrive(workspaceRef.current);
       setLastDriveSync(Date.now());
       return { ok: true };
     } catch (e) {
@@ -163,7 +159,7 @@ export const NotesProvider = ({ children }) => {
     if (!isAutoSyncEnabled()) return;
     if (driveDebounceRef.current) clearTimeout(driveDebounceRef.current);
     driveDebounceRef.current = setTimeout(() => {
-      flushDriveSync(false);
+      flushDriveSync();
     }, 2500);
   }, [isAutoSyncEnabled, flushDriveSync]);
 
@@ -183,7 +179,7 @@ export const NotesProvider = ({ children }) => {
         if (status.connected) {
           setDriveSyncing(true);
           try {
-            await uploadToGoogleDrive(payload);
+            await syncNotebookPdfsToDrive(payload);
             setLastDriveSync(Date.now());
           } catch (e) {
             console.warn('Sync Google Drive échouée', e);
@@ -212,12 +208,12 @@ export const NotesProvider = ({ children }) => {
   useEffect(() => {
     if (!ready) return;
 
-    const runDriveSync = () => flushDriveSync(true);
+    const runDriveSync = () => flushDriveSync();
     driveTimerRef.current = setInterval(runDriveSync, 5 * 60_000);
 
     const onHide = () => {
       if (driveDebounceRef.current) clearTimeout(driveDebounceRef.current);
-      flushDriveSync(true);
+      flushDriveSync();
     };
     document.addEventListener('visibilitychange', onHide);
     window.addEventListener('pagehide', onHide);
@@ -233,7 +229,7 @@ export const NotesProvider = ({ children }) => {
   const syncNowToDrive = useCallback(async () => {
     if (driveDebounceRef.current) clearTimeout(driveDebounceRef.current);
     await persist({ folders, notebooks, trash }, false);
-    return flushDriveSync(true);
+    return flushDriveSync();
   }, [folders, notebooks, trash, persist, flushDriveSync]);
 
   const addNotebook = useCallback((title, cover, pageTemplate, folderId = null) => {

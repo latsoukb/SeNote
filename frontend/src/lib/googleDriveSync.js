@@ -1,5 +1,4 @@
 import { isNativeApp } from './platform';
-import { wrapWorkspace, unwrapWorkspace } from './dataStore';
 import {
   ensureAppConfig,
   getGoogleAuthClientId,
@@ -8,7 +7,6 @@ import {
 } from './appConfig';
 
 const PREFS = {
-  FILE_ID: 'senote_drive_file_id',
   FOLDER_ID: 'senote_drive_folder_id',
   EMAIL: 'senote_drive_email',
   LAST_SYNC: 'senote_drive_last_sync',
@@ -23,7 +21,6 @@ const WORKSPACE_NAME = 'senote-workspace.json';
 /** Scopes Drive — ne pas passer en une seule chaîne (bug plugin Android). */
 const DRIVE_SCOPES = [
   'https://www.googleapis.com/auth/drive.file',
-  'https://www.googleapis.com/auth/drive.appdata',
   'https://www.googleapis.com/auth/userinfo.email',
 ];
 const DRIVE_SCOPE_STRING = DRIVE_SCOPES.join(' ');
@@ -467,14 +464,36 @@ const driveFetch = async (path, token, options = {}) => {
   return res;
 };
 
-/** Mises à jour du contenu fichier (JSON, PDF) — endpoint upload, pas metadata. */
+/** Mises à jour du contenu fichier — endpoint upload, pas metadata. */
 const driveUploadFetch = async (path, token, options = {}) => {
+  const body = options.body;
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    ...(options.headers || {}),
+  };
+
+  if (body instanceof Blob || body instanceof ArrayBuffer || body instanceof Uint8Array) {
+    const bytes =
+      body instanceof Blob
+        ? new Uint8Array(await body.arrayBuffer())
+        : body instanceof ArrayBuffer
+          ? new Uint8Array(body)
+          : body;
+    const res = await driveHttpFetch(`${DRIVE_UPLOAD_API}${path}`, {
+      ...options,
+      headers,
+      body: bytes,
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Drive upload ${res.status}: ${err}`);
+    }
+    return res;
+  }
+
   const res = await driveHttpFetch(`${DRIVE_UPLOAD_API}${path}`, {
     ...options,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      ...(options.headers || {}),
-    },
+    headers,
   });
   if (!res.ok) {
     const err = await res.text();
@@ -536,25 +555,6 @@ const findOrCreateFolder = async (token) => {
   return folder.id;
 };
 
-const findWorkspaceFile = async (token) => {
-  const cached = await prefGet(PREFS.FILE_ID);
-  if (cached && (await driveFileExists(token, cached))) return cached;
-  if (cached) await prefRemove(PREFS.FILE_ID);
-
-  const safeName = WORKSPACE_NAME.replace(/'/g, "\\'");
-  const q = encodeURIComponent(`name='${safeName}' and trashed=false`);
-  const list = await driveFetch(
-    `/files?q=${q}&spaces=appDataFolder&fields=files(id)`,
-    token
-  );
-  const data = await list.json();
-  if (data.files?.length) {
-    await prefSet(PREFS.FILE_ID, data.files[0].id);
-    return data.files[0].id;
-  }
-  return null;
-};
-
 /** Supprime l'ancien JSON visible dans le dossier SeNote (migration). */
 const removeLegacyWorkspaceFromFolder = async (token, folderId) => {
   const legacyId = await findFileInFolder(
@@ -569,8 +569,6 @@ const removeLegacyWorkspaceFromFolder = async (token, folderId) => {
   } catch {
     /* déjà supprimé */
   }
-  const cached = await prefGet(PREFS.FILE_ID);
-  if (cached === legacyId) await prefRemove(PREFS.FILE_ID);
 };
 
 export const getDriveStatus = async () => {
@@ -708,103 +706,8 @@ export const syncNotebookPdfsToDrive = async (workspaceData) => {
   return { count: Object.keys(map).length };
 };
 
-export const uploadToGoogleDrive = async (workspaceData) => {
-  await ensureAppConfig();
-  const token = await getAccessToken();
-  if (!token) throw new Error('Non connecté à Google Drive');
+/** Sync Drive = PDF uniquement (pas de JSON visible). */
+export const syncToGoogleDrive = syncNotebookPdfsToDrive;
 
-  const payload = wrapWorkspace(workspaceData);
-  const body = JSON.stringify(payload);
-  let fileId = await findWorkspaceFile(token);
-
-  if (fileId) {
-    try {
-      await driveUploadFetch(`/files/${fileId}?uploadType=media`, token, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body,
-      });
-    } catch (e) {
-      if (!isDriveNotFound(e)) throw e;
-      await prefRemove(PREFS.FILE_ID);
-      fileId = null;
-    }
-  }
-
-  if (!fileId) {
-    const create = await driveFetch('/files', token, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: WORKSPACE_NAME,
-        parents: ['appDataFolder'],
-        mimeType: 'application/json',
-      }),
-    });
-    const created = await create.json();
-    fileId = created.id;
-    await driveUploadFetch(`/files/${fileId}?uploadType=media`, token, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body,
-    });
-    await prefSet(PREFS.FILE_ID, fileId);
-  }
-
-  await prefSet(PREFS.LAST_SYNC, String(Date.now()));
-  return { fileId, savedAt: payload.savedAt };
-};
-
-export const downloadFromGoogleDrive = async () => {
-  await ensureAppConfig();
-  const token = await getAccessToken();
-  if (!token) throw new Error('Non connecté à Google Drive');
-
-  const fileId = await findWorkspaceFile(token);
-  if (!fileId) return null;
-
-  const res = await driveFetch(`/files/${fileId}?alt=media`, token);
-  const raw = await res.json();
-  await prefSet(PREFS.LAST_SYNC, String(Date.now()));
-  return unwrapWorkspace(raw);
-};
-
-/** Au démarrage : prend la copie la plus récente (local vs Drive) et pousse la locale si elle est plus neuve */
-export const mergeWithGoogleDrive = async (localData) => {
-  try {
-    const remote = await downloadFromGoogleDrive();
-    if (!remote) {
-      const hasLocal =
-        (localData?.notebooks?.length || 0) > 0 || (localData?.folders?.length || 0) > 0;
-      if (hasLocal) {
-        try {
-          await uploadToGoogleDrive(localData);
-        } catch (e) {
-          console.warn('Upload Drive initial ignoré', e);
-        }
-      }
-      return localData;
-    }
-    const localAt = localData?.savedAt ?? 0;
-    const remoteAt = remote.savedAt ?? 0;
-    if (remoteAt > localAt) {
-      return {
-        folders: remote.folders,
-        notebooks: remote.notebooks,
-        trash: remote.trash,
-        savedAt: remoteAt,
-      };
-    }
-    if (localAt > remoteAt) {
-      try {
-        await uploadToGoogleDrive(localData);
-      } catch (e) {
-        console.warn('Mise à jour Drive au démarrage ignorée', e);
-      }
-    }
-    return localData;
-  } catch (e) {
-    console.warn('Sync Drive au démarrage ignorée', e);
-    return localData;
-  }
-};
+/** Au démarrage : données locales conservées (restauration via PDF non supportée). */
+export const mergeWithGoogleDrive = async (localData) => localData;

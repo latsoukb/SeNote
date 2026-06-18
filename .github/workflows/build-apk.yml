@@ -87,7 +87,6 @@ jobs:
             c.plugins.GoogleAuth.clientId = web;
             c.plugins.GoogleAuth.scopes = [
               'https://www.googleapis.com/auth/drive.file',
-              'https://www.googleapis.com/auth/drive.appdata',
               'https://www.googleapis.com/auth/userinfo.email',
             ];
             fs.writeFileSync(p, JSON.stringify(c, null, 2) + '\n');
