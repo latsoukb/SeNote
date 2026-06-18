@@ -157,7 +157,7 @@ export const NotesProvider = ({ children }) => {
       if (!result.count) {
         return {
           ok: false,
-          error: 'Aucun cahier avec écriture à envoyer. Écrivez dans un cahier, puis réessayez.',
+          error: 'Aucun cahier à synchroniser. Créez un cahier dans l’app (renommer ou changer le modèle de page suffit).',
         };
       }
       return { ok: true, count: result.count };

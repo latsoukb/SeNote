@@ -1,5 +1,5 @@
 import { isNativeApp } from './platform';
-import { notebookHasContent } from './notebookSections';
+import { shouldSyncNotebookToDrive } from './notebookSections';
 import {
   ensureAppConfig,
   getGoogleAuthClientId,
@@ -678,17 +678,7 @@ export const syncNotebookPdfsToDrive = async (workspaceData) => {
   const activeIds = new Set((workspaceData?.notebooks || []).map((n) => n.id));
 
   for (const nb of workspaceData?.notebooks || []) {
-    if (!notebookHasContent(nb)) {
-      if (map[nb.id]?.fileId) {
-        try {
-          await driveFetch(`/files/${map[nb.id].fileId}`, token, { method: 'DELETE' });
-        } catch {
-          /* déjà supprimé */
-        }
-        delete map[nb.id];
-      }
-      continue;
-    }
+    if (!shouldSyncNotebookToDrive(nb)) continue;
 
     const fileName = pdfFileName(nb);
     const blob = await notebookToPdfBlob(nb);
