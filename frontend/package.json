@@ -4,7 +4,6 @@
   "private": true,
   "dependencies": {
     "@capacitor/app": "^6.0.3",
-    "@capacitor/browser": "^6.0.6",
     "@capacitor/filesystem": "^6.0.4",
     "@capacitor/preferences": "^6.0.2",
     "@capawesome-team/capacitor-file-opener": "^7.0.1",

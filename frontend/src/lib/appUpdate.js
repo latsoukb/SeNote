@@ -1,8 +1,7 @@
 import { isNativeApp } from './platform';
 
 const DEFAULT_CONFIG_URL = 'https://latsoukb.github.io/SeNote/app-config.json';
-export const GITHUB_LATEST_APK_URL =
-  'https://github.com/latsoukb/SeNote/releases/latest/download/SeNote-tablet.apk';
+const APK_FILE_NAME = 'senote-update.apk';
 
 const remoteConfigUrl = () => {
   const fromEnv = (process.env.REACT_APP_UPDATE_CONFIG_URL || '').trim();
@@ -31,9 +30,7 @@ const parseUpdateInfo = (data) => {
 const networkError = (cause) => {
   const msg = cause?.message || String(cause || '');
   if (/failed to fetch|network|load failed|timeout/i.test(msg)) {
-    return new Error(
-      'Connexion impossible. Vérifiez le Wi‑Fi ou utilisez « Installer depuis GitHub ».'
-    );
+    return new Error('Connexion impossible. Vérifiez le Wi‑Fi et réessayez.');
   }
   return cause instanceof Error ? cause : new Error(msg || 'Erreur réseau');
 };
@@ -41,57 +38,47 @@ const networkError = (cause) => {
 /** GET JSON — CapacitorHttp natif sur APK (WebView fetch échoue souvent). */
 const httpGetJson = async (url) => {
   if (isNativeApp()) {
-    try {
-      const { CapacitorHttp } = await import('@capacitor/core');
-      const res = await CapacitorHttp.get({
-        url,
-        headers: {
-          Accept: 'application/json',
-          'Cache-Control': 'no-cache',
-        },
-      });
-      if (res.status < 200 || res.status >= 300) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-      if (typeof res.data === 'object' && res.data !== null) return res.data;
-      if (typeof res.data === 'string') return JSON.parse(res.data);
-      throw new Error('Réponse serveur invalide.');
-    } catch (nativeErr) {
-      console.warn('CapacitorHttp GET failed', url, nativeErr);
+    const { CapacitorHttp } = await import('@capacitor/core');
+    const res = await CapacitorHttp.get({
+      url,
+      headers: {
+        Accept: 'application/json',
+        'Cache-Control': 'no-cache',
+      },
+    });
+    if (res.status < 200 || res.status >= 300) {
+      throw new Error(`HTTP ${res.status}`);
     }
+    if (typeof res.data === 'object' && res.data !== null) return res.data;
+    if (typeof res.data === 'string') return JSON.parse(res.data);
+    throw new Error('Réponse serveur invalide.');
   }
 
-  try {
-    const res = await fetch(url, { cache: 'no-store' });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
-  } catch (err) {
-    throw networkError(err);
-  }
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
 };
 
 export const fetchRemoteUpdateInfo = async () => {
-  const remoteUrl = `${remoteConfigUrl()}?t=${Date.now()}`;
+  const errors = [];
 
-  try {
-    const data = await httpGetJson(remoteUrl);
-    const info = parseUpdateInfo(data);
-    if (info) return info;
-  } catch (err) {
-    console.warn('Remote update config failed', err);
+  for (const url of [
+    `${remoteConfigUrl()}?t=${Date.now()}`,
+    `${bundledConfigUrl()}?t=${Date.now()}`,
+  ]) {
+    try {
+      const data = await httpGetJson(url);
+      const info = parseUpdateInfo(data);
+      if (info) return info;
+    } catch (err) {
+      console.warn('Update config failed', url, err);
+      errors.push(err);
+    }
   }
 
-  try {
-    const data = await httpGetJson(`${bundledConfigUrl()}?t=${Date.now()}`);
-    const info = parseUpdateInfo(data);
-    if (info) return info;
-  } catch (err) {
-    console.warn('Bundled update config failed', err);
-  }
-
-  throw new Error(
-    'Impossible de contacter le serveur de mises à jour. Utilisez « Installer depuis GitHub ».'
-  );
+  throw errors[0] instanceof Error
+    ? networkError(errors[0])
+    : new Error('Impossible de vérifier les mises à jour.');
 };
 
 export const getInstalledAppInfo = async () => {
@@ -138,27 +125,43 @@ const bustUrl = (url) => {
   return `${url}${sep}t=${Date.now()}`;
 };
 
-/** Ouvre Chrome / navigateur système (même flux que install manuelle GitHub). */
-export const openApkInSystemBrowser = async (downloadUrl = GITHUB_LATEST_APK_URL) => {
-  const url = bustUrl(downloadUrl);
+const downloadApkNative = async (downloadUrl, onProgress) => {
+  const { Filesystem, Directory } = await import('@capacitor/filesystem');
 
-  if (isNativeApp()) {
-    try {
-      const { Browser } = await import('@capacitor/browser');
-      await Browser.open({ url });
-      return;
-    } catch (browserErr) {
-      console.warn('Browser.open failed', browserErr);
-    }
+  await Filesystem.deleteFile({
+    path: APK_FILE_NAME,
+    directory: Directory.Cache,
+  }).catch(() => {});
+
+  let progressHandle = null;
+  try {
+    progressHandle = await Filesystem.addListener('progress', (status) => {
+      if (status.contentLength > 0) {
+        const percent = Math.min(
+          100,
+          Math.round((status.bytes / status.contentLength) * 100)
+        );
+        onProgress?.('download', percent);
+      }
+    });
+
+    const result = await Filesystem.downloadFile({
+      url: bustUrl(downloadUrl),
+      path: APK_FILE_NAME,
+      directory: Directory.Cache,
+      recursive: true,
+      progress: true,
+    });
+
+    const savedPath = result.path || APK_FILE_NAME;
+    const { uri } = await Filesystem.getUri({
+      path: savedPath,
+      directory: Directory.Cache,
+    });
+    return uri;
+  } finally {
+    await progressHandle?.remove?.();
   }
-
-  const link = document.createElement('a');
-  link.href = url;
-  link.target = '_system';
-  link.rel = 'noopener noreferrer';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
 };
 
 export const downloadAndInstallUpdate = async (downloadUrl, onProgress) => {
@@ -166,7 +169,23 @@ export const downloadAndInstallUpdate = async (downloadUrl, onProgress) => {
     throw new Error('Mise à jour disponible uniquement sur l’application tablette.');
   }
 
-  onProgress?.('download');
-  await openApkInSystemBrowser(downloadUrl || GITHUB_LATEST_APK_URL);
+  onProgress?.('download', 0);
+
+  let fileUri;
+  try {
+    fileUri = await downloadApkNative(downloadUrl, onProgress);
+  } catch (err) {
+    console.warn('APK download failed', err);
+    throw new Error(
+      'Téléchargement impossible. Vérifiez le Wi‑Fi et réessayez dans quelques minutes.'
+    );
+  }
+
   onProgress?.('install');
+
+  const { FileOpener } = await import('@capawesome-team/capacitor-file-opener');
+  await FileOpener.openFile({
+    path: fileUri,
+    mimeType: 'application/vnd.android.package-archive',
+  });
 };

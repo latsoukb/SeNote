@@ -1,14 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Button } from './ui/button';
 import { Label } from './ui/label';
-import { Download, ExternalLink, RefreshCw, Smartphone } from 'lucide-react';
+import { Download, RefreshCw, Smartphone } from 'lucide-react';
 import { isNativeApp } from '../lib/platform';
 import {
   checkForAppUpdate,
   downloadAndInstallUpdate,
   getInstalledAppInfo,
-  openApkInSystemBrowser,
-  GITHUB_LATEST_APK_URL,
 } from '../lib/appUpdate';
 import { toast } from 'sonner';
 
@@ -17,6 +15,7 @@ const AppUpdateSettings = () => {
   const [remote, setRemote] = useState(null);
   const [checking, setChecking] = useState(false);
   const [installing, setInstalling] = useState(false);
+  const [downloadPercent, setDownloadPercent] = useState(null);
 
   const refreshInstalled = useCallback(async () => {
     try {
@@ -51,36 +50,29 @@ const AppUpdateSettings = () => {
     }
   };
 
-  const handleInstall = async (url) => {
+  const handleInstall = async () => {
+    if (!remote?.downloadUrl) return;
     setInstalling(true);
+    setDownloadPercent(0);
     try {
-      toast.message('Ouverture du navigateur…');
-      await downloadAndInstallUpdate(url, (phase) => {
+      toast.message('Téléchargement de la mise à jour…');
+      await downloadAndInstallUpdate(remote.downloadUrl, (phase, percent) => {
+        if (phase === 'download' && typeof percent === 'number') {
+          setDownloadPercent(percent);
+        }
         if (phase === 'install') {
-          toast.message(
-            'Touchez le fichier téléchargé dans Chrome, puis Installez.',
-            { duration: 8000 }
-          );
+          setDownloadPercent(100);
+          toast.message('Confirmez l’installation dans la fenêtre Android.', {
+            duration: 8000,
+          });
         }
       });
     } catch (e) {
       console.warn('App update install', e);
-      toast.error(e.message || 'Installation impossible');
+      toast.error(e.message || 'Mise à jour impossible');
     } finally {
       setInstalling(false);
-    }
-  };
-
-  const handleOpenGithub = async () => {
-    setInstalling(true);
-    try {
-      toast.message('Ouverture de GitHub…');
-      await openApkInSystemBrowser(GITHUB_LATEST_APK_URL);
-      toast.message('Touchez SeNote-tablet.apk puis Installez.', { duration: 8000 });
-    } catch (e) {
-      toast.error(e.message || 'Impossible d’ouvrir le navigateur');
-    } finally {
-      setInstalling(false);
+      setDownloadPercent(null);
     }
   };
 
@@ -94,8 +86,8 @@ const AppUpdateSettings = () => {
         Mise à jour SeNote
       </Label>
       <p className="text-xs text-slate-500 leading-relaxed">
-        Vérifiez les mises à jour (Wi‑Fi requis). L&apos;installation ouvre Chrome — touchez
-        le fichier APK téléchargé puis Installez.
+        Télécharge et installe la mise à jour directement dans l&apos;app (Wi‑Fi requis).
+        Android affichera une confirmation — vous ne quittez pas SeNote.
       </p>
       {installed && (
         <p className="text-sm text-slate-600 dark:text-slate-300">
@@ -115,41 +107,41 @@ const AppUpdateSettings = () => {
               {remote.releaseNotes}
             </p>
           )}
+          {installing && downloadPercent !== null && (
+            <div className="space-y-1">
+              <div className="h-1.5 rounded-full bg-brand-200 dark:bg-brand-900 overflow-hidden">
+                <div
+                  className="h-full bg-brand-600 transition-all duration-300"
+                  style={{ width: `${downloadPercent}%` }}
+                />
+              </div>
+              <p className="text-[10px] text-slate-500 text-center">
+                Téléchargement {downloadPercent}%
+              </p>
+            </div>
+          )}
           <Button
             type="button"
             className="w-full gap-2 bg-brand-600 hover:bg-brand-700"
-            onClick={() => handleInstall(remote.downloadUrl)}
+            onClick={handleInstall}
             disabled={installing}
           >
             <Download className={`w-4 h-4 ${installing ? 'animate-pulse' : ''}`} />
-            {installing ? 'Ouverture…' : 'Télécharger et installer'}
+            {installing ? 'Mise à jour en cours…' : 'Mettre à jour'}
           </Button>
         </div>
       )}
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="gap-1 flex-1"
-          onClick={handleCheck}
-          disabled={checking || installing}
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${checking ? 'animate-spin' : ''}`} />
-          Vérifier les mises à jour
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="gap-1 flex-1"
-          onClick={handleOpenGithub}
-          disabled={checking || installing}
-        >
-          <ExternalLink className="w-3.5 h-3.5" />
-          Installer depuis GitHub
-        </Button>
-      </div>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="gap-1"
+        onClick={handleCheck}
+        disabled={checking || installing}
+      >
+        <RefreshCw className={`w-3.5 h-3.5 ${checking ? 'animate-spin' : ''}`} />
+        Vérifier les mises à jour
+      </Button>
     </div>
   );
 };
