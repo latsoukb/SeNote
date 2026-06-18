@@ -75,16 +75,32 @@ jobs:
           fs.writeFileSync(path, JSON.stringify(cfg, null, 2) + '\n');
           "
           if [ -n "$REACT_APP_GOOGLE_WEB_CLIENT_ID" ]; then
+            export WEB_ID="$REACT_APP_GOOGLE_WEB_CLIENT_ID"
             node -e "
             const fs = require('fs');
             const p = 'capacitor.config.json';
             const c = JSON.parse(fs.readFileSync(p, 'utf8'));
-            const web = process.env.REACT_APP_GOOGLE_WEB_CLIENT_ID.trim();
+            const web = process.env.WEB_ID.trim();
             c.plugins = c.plugins || {};
             c.plugins.GoogleAuth = c.plugins.GoogleAuth || {};
             c.plugins.GoogleAuth.serverClientId = web;
             c.plugins.GoogleAuth.clientId = web;
+            c.plugins.GoogleAuth.scopes = [
+              'https://www.googleapis.com/auth/drive.file',
+              'https://www.googleapis.com/auth/userinfo.email',
+            ];
             fs.writeFileSync(p, JSON.stringify(c, null, 2) + '\n');
+            "
+            node -e "
+            const fs = require('fs');
+            const xmlPath = 'android/app/src/main/res/values/strings.xml';
+            let xml = fs.readFileSync(xmlPath, 'utf8');
+            const web = process.env.WEB_ID.trim();
+            xml = xml.replace(
+              /<string name=\"server_client_id\"[^>]*>[^<]*<\\/string>/,
+              '<string name=\"server_client_id\" translatable=\"false\">' + web + '</string>'
+            );
+            fs.writeFileSync(xmlPath, xml);
             "
           fi
           node ../scripts/inject-app-config-update.mjs build/app-config.json

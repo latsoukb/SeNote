@@ -20,8 +20,11 @@ const PREFS = {
 
 const FOLDER_NAME = 'SeNote';
 const WORKSPACE_NAME = 'senote-workspace.json';
-const DRIVE_SCOPE =
-  'https://www.googleapis.com/auth/drive.file openid https://www.googleapis.com/auth/userinfo.email';
+/** Scopes Drive — ne pas passer en une seule chaîne (bug plugin Android). */
+const DRIVE_SCOPES = [
+  'https://www.googleapis.com/auth/drive.file',
+  'https://www.googleapis.com/auth/userinfo.email',
+];
 const DRIVE_API = 'https://www.googleapis.com/drive/v3';
 const DRIVE_UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
 const OAUTH_PENDING_KEY = 'senote_drive_oauth_pending';
@@ -93,6 +96,10 @@ const postTokenExchange = async (payload) => {
   if (payload.grant_type === 'refresh_token') {
     params.set('grant_type', 'refresh_token');
     params.set('refresh_token', payload.refresh_token);
+  } else if (payload.grant_type === 'authorization_code' && payload.code && !payload.redirect_uri) {
+    // serverAuthCode Android (offline access)
+    params.set('grant_type', 'authorization_code');
+    params.set('code', payload.code);
   } else {
     params.set('code', payload.code);
     params.set('redirect_uri', payload.redirect_uri);
@@ -172,29 +179,70 @@ const prefRemove = async (key) => {
 /* ── Native (APK Android) — sélecteur de compte Google in-app ── */
 
 let authModule = null;
+let authInitialized = false;
+
+const withTimeout = (promise, ms, message) =>
+  Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error(message)), ms);
+    }),
+  ]);
+
+const mapNativeGoogleError = (err) => {
+  const msg = String(err?.message || err || '');
+  if (/12501|canceled|cancelled/i.test(msg)) {
+    return new Error('Connexion annulée.');
+  }
+  if (/\b10\b|DEVELOPER_ERROR|developer_error/i.test(msg)) {
+    return new Error(
+      'Erreur Google (configuration). Vérifiez le client Android OAuth : package com.senote.tablet et empreinte SHA-1 dans Google Cloud.'
+    );
+  }
+  if (/retrieving access token/i.test(msg)) {
+    return new Error('Jeton Google inaccessible. Réessayez ou reconnectez le compte.');
+  }
+  return err instanceof Error ? err : new Error(msg || 'Connexion Google impossible');
+};
 
 const loadGoogleAuth = async () => {
   if (!isNativeApp()) return null;
-  if (authModule) return authModule;
+  await ensureAppConfig();
+  const clientId = getGoogleAuthClientId();
+  if (!clientId) return null;
+
   try {
-    const mod = await import('@codetrix-studio/capacitor-google-auth');
-    authModule = mod.GoogleAuth;
-    await ensureAppConfig();
-    const clientId = getGoogleAuthClientId();
-    if (!clientId) {
-      authModule = null;
-      return null;
+    if (!authModule) {
+      const mod = await import('@codetrix-studio/capacitor-google-auth');
+      authModule = mod.GoogleAuth;
     }
-    await authModule.initialize({
-      clientId,
-      scopes: [DRIVE_SCOPE],
-      grantOfflineAccess: true,
-    });
+    if (!authInitialized) {
+      // Scopes : tableau séparé (virgules) — une seule chaîne avec espaces casse Android
+      await authModule.initialize({
+        clientId,
+        scopes: DRIVE_SCOPES,
+        grantOfflineAccess: true,
+      });
+      authInitialized = true;
+    }
     return authModule;
   } catch (e) {
     console.warn('Google Auth non disponible', e);
+    authModule = null;
+    authInitialized = false;
     return null;
   }
+};
+
+const persistNativeTokens = async (tokenResponse, email) => {
+  await prefSet(PREFS.TOKEN, tokenResponse.access_token);
+  const expiresIn = Number(tokenResponse.expires_in || 3600);
+  await prefSet(PREFS.TOKEN_EXPIRY, String(Date.now() + expiresIn * 1000));
+  if (tokenResponse.refresh_token) {
+    await prefSet(PREFS.REFRESH_TOKEN, tokenResponse.refresh_token);
+  }
+  await prefSet(PREFS.EMAIL, email);
+  return { email, accessToken: tokenResponse.access_token };
 };
 
 const signInNativeGoogleDrive = async () => {
@@ -205,10 +253,35 @@ const signInNativeGoogleDrive = async () => {
       'Google Drive indisponible — client OAuth non configuré (googleWebClientId).'
     );
   }
-  const result = await GoogleAuth.signIn();
+
+  let result;
+  try {
+    result = await withTimeout(
+      GoogleAuth.signIn(),
+      120_000,
+      'Connexion Google expirée. Réessayez.'
+    );
+  } catch (e) {
+    throw mapNativeGoogleError(e);
+  }
+
+  const email = result?.email || 'compte Google';
+  const serverAuthCode = result?.serverAuthCode;
+
+  if (serverAuthCode && getGoogleTokenExchangeUrl()) {
+    const tokenResponse = await postTokenExchange({
+      code: serverAuthCode,
+      grant_type: 'authorization_code',
+    });
+    if (!tokenResponse?.access_token) {
+      throw new Error('Échange du code Google impossible.');
+    }
+    return persistNativeTokens(tokenResponse, email);
+  }
+
   const token = result?.authentication?.accessToken;
-  if (!token) throw new Error('Connexion Google échouée');
-  const email = result.email || 'compte Google';
+  if (!token) throw new Error('Connexion Google échouée — aucun jeton reçu.');
+  await prefSet(PREFS.TOKEN, token);
   await prefSet(PREFS.EMAIL, email);
   return { email, accessToken: token };
 };
@@ -220,18 +293,18 @@ const signOutNativeGoogleDrive = async () => {
   } catch {
     /* ignore */
   }
+  authInitialized = false;
 };
 
 const getNativeAccessToken = async () => {
-  if (!getGoogleAuthClientId()) return null;
-  const GoogleAuth = await loadGoogleAuth();
-  if (!GoogleAuth) return null;
-  try {
-    const auth = await GoogleAuth.refresh();
-    return auth?.accessToken || null;
-  } catch {
-    return null;
-  }
+  const token = await prefGet(PREFS.TOKEN);
+  const expiry = Number((await prefGet(PREFS.TOKEN_EXPIRY)) || 0);
+  if (token && Date.now() < expiry - 60_000) return token;
+
+  const email = await prefGet(PREFS.EMAIL);
+  if (!email) return null;
+
+  return refreshWebAccessToken();
 };
 
 /* ── Web (navigateur) — Google Identity Services ── */

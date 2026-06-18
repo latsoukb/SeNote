@@ -30,6 +30,7 @@ const GoogleDriveSettings = () => {
   const { settings, updateSettings } = useSettings();
   const [ready, setReady] = useState(false);
   const [configured, setConfigured] = useState(false);
+  const [connecting, setConnecting] = useState(false);
   const [status, setStatus] = useState({
     connected: false,
     email: null,
@@ -50,21 +51,21 @@ const GoogleDriveSettings = () => {
   }, [driveSyncing]);
 
   const handleConnect = async () => {
-    if (!configured) {
-      toast.error('La sauvegarde cloud n\'est pas encore activée sur cette installation.');
-      return;
-    }
+    if (!configured || connecting) return;
+    setConnecting(true);
     try {
-      toast.message(isNativeApp() ? 'Connexion Google…' : 'Redirection vers Google…');
+      toast.message('Choisissez votre compte Google sur l’écran suivant…');
       const result = await signInGoogleDrive();
       if (isNativeApp()) {
         await refresh();
-        toast.success('Compte Google Drive connecté');
+        toast.success(`Compte Google Drive connecté : ${result?.email || ''}`);
       }
       return result;
     } catch (e) {
       console.warn('Google Drive connect', e);
       toast.error(e.message || 'Connexion impossible');
+    } finally {
+      setConnecting(false);
     }
   };
 
@@ -134,9 +135,10 @@ const GoogleDriveSettings = () => {
           type="button"
           className="w-full gap-2 bg-brand-600 hover:bg-brand-700"
           onClick={handleConnect}
+          disabled={connecting}
         >
-          <Cloud className="w-4 h-4" />
-          Connecter Google Drive
+          <Cloud className={`w-4 h-4 ${connecting ? 'animate-pulse' : ''}`} />
+          {connecting ? 'Connexion en cours…' : 'Connecter Google Drive'}
         </Button>
       )}
 

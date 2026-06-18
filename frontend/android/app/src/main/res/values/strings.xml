@@ -4,4 +4,5 @@
     <string name="title_activity_main">SeNote</string>
     <string name="package_name">com.senote.tablet</string>
     <string name="custom_url_scheme">com.senote.tablet</string>
+    <string name="server_client_id" translatable="false"></string>
 </resources>
