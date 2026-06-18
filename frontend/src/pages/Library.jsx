@@ -935,11 +935,11 @@ const Library = () => {
                   Nouveau cahier
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-lg">
-                <DialogHeader>
+              <DialogContent className="sm:max-w-lg max-h-[90dvh] flex flex-col gap-0 p-0 overflow-hidden">
+                <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
                   <DialogTitle>Créer un nouveau cahier</DialogTitle>
                 </DialogHeader>
-                <div className="space-y-5 py-2">
+                <div className="space-y-5 px-6 py-2 overflow-y-auto flex-1 min-h-0 thin-scroll">
                   <div className="space-y-2">
                     <Label htmlFor="nb-title">Titre</Label>
                     <Input
@@ -958,7 +958,7 @@ const Library = () => {
                           key={c.id}
                           type="button"
                           onClick={() => setNewCover(c.id)}
-                          className={`h-16 rounded-md cover-shine border-2 transition-all ${
+                          className={`h-14 sm:h-16 rounded-md cover-shine border-2 transition-all ${
                             newCover === c.id
                               ? 'border-brand-600 scale-105'
                               : 'border-transparent hover:border-slate-300 dark:hover:border-slate-700'
@@ -974,7 +974,7 @@ const Library = () => {
                     <p className="text-xs text-slate-500">
                       Seyès, quadrillé, millimétré, musique…
                     </p>
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-[min(50vh,340px)] overflow-y-auto thin-scroll pr-1">
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                       {PAGE_TEMPLATES.map((t) => (
                         <PageTemplatePreview
                           key={t.id}
@@ -986,7 +986,7 @@ const Library = () => {
                     </div>
                   </div>
                 </div>
-                <DialogFooter>
+                <DialogFooter className="px-6 py-4 shrink-0 border-t border-slate-200 dark:border-chrome-800 bg-background">
                   <Button variant="ghost" onClick={() => setDialogOpen(false)}>
                     Annuler
                   </Button>
