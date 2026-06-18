@@ -79,9 +79,11 @@ jobs:
             const fs = require('fs');
             const p = 'capacitor.config.json';
             const c = JSON.parse(fs.readFileSync(p, 'utf8'));
+            const web = process.env.REACT_APP_GOOGLE_WEB_CLIENT_ID.trim();
             c.plugins = c.plugins || {};
             c.plugins.GoogleAuth = c.plugins.GoogleAuth || {};
-            c.plugins.GoogleAuth.serverClientId = process.env.REACT_APP_GOOGLE_WEB_CLIENT_ID.trim();
+            c.plugins.GoogleAuth.serverClientId = web;
+            c.plugins.GoogleAuth.clientId = web;
             fs.writeFileSync(p, JSON.stringify(c, null, 2) + '\n');
             "
           fi

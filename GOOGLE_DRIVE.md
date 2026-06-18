@@ -102,6 +102,36 @@ npm start
 | `redirect_uri_mismatch` | Vérifiez `http://localhost:3000` dans les origines JavaScript |
 | `access_denied` | Ajoutez votre Gmail dans « Utilisateurs test » de l'écran de consentement |
 | Connexion indisponible | Renseigner `googleWebClientId` dans `frontend/public/app-config.json` puis redéployer |
+
+---
+
+## APK Android (tablette)
+
+L’APK utilise le **même Client ID Web** que le site (`googleWebClientId`). Il charge la config depuis `app-config.json` sur GitHub Pages au démarrage.
+
+### Credentials Google Cloud (obligatoire pour l’APK)
+
+En plus du client **Application Web**, créez un client **Android** :
+
+1. **APIs & Services → Credentials → Create credentials → OAuth client ID**
+2. Type : **Android**
+3. Nom : `SeNote Tablet`
+4. **Nom du package** : `com.senote.tablet`
+5. **Empreinte SHA-1** (certificat release) :
+   ```
+   EA:C2:52:64:8D:12:03:EA:A4:CE:38:18:43:D7:B7:CA:4A:0A:66:B8
+   ```
+6. Créez le client (l’ID Android n’est pas copié dans l’app — Google lie package + SHA-1 au Client ID Web)
+
+### Vérifier dans l’app
+
+1. **Paramètres → Sauvegarde cloud**
+2. Le bouton **Connecter Google Drive** doit apparaître (plus le message « non disponible »)
+3. Connexion → dossier **SeNote** sur Drive
+
+Si la connexion échoue avec `DEVELOPER_ERROR` : vérifiez package `com.senote.tablet` et SHA-1 ci-dessus dans Google Cloud.
+
+---
 | Popup bloquée | Autoriser les popups pour le site |
 | Accès refusé | Ajouter le compte Google dans « Utilisateurs test » (Google Cloud) |
 | Popup ne s’ouvre pas | Fermez les paramètres et réessayez ; autorisez les popups pour le site |

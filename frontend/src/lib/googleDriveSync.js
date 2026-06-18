@@ -2,7 +2,7 @@ import { isNativeApp } from './platform';
 import { wrapWorkspace, unwrapWorkspace } from './dataStore';
 import {
   ensureAppConfig,
-  getGoogleNativeClientId,
+  getGoogleAuthClientId,
   getGoogleTokenExchangeUrl,
   getGoogleWebClientId,
 } from './appConfig';
@@ -138,8 +138,7 @@ const persistWebTokens = async (tokenResponse) => {
   return { email, accessToken: tokenResponse.access_token };
 };
 
-export const isDriveConfigured = () =>
-  isNativeApp() ? Boolean(getGoogleNativeClientId()) : Boolean(getGoogleWebClientId());
+export const isDriveConfigured = () => Boolean(getGoogleAuthClientId());
 
 const PREF_PREFIX = 'senote-pref-';
 
@@ -181,7 +180,7 @@ const loadGoogleAuth = async () => {
     const mod = await import('@codetrix-studio/capacitor-google-auth');
     authModule = mod.GoogleAuth;
     await ensureAppConfig();
-    const clientId = getGoogleNativeClientId();
+    const clientId = getGoogleAuthClientId();
     if (!clientId) {
       authModule = null;
       return null;
@@ -203,7 +202,7 @@ const signInNativeGoogleDrive = async () => {
   const GoogleAuth = await loadGoogleAuth();
   if (!GoogleAuth) {
     throw new Error(
-      'Google Drive indisponible — vérifiez REACT_APP_GOOGLE_CLIENT_ID (client Android OAuth).'
+      'Google Drive indisponible — client OAuth non configuré (googleWebClientId).'
     );
   }
   const result = await GoogleAuth.signIn();
@@ -224,7 +223,7 @@ const signOutNativeGoogleDrive = async () => {
 };
 
 const getNativeAccessToken = async () => {
-  if (!getGoogleNativeClientId()) return null;
+  if (!getGoogleAuthClientId()) return null;
   const GoogleAuth = await loadGoogleAuth();
   if (!GoogleAuth) return null;
   try {
