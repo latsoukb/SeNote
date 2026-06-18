@@ -447,8 +447,55 @@ const getWebAccessToken = async () => {
 
 /* ── API Drive (commun web + native) ── */
 
-/** fetch patché par Capacitor — fiable pour JSON et binaire ; nativeHttp casse le multipart. */
+/** fetch patché par Capacitor — fiable pour JSON ; PUT binaire via CapacitorHttp dataType file. */
 const driveHttpFetch = (url, init) => fetch(url, init);
+
+const getResponseHeader = (res, name) =>
+  res.headers?.get?.(name) || res.headers?.get?.(name.toLowerCase()) || null;
+
+const bytesToBase64 = (bytes) => {
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+};
+
+/** PUT binaire — sur Android, fetch convertit le PDF en texte ; CapacitorHttp file décode le base64. */
+const driveBinaryPut = async (url, bytes, contentType = 'application/pdf') => {
+  if (isNativeApp()) {
+    const { CapacitorHttp } = await import('@capacitor/core');
+    const res = await CapacitorHttp.request({
+      url,
+      method: 'PUT',
+      headers: {
+        'Content-Type': contentType,
+        'Content-Length': String(bytes.length),
+      },
+      data: bytesToBase64(bytes),
+      dataType: 'file',
+    });
+    return {
+      ok: res.status >= 200 && res.status < 300,
+      status: res.status,
+      text: async () =>
+        typeof res.data === 'string' ? res.data : JSON.stringify(res.data ?? ''),
+      json: async () =>
+        typeof res.data === 'object' && res.data !== null
+          ? res.data
+          : JSON.parse(String(res.data || '{}')),
+    };
+  }
+  return driveHttpFetch(url, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': contentType,
+      'Content-Length': String(bytes.length),
+    },
+    body: bytes,
+  });
+};
 
 const driveFetch = async (path, token, options = {}) => {
   const res = await driveHttpFetch(`${DRIVE_API}${path}`, {
@@ -652,17 +699,10 @@ const uploadPdfResumable = async (token, blob, { fileId, fileName, folderId }) =
     throw new Error(`Drive upload init ${initRes.status}: ${await initRes.text()}`);
   }
 
-  const uploadUrl = initRes.headers.get('Location');
+  const uploadUrl = getResponseHeader(initRes, 'Location');
   if (!uploadUrl) throw new Error('Upload Drive : URL resumable manquante');
 
-  const putRes = await driveHttpFetch(uploadUrl, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/pdf',
-      'Content-Length': String(bytes.length),
-    },
-    body: bytes,
-  });
+  const putRes = await driveBinaryPut(uploadUrl, bytes);
 
   if (!putRes.ok) {
     throw new Error(`Drive upload ${putRes.status}: ${await putRes.text()}`);
