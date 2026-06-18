@@ -100,7 +100,8 @@ npm start
 
 | Erreur | Solution |
 |--------|----------|
-| `redirect_uri_mismatch` | Vérifiez `http://localhost:3000` dans les origines JavaScript |
+| `redirect_uri_mismatch` (APK) | Client **Application Web** → URI de redirection : `https://localhost/` (pas le client Android) |
+| `redirect_uri_mismatch` (site) | Vérifiez `https://latsoukb.github.io/SeNote/` dans les URI de redirection |
 | `access_denied` | Ajoutez votre Gmail dans « Utilisateurs test » de l'écran de consentement |
 | Connexion indisponible | Renseigner `googleWebClientId` dans `frontend/public/app-config.json` puis redéployer |
 

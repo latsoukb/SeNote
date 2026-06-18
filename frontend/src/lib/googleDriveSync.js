@@ -31,8 +31,11 @@ const DRIVE_UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
 const OAUTH_PENDING_KEY = 'senote_drive_oauth_pending';
 const PKCE_VERIFIER_KEY = 'senote_pkce_verifier';
 const OAUTH_STATE = 'senote_drive';
+/** URI fixe APK (Capacitor androidScheme https) — doit être dans Google Cloud. */
+const NATIVE_OAUTH_REDIRECT_URI = 'https://localhost/';
 
 const getOAuthRedirectUri = () => {
+  if (isNativeApp()) return NATIVE_OAUTH_REDIRECT_URI;
   const base = (process.env.PUBLIC_URL || '').replace(/\/$/, '');
   return `${window.location.origin}${base}/`;
 };
@@ -369,7 +372,9 @@ export const completeWebOAuthRedirect = async (returnUrl) => {
     const msg =
       returned.error === 'access_denied'
         ? 'Accès refusé — ajoutez votre compte dans « Utilisateurs test » (Google Cloud).'
-        : returned.errorDescription || returned.error;
+        : returned.error === 'redirect_uri_mismatch'
+          ? 'URI de redirection manquante : ajoutez https://localhost/ dans le client OAuth Web (Google Cloud → Credentials).'
+          : returned.errorDescription || returned.error;
     throw new Error(msg);
   }
 
@@ -443,8 +448,11 @@ const getWebAccessToken = async () => {
 
 /* ── API Drive (commun web + native) ── */
 
+/** fetch patché par Capacitor — fiable pour JSON et binaire ; nativeHttp casse le multipart. */
+const driveHttpFetch = (url, init) => fetch(url, init);
+
 const driveFetch = async (path, token, options = {}) => {
-  const res = await httpFetch(`${DRIVE_API}${path}`, {
+  const res = await driveHttpFetch(`${DRIVE_API}${path}`, {
     ...options,
     headers: {
       Authorization: `Bearer ${token}`,
@@ -460,7 +468,7 @@ const driveFetch = async (path, token, options = {}) => {
 
 /** Mises à jour du contenu fichier (JSON, PDF) — endpoint upload, pas metadata. */
 const driveUploadFetch = async (path, token, options = {}) => {
-  const res = await httpFetch(`${DRIVE_UPLOAD_API}${path}`, {
+  const res = await driveHttpFetch(`${DRIVE_UPLOAD_API}${path}`, {
     ...options,
     headers: {
       Authorization: `Bearer ${token}`,
@@ -562,12 +570,17 @@ const savePdfMap = async (map) => {
   await prefSet(PREFS.PDF_MAP, JSON.stringify(map));
 };
 
+const asUploadBody = async (blob) =>
+  isNativeApp() && blob instanceof Blob ? blob.arrayBuffer() : blob;
+
 const uploadPdfToDrive = async (token, folderId, fileName, blob, fileId, previousName) => {
+  const pdfBody = await asUploadBody(blob);
+
   if (fileId) {
     await driveUploadFetch(`/files/${fileId}?uploadType=media`, token, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/pdf' },
-      body: blob,
+      body: pdfBody,
     });
     if (previousName !== fileName) {
       await driveFetch(`/files/${fileId}?fields=id`, token, {
@@ -579,28 +592,21 @@ const uploadPdfToDrive = async (token, folderId, fileName, blob, fileId, previou
     return fileId;
   }
 
-  const metadata = {
-    name: fileName,
-    parents: [folderId],
-  };
-  const boundary = 'senote_pdf_boundary';
-  const encoder = new TextEncoder();
-  const preamble = encoder.encode(
-    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n` +
-      `--${boundary}\r\nContent-Type: application/pdf\r\n\r\n`
-  );
-  const closing = encoder.encode(`\r\n--${boundary}--`);
-  const pdfBytes = await blob.arrayBuffer();
-  const body = new Blob([preamble, pdfBytes, closing], {
-    type: `multipart/related; boundary=${boundary}`,
-  });
-
-  const res = await driveUploadFetch('/files?uploadType=multipart&fields=id', token, {
+  const create = await driveFetch('/files', token, {
     method: 'POST',
-    headers: { 'Content-Type': `multipart/related; boundary=${boundary}` },
-    body,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: fileName,
+      parents: [folderId],
+      mimeType: 'application/pdf',
+    }),
   });
-  const created = await res.json();
+  const created = await create.json();
+  await driveUploadFetch(`/files/${created.id}?uploadType=media`, token, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/pdf' },
+    body: pdfBody,
+  });
   return created.id;
 };
 
@@ -665,30 +671,22 @@ export const uploadToGoogleDrive = async (workspaceData) => {
       body,
     });
   } else {
-    const metadata = {
-      name: WORKSPACE_NAME,
-      parents: [folderId],
-    };
-    const boundary = 'senote_boundary';
-    const multipart = [
-      `--${boundary}`,
-      'Content-Type: application/json; charset=UTF-8',
-      '',
-      JSON.stringify(metadata),
-      `--${boundary}`,
-      'Content-Type: application/json',
-      '',
-      body,
-      `--${boundary}--`,
-    ].join('\r\n');
-
-    const res = await driveUploadFetch('/files?uploadType=multipart&fields=id', token, {
+    const create = await driveFetch('/files', token, {
       method: 'POST',
-      headers: { 'Content-Type': `multipart/related; boundary=${boundary}` },
-      body: multipart,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: WORKSPACE_NAME,
+        parents: [folderId],
+        mimeType: 'application/json',
+      }),
     });
-    const created = await res.json();
+    const created = await create.json();
     fileId = created.id;
+    await driveUploadFetch(`/files/${fileId}?uploadType=media`, token, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+    });
     await prefSet(PREFS.FILE_ID, fileId);
   }
 
