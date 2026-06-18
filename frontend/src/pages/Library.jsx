@@ -21,6 +21,8 @@ import {
   RefreshCw,
   LogOut,
   CalendarClock,
+  ShoppingBag,
+  ChevronLeft,
 } from 'lucide-react';
 import {
   Sheet,
@@ -52,7 +54,7 @@ import {
 import { Label } from '../components/ui/label';
 import { useTheme } from '../context/ThemeContext';
 import { useNotes } from '../context/NotesContext';
-import { COVER_TEMPLATES, PAGE_TEMPLATES, FOLDER_COLORS } from '../mock/mock';
+import { COVER_TEMPLATES, PAGE_TEMPLATES, FOLDER_COLORS, FOLDER_ICONS } from '../mock/mock';
 import Logo from '../components/Logo';
 import PageTemplatePreview from '../components/PageTemplatePreview';
 import SettingsDialog from '../components/SettingsDialog';
@@ -76,6 +78,47 @@ const formatDate = (ts) => {
   if (diff < 3600000) return `il y a ${Math.floor(diff / 60000)} min`;
   if (diff < 86400000) return `il y a ${Math.floor(diff / 3600000)} h`;
   return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+};
+
+const FolderCard = ({ folder, notebookCount, onOpen, onDelete }) => {
+  const Icon = folder.icon === 'bag' ? ShoppingBag : Folder;
+  return (
+    <div className="group fade-up relative">
+      <button
+        type="button"
+        onClick={() => onOpen(folder.id)}
+        className="w-full text-left"
+        aria-label={`Ouvrir ${folder.name}`}
+      >
+        <div
+          className="aspect-square rounded-2xl flex flex-col items-center justify-center gap-2 p-4 shadow-sm group-hover:shadow-md transition-all group-hover:-translate-y-0.5"
+          style={{
+            background: `${folder.color}18`,
+            border: `2px solid ${folder.color}55`,
+          }}
+        >
+          <Icon className="w-11 h-11" style={{ color: folder.color }} strokeWidth={1.75} />
+          <span className="font-semibold text-sm text-center line-clamp-2 w-full px-1">
+            {folder.name}
+          </span>
+          <span className="text-xs text-slate-500 dark:text-slate-400">
+            {notebookCount} cahier{notebookCount !== 1 ? 's' : ''}
+          </span>
+        </div>
+      </button>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete(folder.id);
+        }}
+        className="absolute top-2 right-2 p-1.5 rounded-md text-slate-400 hover:text-red-500 bg-white/80 dark:bg-chrome-900/80 opacity-0 group-hover:opacity-100 transition-opacity"
+        aria-label="Supprimer le dossier"
+      >
+        <Trash2 className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
 };
 
 const NotebookCard = ({
@@ -184,16 +227,7 @@ const LibrarySidebar = ({
   studentEnrolled,
   selectedFolder,
   setSelectedFolder,
-  folders,
   trashCount,
-  folderDialogOpen,
-  setFolderDialogOpen,
-  newFolderName,
-  setNewFolderName,
-  newFolderColor,
-  setNewFolderColor,
-  onCreateFolder,
-  onDeleteFolder,
   onNavigate,
   className = '',
 }) => (
@@ -240,7 +274,7 @@ const LibrarySidebar = ({
       className={navBtnClass(mainView === 'library' && selectedFolder === 'all')}
     >
       <BookOpen className="w-4 h-4 shrink-0" />
-      Tous les cahiers
+      Accueil
     </button>
     <button
       onClick={() => {
@@ -252,17 +286,6 @@ const LibrarySidebar = ({
     >
       <Pin className="w-4 h-4 shrink-0" />
       Raccourcis
-    </button>
-    <button
-      onClick={() => {
-        setMainView('library');
-        setSelectedFolder('none');
-        onNavigate?.();
-      }}
-      className={navBtnClass(mainView === 'library' && selectedFolder === 'none')}
-    >
-      <Folder className="w-4 h-4 shrink-0 opacity-50" />
-      Sans dossier
     </button>
     <div className="h-px bg-slate-200 dark:bg-chrome-800 my-3" />
     <button
@@ -283,84 +306,6 @@ const LibrarySidebar = ({
         </span>
       )}
     </button>
-    <div className="h-px bg-slate-200 dark:bg-chrome-800 my-3" />
-    <p className="text-xs uppercase tracking-wide font-medium text-slate-500 px-2 mb-2">
-      Dossiers
-    </p>
-    {folders.map((f) => (
-      <div key={f.id} className="group flex items-center">
-        <button
-          onClick={() => {
-            setMainView('library');
-            setSelectedFolder(f.id);
-            onNavigate?.();
-          }}
-          className={`flex-1 flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors truncate ${navBtnClass(mainView === 'library' && selectedFolder === f.id)}`}
-        >
-          <span className="w-3 h-3 rounded-sm shrink-0" style={{ background: f.color }} />
-          <span className="truncate">{f.name}</span>
-        </button>
-        <button
-          onClick={() => {
-            onDeleteFolder(f.id);
-            onNavigate?.();
-          }}
-          className="p-2 text-slate-400 hover:text-red-500 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
-          aria-label="Supprimer le dossier"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
-      </div>
-    ))}
-    <Dialog open={folderDialogOpen} onOpenChange={setFolderDialogOpen}>
-      <DialogTrigger asChild>
-        <button className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-slate-500 hover:bg-slate-100 dark:hover:bg-chrome-800 mt-1">
-          <FolderPlus className="w-4 h-4" />
-          Nouveau dossier
-        </button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Nouveau dossier</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-2">
-          <div className="space-y-2">
-            <Label htmlFor="folder-name-m">Nom</Label>
-            <Input
-              id="folder-name-m"
-              value={newFolderName}
-              onChange={(e) => setNewFolderName(e.target.value)}
-              placeholder="Mon dossier"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Couleur</Label>
-            <div className="flex flex-wrap gap-2">
-              {FOLDER_COLORS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setNewFolderColor(c)}
-                  className={`w-8 h-8 rounded-md border-2 transition-transform ${
-                    newFolderColor === c ? 'border-slate-900 dark:border-white scale-110' : 'border-transparent'
-                  }`}
-                  style={{ background: c }}
-                  aria-label={`Couleur ${c}`}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => setFolderDialogOpen(false)}>
-            Annuler
-          </Button>
-          <Button onClick={onCreateFolder} className="bg-brand-600 hover:bg-brand-700 text-white">
-            Créer
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   </div>
 );
 
@@ -413,6 +358,7 @@ const Library = () => {
   const [newTemplate, setNewTemplate] = useState('seyes');
   const [newFolderName, setNewFolderName] = useState('');
   const [newFolderColor, setNewFolderColor] = useState(FOLDER_COLORS[0]);
+  const [newFolderIcon, setNewFolderIcon] = useState('folder');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [pdfImporting, setPdfImporting] = useState(false);
   useEffect(() => {
@@ -437,11 +383,14 @@ const Library = () => {
     COVER_TEMPLATES.find((c) => c.id === coverId)?.gradient || COVER_TEMPLATES[0].gradient;
 
   const folderFilter = (nb) => {
-    if (selectedFolder === 'all') return true;
+    if (selectedFolder === 'all') return !nb.folderId;
     if (selectedFolder === 'pinned') return nb.pinned;
-    if (selectedFolder === 'none') return !nb.folderId;
     return nb.folderId === selectedFolder;
   };
+
+  const currentFolder = folders.find((f) => f.id === selectedFolder) || null;
+  const isHomeView = selectedFolder === 'all';
+  const looseNotebooks = notebooks.filter((n) => !n.folderId);
 
   const filtered = notebooks
     .filter(folderFilter)
@@ -459,7 +408,7 @@ const Library = () => {
     try {
       const { title, backgrounds } = await parsePdfFile(file);
       const folderId =
-        selectedFolder !== 'all' && selectedFolder !== 'pinned' && selectedFolder !== 'none'
+        selectedFolder !== 'all' && selectedFolder !== 'pinned' && selectedFolder !== 'trash'
           ? selectedFolder
           : null;
       const nb = importPdfNotebook(title, backgrounds, 'cover-paper', folderId);
@@ -477,9 +426,10 @@ const Library = () => {
 
   const handleCreate = () => {
     const title = newTitle.trim() || 'Sans titre';
-    const folderId = selectedFolder !== 'all' && selectedFolder !== 'pinned' && selectedFolder !== 'none'
-      ? selectedFolder
-      : null;
+    const folderId =
+      selectedFolder !== 'all' && selectedFolder !== 'pinned' && selectedFolder !== 'trash'
+        ? selectedFolder
+        : null;
     addNotebook(title, newCover, newTemplate, folderId);
     toast.success('Cahier créé', { description: title });
     setNewTitle('');
@@ -490,10 +440,11 @@ const Library = () => {
 
   const handleCreateFolder = () => {
     const name = newFolderName.trim() || 'Nouveau dossier';
-    addFolder(name, newFolderColor);
+    addFolder(name, newFolderColor, newFolderIcon);
     toast.success('Dossier créé', { description: name });
     setNewFolderName('');
     setNewFolderColor(FOLDER_COLORS[0]);
+    setNewFolderIcon('folder');
     setFolderDialogOpen(false);
   };
 
@@ -538,16 +489,7 @@ const Library = () => {
     studentEnrolled: Boolean(currentStudent && enrolled),
     selectedFolder,
     setSelectedFolder,
-    folders,
     trashCount,
-    folderDialogOpen,
-    setFolderDialogOpen,
-    newFolderName,
-    setNewFolderName,
-    newFolderColor,
-    setNewFolderColor,
-    onCreateFolder: handleCreateFolder,
-    onDeleteFolder: handleDeleteFolder,
   };
 
   return (
@@ -684,7 +626,7 @@ const Library = () => {
             </button>
           )}
           {mainView === 'library' && [
-            { id: 'all', label: 'Tous', icon: BookOpen },
+            { id: 'all', label: 'Accueil', icon: BookOpen },
             { id: 'pinned', label: 'Raccourcis', icon: Pin },
             { id: 'trash', label: 'Corbeille', icon: Trash },
           ].map(({ id, label, icon: Icon }) => (
@@ -702,20 +644,6 @@ const Library = () => {
               {id === 'trash' && trashCount > 0 && (
                 <span className="bg-white/20 px-1 rounded text-[10px]">{trashCount}</span>
               )}
-            </button>
-          ))}
-          {mainView === 'library' && folders.map((f) => (
-            <button
-              key={f.id}
-              onClick={() => setSelectedFolder(f.id)}
-              className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                selectedFolder === f.id
-                  ? 'bg-brand-600 text-white border-brand-600'
-                  : 'bg-white dark:bg-chrome-900 border-slate-200 dark:border-chrome-700'
-              }`}
-            >
-              <span className="w-2 h-2 rounded-full" style={{ background: f.color }} />
-              {f.name}
             </button>
           ))}
         </div>
@@ -881,10 +809,30 @@ const Library = () => {
           ) : (
           <>
           <div className="flex items-end justify-between mb-8 gap-4 flex-wrap">
-            <div>
-              <h1 className="text-3xl font-semibold tracking-tight">Ma bibliothèque</h1>
+            <div className="min-w-0">
+              {currentFolder && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedFolder('all')}
+                  className="flex items-center gap-1 text-sm text-brand-600 dark:text-brand-400 mb-2 hover:underline"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Ma bibliothèque
+                </button>
+              )}
+              <h1 className="text-3xl font-semibold tracking-tight truncate">
+                {currentFolder
+                  ? currentFolder.name
+                  : selectedFolder === 'pinned'
+                    ? 'Raccourcis'
+                    : 'Ma bibliothèque'}
+              </h1>
               <p className="text-slate-500 dark:text-slate-400 mt-1">
-                {filtered.length} cahier{filtered.length > 1 ? 's' : ''}
+                {currentFolder
+                  ? `${filtered.length} cahier${filtered.length > 1 ? 's' : ''} dans ce dossier`
+                  : isHomeView
+                    ? `${folders.length} dossier${folders.length > 1 ? 's' : ''} · ${looseNotebooks.length} cahier${looseNotebooks.length > 1 ? 's' : ''} sans dossier`
+                    : `${filtered.length} cahier${filtered.length > 1 ? 's' : ''}`}
               </p>
             </div>
 
@@ -904,6 +852,82 @@ const Library = () => {
               <FileUp className="w-4 h-4" />
               Importer PDF
             </Button>
+            {isHomeView && (
+              <Dialog open={folderDialogOpen} onOpenChange={setFolderDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="rounded-full px-5 h-11 gap-2">
+                    <FolderPlus className="w-4 h-4" />
+                    Nouveau dossier
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-sm">
+                  <DialogHeader>
+                    <DialogTitle>Nouveau dossier</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 py-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="folder-name">Nom</Label>
+                      <Input
+                        id="folder-name"
+                        value={newFolderName}
+                        onChange={(e) => setNewFolderName(e.target.value)}
+                        placeholder="Mon dossier"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Icône</Label>
+                      <div className="flex gap-2">
+                        {FOLDER_ICONS.map(({ id, label }) => {
+                          const Icon = id === 'bag' ? ShoppingBag : Folder;
+                          return (
+                            <button
+                              key={id}
+                              type="button"
+                              onClick={() => setNewFolderIcon(id)}
+                              className={`flex-1 flex flex-col items-center gap-1.5 py-3 rounded-lg border-2 transition-all ${
+                                newFolderIcon === id
+                                  ? 'border-brand-600 bg-brand-50 dark:bg-brand-950/30'
+                                  : 'border-slate-200 dark:border-chrome-700 hover:border-slate-300'
+                              }`}
+                            >
+                              <Icon className="w-6 h-6" />
+                              <span className="text-xs">{label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Couleur</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {FOLDER_COLORS.map((c) => (
+                          <button
+                            key={c}
+                            type="button"
+                            onClick={() => setNewFolderColor(c)}
+                            className={`w-8 h-8 rounded-md border-2 transition-transform ${
+                              newFolderColor === c
+                                ? 'border-slate-900 dark:border-white scale-110'
+                                : 'border-transparent'
+                            }`}
+                            style={{ background: c }}
+                            aria-label={`Couleur ${c}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="ghost" onClick={() => setFolderDialogOpen(false)}>
+                      Annuler
+                    </Button>
+                    <Button onClick={handleCreateFolder} className="bg-brand-600 hover:bg-brand-700 text-white">
+                      Créer
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button className="bg-brand-600 hover:bg-brand-700 text-white rounded-full px-5 h-11 gap-2">
@@ -974,6 +998,44 @@ const Library = () => {
             </Dialog>
           </div>
 
+          {isHomeView && !search && folders.length > 0 && (
+            <section className="mb-10">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-4">
+                Dossiers
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-6 gap-y-8">
+                {folders.map((f) => (
+                  <FolderCard
+                    key={f.id}
+                    folder={f}
+                    notebookCount={notebooks.filter((n) => n.folderId === f.id).length}
+                    onOpen={(id) => setSelectedFolder(id)}
+                    onDelete={handleDeleteFolder}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {isHomeView && !search && folders.length === 0 && (
+            <section className="mb-10">
+              <div className="rounded-xl border border-dashed border-slate-300 dark:border-chrome-700 p-8 text-center">
+                <FolderPlus className="w-8 h-8 mx-auto text-slate-400 mb-3" />
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                  Organisez vos cahiers en dossiers (icône dossier ou sac, couleur au choix).
+                </p>
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => setFolderDialogOpen(true)}
+                >
+                  <FolderPlus className="w-4 h-4" />
+                  Créer un dossier
+                </Button>
+              </div>
+            </section>
+          )}
+
           {selectedFolder === 'all' && pinnedNotebooks.length > 0 && !search && (
             <section className="mb-10">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-4 flex items-center gap-2">
@@ -991,19 +1053,38 @@ const Library = () => {
           {filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center">
               <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-chrome-900 flex items-center justify-center mb-4">
-                <BookOpen className="w-7 h-7 text-slate-400" />
+                {currentFolder ? (
+                  currentFolder.icon === 'bag' ? (
+                    <ShoppingBag className="w-7 h-7 text-slate-400" />
+                  ) : (
+                    <Folder className="w-7 h-7 text-slate-400" />
+                  )
+                ) : (
+                  <BookOpen className="w-7 h-7 text-slate-400" />
+                )}
               </div>
-              <h3 className="font-medium text-lg">Aucun cahier</h3>
+              <h3 className="font-medium text-lg">
+                {currentFolder ? 'Dossier vide' : 'Aucun cahier'}
+              </h3>
               <p className="text-slate-500 dark:text-slate-400 mt-1">
-                Créez votre premier cahier pour commencer.
+                {currentFolder
+                  ? 'Créez un cahier dans ce dossier pour commencer.'
+                  : 'Créez votre premier cahier ou importez un PDF.'}
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-6 gap-y-10">
-              {filtered.map((nb) => (
-                <NotebookCard key={nb.id} nb={nb} {...cardProps} />
-              ))}
-            </div>
+            <>
+              {isHomeView && !search && (
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-4">
+                  Cahiers
+                </h2>
+              )}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-6 gap-y-10">
+                {filtered.map((nb) => (
+                  <NotebookCard key={nb.id} nb={nb} {...cardProps} />
+                ))}
+              </div>
+            </>
           )}
           </>
           )}

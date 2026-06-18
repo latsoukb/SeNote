@@ -24,21 +24,8 @@ export const countNotebookPages = (nb) =>
 export const getAllNotebookPages = (nb) =>
   getNotebookSections(nb).flatMap((s) => s.pages);
 
-/** IDs des cahiers démo d'origine (app web) — ignorés s'ils n'ont jamais été modifiés. */
-const SEED_DEMO_NOTEBOOK_IDS = new Set([
-  'nb-welcome',
-  'nb-meetings',
-  'nb-sketches',
-  'nb-math',
-]);
-
-/** Synchroniser tous les cahiers sauf les démos jamais touchées (pas besoin d'écriture). */
-export const shouldSyncNotebookToDrive = (nb) => {
-  if (!SEED_DEMO_NOTEBOOK_IDS.has(nb.id)) return true;
-  const created = nb.createdAt ?? 0;
-  const updated = nb.updatedAt ?? 0;
-  return updated > created + 60_000;
-};
+/** Synchroniser tous les cahiers de l'utilisateur vers Drive. */
+export const shouldSyncNotebookToDrive = () => true;
 
 /** @deprecated utiliser shouldSyncNotebookToDrive */
 export const notebookHasContent = (nb) =>

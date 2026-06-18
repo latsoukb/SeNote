@@ -15,6 +15,7 @@ const PREFS = {
   TOKEN_EXPIRY: 'senote_drive_token_expiry',
   REFRESH_TOKEN: 'senote_drive_refresh_token',
   PDF_MAP: 'senote_drive_pdf_map',
+  APP_FOLDER_MAP: 'senote_drive_app_folder_map',
 };
 
 const FOLDER_NAME = 'SeNote';
@@ -737,6 +738,100 @@ const savePdfMap = async (map) => {
   await prefSet(PREFS.PDF_MAP, JSON.stringify(map));
 };
 
+const getAppFolderMap = async () => {
+  const raw = await prefGet(PREFS.APP_FOLDER_MAP);
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+};
+
+const saveAppFolderMap = async (map) => {
+  await prefSet(PREFS.APP_FOLDER_MAP, JSON.stringify(map));
+};
+
+const findAppFolderOnDrive = async (token, rootId, appFolderId) => {
+  const q = encodeURIComponent(
+    `'${rootId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false and appProperties has { key='senoteAppFolder' and value='${appFolderId}' }`
+  );
+  const list = await driveFetch(`/files?q=${q}&spaces=drive&fields=files(id)`, token);
+  const data = await list.json();
+  return data.files?.[0]?.id || null;
+};
+
+const findOrCreateAppFolderOnDrive = async (token, rootId, appFolder, folderMap) => {
+  const cached = folderMap[appFolder.id];
+  if (cached && (await driveFileExists(token, cached))) return cached;
+
+  const existing = await findAppFolderOnDrive(token, rootId, appFolder.id);
+  if (existing) {
+    folderMap[appFolder.id] = existing;
+    return existing;
+  }
+
+  const create = await driveFetch('/files', token, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: appFolder.name,
+      mimeType: 'application/vnd.google-apps.folder',
+      parents: [rootId],
+      appProperties: { senoteAppFolder: appFolder.id, [FOLDER_APP_PROP]: '1' },
+    }),
+  });
+  const folder = await create.json();
+  folderMap[appFolder.id] = folder.id;
+  return folder.id;
+};
+
+const syncAppFoldersToDrive = async (token, rootId, appFolders) => {
+  const folderMap = await getAppFolderMap();
+  const activeIds = new Set((appFolders || []).map((f) => f.id));
+
+  for (const appFolder of appFolders || []) {
+    await findOrCreateAppFolderOnDrive(token, rootId, appFolder, folderMap);
+    if (appFolder.name) {
+      const driveId = folderMap[appFolder.id];
+      if (driveId) {
+        try {
+          await driveFetch(`/files/${driveId}?fields=id`, token, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: appFolder.name }),
+          });
+        } catch {
+          /* renommage optionnel */
+        }
+      }
+    }
+  }
+
+  for (const id of Object.keys(folderMap)) {
+    if (!activeIds.has(id)) delete folderMap[id];
+  }
+
+  await saveAppFolderMap(folderMap);
+  return folderMap;
+};
+
+const resolveDriveFolderForNotebook = (nb, rootId, appFolders, folderMap) => {
+  if (!nb.folderId) return rootId;
+  const appFolder = (appFolders || []).find((f) => f.id === nb.folderId);
+  if (!appFolder) return rootId;
+  return folderMap[appFolder.id] || rootId;
+};
+
+const moveDriveFile = async (token, fileId, newParentId, oldParentId) => {
+  const remove = oldParentId ? `&removeParents=${oldParentId}` : '';
+  await driveFetch(
+    `/files/${fileId}?addParents=${encodeURIComponent(newParentId)}${remove}&fields=id`,
+    token,
+    { method: 'PATCH' }
+  );
+};
+
 const pdfBytes = async (blob) => new Uint8Array(await blob.arrayBuffer());
 
 /** Upload PDF via session resumable (binaire correct sur Android). */
@@ -830,32 +925,60 @@ const uploadPdfToDrive = async (token, folderId, fileName, blob, fileId, previou
   return createPdfOnDrive(token, folderId, fileName, blob);
 };
 
-/** Un PDF par cahier dans le dossier SeNote (lisible dans Drive). */
+/** Un PDF par cahier — structure miroir des dossiers app dans SeNote/Drive. */
 export const syncNotebookPdfsToDrive = async (workspaceData) => {
   const { notebookToPdfBlob, pdfFileName } = await import('./exportNotebookPdf');
   await ensureAppConfig();
   const token = await getAccessToken();
   if (!token) throw new Error('Non connecté à Google Drive');
 
-  const folderId = await findOrCreateFolder(token);
-  await removeLegacyWorkspaceFromFolder(token, folderId);
+  const rootFolderId = await findOrCreateFolder(token);
+  await removeLegacyWorkspaceFromFolder(token, rootFolderId);
+  const appFolders = workspaceData?.folders || [];
+  const folderMap = await syncAppFoldersToDrive(token, rootFolderId, appFolders);
   const map = await getPdfMap();
   const activeIds = new Set((workspaceData?.notebooks || []).map((n) => n.id));
 
   for (const nb of workspaceData?.notebooks || []) {
     if (!shouldSyncNotebookToDrive(nb)) continue;
 
+    const targetDriveFolderId = resolveDriveFolderForNotebook(
+      nb,
+      rootFolderId,
+      appFolders,
+      folderMap
+    );
     const fileName = pdfFileName(nb);
     const blob = await notebookToPdfBlob(nb);
+    const prev = map[nb.id];
+
+    if (
+      prev?.fileId &&
+      prev.driveFolderId &&
+      prev.driveFolderId !== targetDriveFolderId
+    ) {
+      try {
+        await moveDriveFile(token, prev.fileId, targetDriveFolderId, prev.driveFolderId);
+      } catch (e) {
+        if (!isDriveNotFound(e)) throw e;
+      }
+    }
+
     const fileId = await uploadPdfToDrive(
       token,
-      folderId,
+      targetDriveFolderId,
       fileName,
       blob,
-      map[nb.id]?.fileId,
-      map[nb.id]?.fileName
+      prev?.fileId,
+      prev?.fileName
     );
-    map[nb.id] = { fileId, fileName, updatedAt: nb.updatedAt || Date.now() };
+    map[nb.id] = {
+      fileId,
+      fileName,
+      driveFolderId: targetDriveFolderId,
+      appFolderId: nb.folderId || null,
+      updatedAt: nb.updatedAt || Date.now(),
+    };
   }
 
   for (const id of Object.keys(map)) {
@@ -871,12 +994,17 @@ export const syncNotebookPdfsToDrive = async (workspaceData) => {
 
   await savePdfMap(map);
   await prefSet(PREFS.LAST_SYNC, String(Date.now()));
-  const inFolder = (await listPdfsInFolder(token, folderId)).length;
-  const folderUrl = `https://drive.google.com/drive/folders/${folderId}`;
+
+  let inFolder = (await listPdfsInFolder(token, rootFolderId)).length;
+  for (const driveSubId of Object.values(folderMap)) {
+    inFolder += (await listPdfsInFolder(token, driveSubId)).length;
+  }
+
+  const folderUrl = `https://drive.google.com/drive/folders/${rootFolderId}`;
   return {
     count: Object.keys(map).length,
     inFolder,
-    folderId,
+    folderId: rootFolderId,
     folderUrl,
   };
 };

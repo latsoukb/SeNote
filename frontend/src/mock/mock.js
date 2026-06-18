@@ -32,63 +32,13 @@ const makePage = (template = 'seyes') => ({
   createdAt: Date.now(),
 });
 
-export const initialFolders = [
-  { id: 'folder-school', name: 'École', color: '#3B82F6', createdAt: Date.now() - 86400000 * 7 },
-  { id: 'folder-personal', name: 'Personnel', color: '#10B981', createdAt: Date.now() - 86400000 * 3 },
+export const FOLDER_ICONS = [
+  { id: 'folder', label: 'Dossier' },
+  { id: 'bag', label: 'Sac' },
 ];
 
-export const initialNotebooks = [
-  {
-    id: 'nb-welcome',
-    title: 'Bienvenue sur SeNote',
-    cover: 'cover-blue',
-    pageTemplate: 'seyes',
-    folderId: 'folder-school',
-    pinned: true,
-    sections: [
-      {
-        id: 'sec-welcome-1',
-        title: 'Onglet 1',
-        pages: [makePage('seyes'), makePage('seyes')],
-      },
-    ],
-    updatedAt: Date.now(),
-    createdAt: Date.now() - 86400000,
-  },
-  {
-    id: 'nb-meetings',
-    title: 'Notes de réunion',
-    cover: 'cover-slate',
-    pageTemplate: 'seyes',
-    folderId: 'folder-school',
-    pinned: false,
-    sections: [{ id: 'sec-meetings-1', title: 'Onglet 1', pages: [makePage('seyes')] }],
-    updatedAt: Date.now() - 3600000,
-    createdAt: Date.now() - 5 * 86400000,
-  },
-  {
-    id: 'nb-sketches',
-    title: 'Croquis & idées',
-    cover: 'cover-cyan',
-    pageTemplate: 'blank',
-    folderId: 'folder-personal',
-    pinned: false,
-    sections: [{ id: 'sec-sketches-1', title: 'Onglet 1', pages: [makePage('blank'), makePage('grid')] }],
-    updatedAt: Date.now() - 7200000,
-    createdAt: Date.now() - 10 * 86400000,
-  },
-  {
-    id: 'nb-math',
-    title: 'Mathématiques',
-    cover: 'cover-emerald',
-    pageTemplate: 'grid',
-    folderId: null,
-    pinned: false,
-    sections: [{ id: 'sec-math-1', title: 'Onglet 1', pages: [makePage('grid')] }],
-    updatedAt: Date.now() - 4 * 86400000,
-    createdAt: Date.now() - 30 * 86400000,
-  },
-];
+export const initialFolders = [];
+export const initialNotebooks = [];
 
 export const PEN_COLORS = [
   '#0F172A',
@@ -123,10 +73,11 @@ export const newPdfPage = (pdfBackground) => ({
   createdAt: Date.now(),
 });
 
-export const newFolder = (name = 'Nouveau dossier', color = FOLDER_COLORS[0]) => ({
+export const newFolder = (name = 'Nouveau dossier', color = FOLDER_COLORS[0], icon = 'folder') => ({
   id: `folder-${Math.random().toString(36).slice(2, 10)}`,
   name,
   color,
+  icon: icon === 'bag' ? 'bag' : 'folder',
   createdAt: Date.now(),
 });
 

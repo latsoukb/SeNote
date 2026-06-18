@@ -1,7 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import {
-  initialNotebooks,
-  initialFolders,
   newNotebook as createNotebook,
   newPage as createPage,
   newPdfPage as createPdfPage,
@@ -11,7 +9,6 @@ import {
 import { ensureNotebookSections, notebookHasContent } from '../lib/notebookSections';
 import { checkBackend, fetchWorkspace, saveWorkspace as saveWorkspaceApi } from '../lib/api';
 import { loadWorkspace, saveWorkspace, getStorageLabel } from '../lib/dataStore';
-import { isKioskApp } from '../lib/platform';
 import {
   syncNotebookPdfsToDrive,
   mergeWithGoogleDrive,
@@ -46,19 +43,11 @@ const emptyLibrary = () => ({
   savedAt: 0,
 });
 
-const defaultData = () =>
-  isKioskApp()
-    ? emptyLibrary()
-    : {
-        folders: initialFolders,
-        notebooks: initialNotebooks,
-        trash: emptyTrash(),
-        savedAt: 0,
-      };
+const defaultData = () => emptyLibrary();
 
 export const NotesProvider = ({ children }) => {
-  const [folders, setFolders] = useState(() => (isKioskApp() ? [] : initialFolders));
-  const [notebooks, setNotebooks] = useState(() => (isKioskApp() ? [] : initialNotebooks));
+  const [folders, setFolders] = useState([]);
+  const [notebooks, setNotebooks] = useState([]);
   const [trash, setTrash] = useState(emptyTrash);
   const [ready, setReady] = useState(false);
   const [driveSyncing, setDriveSyncing] = useState(false);
@@ -71,7 +60,7 @@ export const NotesProvider = ({ children }) => {
 
   const applyWorkspace = useCallback((data) => {
     if (!data) return;
-    setFolders(data.folders ?? initialFolders);
+    setFolders((data.folders ?? []).map((f) => ({ ...f, icon: f.icon === 'bag' ? 'bag' : 'folder' })));
     setNotebooks((data.notebooks ?? []).map(migrateNotebook));
     setTrash(data.trash ?? emptyTrash());
   }, []);
@@ -103,7 +92,7 @@ export const NotesProvider = ({ children }) => {
             (remote.notebooks?.length || 0) > 0 || (remote.folders?.length || 0) > 0;
           if (hasRemote) {
             applyWorkspace({
-              folders: remote.folders ?? initialFolders,
+              folders: remote.folders ?? [],
               notebooks: (remote.notebooks ?? []).map(migrateNotebook),
               trash: remote.trash ?? emptyTrash(),
               savedAt: Date.now(),
@@ -317,8 +306,8 @@ export const NotesProvider = ({ children }) => {
     );
   }, []);
 
-  const addFolder = useCallback((name, color) => {
-    const folder = createFolder(name, color);
+  const addFolder = useCallback((name, color, icon = 'folder') => {
+    const folder = createFolder(name, color, icon);
     setFolders((prev) => [...prev, folder]);
     return folder;
   }, []);

@@ -100,7 +100,7 @@ const GoogleDriveSettings = ({ onBeforeConnect }) => {
   };
 
   const storageHint =
-    'Vos cahiers restent sur cet appareil. L’app crée son propre dossier « SeNote » sur Drive (un PDF par cahier). Si vous aviez déjà un dossier SeNote à la main, ce n’est pas le même — utilisez « Ouvrir dossier SeNote » ci-dessous.';
+    'Vos cahiers restent sur cet appareil. Drive reproduit la même arborescence : dossier SeNote → vos dossiers → un PDF par cahier.';
 
   return (
     <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-chrome-800">
