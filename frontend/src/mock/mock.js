@@ -34,7 +34,7 @@ const makePage = (template = 'seyes') => ({
 
 export const FOLDER_ICONS = [
   { id: 'folder', label: 'Dossier' },
-  { id: 'bag', label: 'Sac' },
+  { id: 'bag', label: 'Sac à dos' },
 ];
 
 export const initialFolders = [];

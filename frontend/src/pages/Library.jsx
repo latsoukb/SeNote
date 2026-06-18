@@ -21,7 +21,7 @@ import {
   RefreshCw,
   LogOut,
   CalendarClock,
-  ShoppingBag,
+  Backpack,
   ChevronLeft,
 } from 'lucide-react';
 import {
@@ -81,7 +81,7 @@ const formatDate = (ts) => {
 };
 
 const FolderCard = ({ folder, notebookCount, onOpen, onDelete }) => {
-  const Icon = folder.icon === 'bag' ? ShoppingBag : Folder;
+  const Icon = folder.icon === 'bag' ? Backpack : Folder;
   return (
     <div className="group fade-up relative">
       <button
@@ -159,7 +159,7 @@ const NotebookCard = ({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
-            className="p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-chrome-800 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="p-1 rounded-md text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-chrome-800 shrink-0"
             aria-label="Options"
           >
             <MoreVertical className="w-4 h-4" />
@@ -878,7 +878,7 @@ const Library = () => {
                       <Label>Icône</Label>
                       <div className="flex gap-2">
                         {FOLDER_ICONS.map(({ id, label }) => {
-                          const Icon = id === 'bag' ? ShoppingBag : Folder;
+                          const Icon = id === 'bag' ? Backpack : Folder;
                           return (
                             <button
                               key={id}
@@ -1022,7 +1022,7 @@ const Library = () => {
               <div className="rounded-xl border border-dashed border-slate-300 dark:border-chrome-700 p-8 text-center">
                 <FolderPlus className="w-8 h-8 mx-auto text-slate-400 mb-3" />
                 <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                  Organisez vos cahiers en dossiers (icône dossier ou sac, couleur au choix).
+                  Organisez vos cahiers en dossiers (dossier ou sac à dos, couleur au choix).
                 </p>
                 <Button
                   variant="outline"
@@ -1055,7 +1055,7 @@ const Library = () => {
               <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-chrome-900 flex items-center justify-center mb-4">
                 {currentFolder ? (
                   currentFolder.icon === 'bag' ? (
-                    <ShoppingBag className="w-7 h-7 text-slate-400" />
+                    <Backpack className="w-7 h-7 text-slate-400" />
                   ) : (
                     <Folder className="w-7 h-7 text-slate-400" />
                   )
