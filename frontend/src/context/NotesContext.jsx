@@ -8,9 +8,10 @@ import {
   newFolder as createFolder,
   newSection as createSection,
 } from '../mock/mock';
-import { ensureNotebookSections } from '../lib/notebookSections';
+import { ensureNotebookSections, notebookHasContent } from '../lib/notebookSections';
 import { checkBackend, fetchWorkspace, saveWorkspace as saveWorkspaceApi } from '../lib/api';
 import { loadWorkspace, saveWorkspace, getStorageLabel } from '../lib/dataStore';
+import { isKioskApp } from '../lib/platform';
 import {
   syncNotebookPdfsToDrive,
   mergeWithGoogleDrive,
@@ -38,16 +39,26 @@ const mapSection = (nb, sectionId, fn) => {
   };
 };
 
-const defaultData = () => ({
-  folders: initialFolders,
-  notebooks: initialNotebooks,
+const emptyLibrary = () => ({
+  folders: [],
+  notebooks: [],
   trash: emptyTrash(),
   savedAt: 0,
 });
 
+const defaultData = () =>
+  isKioskApp()
+    ? emptyLibrary()
+    : {
+        folders: initialFolders,
+        notebooks: initialNotebooks,
+        trash: emptyTrash(),
+        savedAt: 0,
+      };
+
 export const NotesProvider = ({ children }) => {
-  const [folders, setFolders] = useState(initialFolders);
-  const [notebooks, setNotebooks] = useState(initialNotebooks);
+  const [folders, setFolders] = useState(() => (isKioskApp() ? [] : initialFolders));
+  const [notebooks, setNotebooks] = useState(() => (isKioskApp() ? [] : initialNotebooks));
   const [trash, setTrash] = useState(emptyTrash);
   const [ready, setReady] = useState(false);
   const [driveSyncing, setDriveSyncing] = useState(false);
@@ -143,6 +154,7 @@ export const NotesProvider = ({ children }) => {
     driveSyncInFlightRef.current = true;
     setDriveSyncing(true);
     try {
+      await saveWorkspace(workspaceRef.current);
       await syncNotebookPdfsToDrive(workspaceRef.current);
       setLastDriveSync(Date.now());
       return { ok: true };
@@ -228,9 +240,10 @@ export const NotesProvider = ({ children }) => {
 
   const syncNowToDrive = useCallback(async () => {
     if (driveDebounceRef.current) clearTimeout(driveDebounceRef.current);
-    await persist({ folders, notebooks, trash }, false);
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    await saveWorkspace(workspaceRef.current);
     return flushDriveSync();
-  }, [folders, notebooks, trash, persist, flushDriveSync]);
+  }, [flushDriveSync]);
 
   const addNotebook = useCallback((title, cover, pageTemplate, folderId = null) => {
     const nb = createNotebook(title, cover, pageTemplate, folderId);

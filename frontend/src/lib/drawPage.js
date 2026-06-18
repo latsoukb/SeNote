@@ -9,6 +9,7 @@ const loadBgImage = (src) => {
   if (imageCache.has(src)) return imageCache.get(src);
   const p = new Promise((resolve) => {
     const img = new Image();
+    img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
     img.onerror = () => resolve(null);
     img.src = src;
@@ -16,6 +17,13 @@ const loadBgImage = (src) => {
   imageCache.set(src, p);
   preloaded.add(src);
   return p;
+};
+
+const drawPaperFallback = (ctx, templateId, destW, destH) => {
+  const id = templateId || 'seyes';
+  const mode = drawTemplateBackground(ctx, id, destW, destH);
+  if (mode !== 'image') return;
+  drawTemplateBackground(ctx, 'lined', destW, destH);
 };
 
 const seyesLoad = loadBgImage(getTemplateImageUrl('seyes'));
@@ -88,6 +96,7 @@ export const drawPageToCanvas = async (ctx, page, destW, destH) => {
   if (bg.type === 'image') {
     const img = await loadBgImage(bg.src);
     if (img) ctx.drawImage(img, 0, 0, destW, destH);
+    else drawPaperFallback(ctx, page.template, destW, destH);
   } else {
     drawTemplateBackground(ctx, page.template, destW, destH);
   }

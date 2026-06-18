@@ -24,6 +24,16 @@ export const countNotebookPages = (nb) =>
 export const getAllNotebookPages = (nb) =>
   getNotebookSections(nb).flatMap((s) => s.pages);
 
+/** Au moins une page avec écriture, texte ou fond PDF importé. */
+export const notebookHasContent = (nb) =>
+  getAllNotebookPages(ensureNotebookSections(nb)).some(
+    (p) =>
+      (p.strokes?.length ?? 0) > 0 ||
+      (p.textBoxes?.length ?? 0) > 0 ||
+      (p.instruments?.length ?? 0) > 0 ||
+      Boolean(p.pdfBackground)
+  );
+
 export const findSectionByPageId = (nb, pageId) => {
   for (const section of getNotebookSections(nb)) {
     if (section.pages.some((p) => p.id === pageId)) return section;

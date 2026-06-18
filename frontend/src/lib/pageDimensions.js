@@ -23,7 +23,11 @@ export const TEMPLATE_IMAGE_FILES = {
 export const getTemplateImageUrl = (templateId) => {
   const file = TEMPLATE_IMAGE_FILES[templateId];
   if (!file) return null;
-  return `${base}/templates/${file}.png`;
+  const rel = `${base}/templates/${file}.png`.replace(/\/+/g, '/');
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return `${window.location.origin}${rel.startsWith('/') ? rel : `/${rel}`}`;
+  }
+  return rel;
 };
 
 export const getTemplateThumbUrl = (templateId) => {
