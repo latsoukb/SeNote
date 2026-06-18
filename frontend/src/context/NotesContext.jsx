@@ -160,7 +160,7 @@ export const NotesProvider = ({ children }) => {
           error: 'Aucun cahier à synchroniser. Créez un cahier dans l’app (renommer ou changer le modèle de page suffit).',
         };
       }
-      return { ok: true, count: result.count };
+      return { ok: true, count: result.count, inFolder: result.inFolder, folderUrl: result.folderUrl };
     } catch (e) {
       console.warn('Sync Google Drive échouée', e);
       return { ok: false, error: e.message || 'Synchronisation impossible' };

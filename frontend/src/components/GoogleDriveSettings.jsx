@@ -12,6 +12,7 @@ import {
   signInGoogleDrive,
   signOutGoogleDrive,
   isDriveConfigured,
+  openDriveFolder,
 } from '../lib/googleDriveSync';
 import { toast } from 'sonner';
 
@@ -81,14 +82,25 @@ const GoogleDriveSettings = ({ onBeforeConnect }) => {
     if (result?.ok) {
       await refresh();
       const n = result.count ?? 1;
-      toast.success(`${n} cahier${n > 1 ? 's' : ''} synchronisé${n > 1 ? 's' : ''} vers Drive`);
+      const inFolder = result.inFolder ?? n;
+      toast.success(
+        `${n} cahier${n > 1 ? 's' : ''} synchronisé${n > 1 ? 's' : ''} (${inFolder} PDF dans le dossier SeNote de l’app)`
+      );
     } else {
       toast.error(result?.error || 'Synchronisation impossible');
     }
   };
 
+  const handleOpenFolder = async () => {
+    try {
+      await openDriveFolder();
+    } catch (e) {
+      toast.error(e.message || 'Impossible d’ouvrir le dossier');
+    }
+  };
+
   const storageHint =
-    'Vos cahiers restent sur cet appareil. Le dossier Drive « SeNote » reçoit un PDF par cahier (modèle de page visible même sans écriture).';
+    'Vos cahiers restent sur cet appareil. L’app crée son propre dossier « SeNote » sur Drive (un PDF par cahier). Si vous aviez déjà un dossier SeNote à la main, ce n’est pas le même — utilisez « Ouvrir dossier SeNote » ci-dessous.';
 
   return (
     <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-chrome-800">
@@ -114,7 +126,7 @@ const GoogleDriveSettings = ({ onBeforeConnect }) => {
             Dernière synchronisation : {formatSyncTime(status.lastSync)}
             {driveSyncing && ' · en cours…'}
           </p>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               type="button"
               variant="outline"
@@ -125,6 +137,9 @@ const GoogleDriveSettings = ({ onBeforeConnect }) => {
             >
               <RefreshCw className={`w-3.5 h-3.5 ${driveSyncing ? 'animate-spin' : ''}`} />
               Synchroniser
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={handleOpenFolder}>
+              Ouvrir dossier SeNote
             </Button>
             <Button type="button" variant="ghost" size="sm" onClick={handleDisconnect}>
               <CloudOff className="w-3.5 h-3.5 mr-1" />

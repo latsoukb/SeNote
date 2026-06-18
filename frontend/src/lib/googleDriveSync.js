@@ -18,6 +18,7 @@ const PREFS = {
 };
 
 const FOLDER_NAME = 'SeNote';
+const FOLDER_APP_PROP = 'senoteApp';
 const WORKSPACE_NAME = 'senote-workspace.json';
 /** Scopes Drive — ne pas passer en une seule chaîne (bug plugin Android). */
 const DRIVE_SCOPES = [
@@ -580,14 +581,36 @@ const findOrCreateFolder = async (token) => {
   if (cached && (await driveFileExists(token, cached))) return cached;
   if (cached) await prefRemove(PREFS.FOLDER_ID);
 
-  const q = encodeURIComponent(
-    `name='${FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`
+  const appFolderQ = encodeURIComponent(
+    `name='${FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false and appProperties has { key='${FOLDER_APP_PROP}' and value='1' }`
   );
-  const list = await driveFetch(`/files?q=${q}&spaces=drive&fields=files(id)`, token);
-  const data = await list.json();
+  let list = await driveFetch(`/files?q=${appFolderQ}&spaces=drive&fields=files(id)`, token);
+  let data = await list.json();
   if (data.files?.length) {
     await prefSet(PREFS.FOLDER_ID, data.files[0].id);
     return data.files[0].id;
+  }
+
+  const legacyQ = encodeURIComponent(
+    `name='${FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`
+  );
+  list = await driveFetch(`/files?q=${legacyQ}&spaces=drive&fields=files(id)`, token);
+  data = await list.json();
+  if (data.files?.length) {
+    const folderId = data.files[0].id;
+    try {
+      await driveFetch(`/files/${folderId}?fields=id`, token, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          appProperties: { [FOLDER_APP_PROP]: '1' },
+        }),
+      });
+    } catch {
+      /* marquage optionnel */
+    }
+    await prefSet(PREFS.FOLDER_ID, folderId);
+    return folderId;
   }
 
   const create = await driveFetch('/files', token, {
@@ -596,11 +619,61 @@ const findOrCreateFolder = async (token) => {
     body: JSON.stringify({
       name: FOLDER_NAME,
       mimeType: 'application/vnd.google-apps.folder',
+      appProperties: { [FOLDER_APP_PROP]: '1' },
     }),
   });
   const folder = await create.json();
   await prefSet(PREFS.FOLDER_ID, folder.id);
   return folder.id;
+};
+
+/** Déplace le PDF dans le dossier SeNote si créé à la racine (bug versions antérieures). */
+const ensureFileInFolder = async (token, fileId, folderId) => {
+  if (!fileId) return null;
+  try {
+    const res = await driveFetch(`/files/${fileId}?fields=id,parents,trashed`, token);
+    const data = await res.json();
+    if (data.trashed) return null;
+    if (data.parents?.includes(folderId)) return fileId;
+    const remove = data.parents?.length ? `&removeParents=${data.parents.join(',')}` : '';
+    await driveFetch(
+      `/files/${fileId}?addParents=${encodeURIComponent(folderId)}${remove}&fields=id`,
+      token,
+      { method: 'PATCH' }
+    );
+    return fileId;
+  } catch (e) {
+    if (isDriveNotFound(e)) return null;
+    throw e;
+  }
+};
+
+const listPdfsInFolder = async (token, folderId) => {
+  const q = encodeURIComponent(
+    `'${folderId}' in parents and trashed=false and mimeType='application/pdf'`
+  );
+  const list = await driveFetch(`/files?q=${q}&spaces=drive&fields=files(id,name)`, token);
+  const data = await list.json();
+  return data.files || [];
+};
+
+export const getDriveFolderUrl = async () => {
+  const folderId = await prefGet(PREFS.FOLDER_ID);
+  return folderId ? `https://drive.google.com/drive/folders/${folderId}` : null;
+};
+
+export const openDriveFolder = async () => {
+  const url = await getDriveFolderUrl();
+  if (!url) {
+    throw new Error('Dossier SeNote introuvable. Synchronisez d’abord vos cahiers.');
+  }
+  if (isNativeApp()) {
+    const { Browser } = await import('@capacitor/browser');
+    await Browser.open({ url });
+    return url;
+  }
+  window.open(url, '_blank', 'noopener,noreferrer');
+  return url;
 };
 
 /** Supprime l'ancien JSON visible dans le dossier SeNote (migration). */
@@ -680,7 +753,9 @@ const uploadPdfResumable = async (token, blob, { fileId, fileName, folderId }) =
           'X-Upload-Content-Length': String(bytes.length),
         },
       })
-    : await driveHttpFetch(`${DRIVE_UPLOAD_API}/files?uploadType=resumable`, {
+    : await driveHttpFetch(
+        `${DRIVE_UPLOAD_API}/files?uploadType=resumable&fields=id,parents`,
+        {
         method: 'POST',
         headers: {
           ...authHeaders,
@@ -692,6 +767,7 @@ const uploadPdfResumable = async (token, blob, { fileId, fileName, folderId }) =
           name: fileName,
           parents: [folderId],
           mimeType: 'application/pdf',
+          appProperties: { [FOLDER_APP_PROP]: '1' },
         }),
       });
 
@@ -708,9 +784,22 @@ const uploadPdfResumable = async (token, blob, { fileId, fileName, folderId }) =
     throw new Error(`Drive upload ${putRes.status}: ${await putRes.text()}`);
   }
 
-  if (fileId) return fileId;
-  const created = await putRes.json();
-  return created.id;
+  let id = fileId;
+  if (!id) {
+    try {
+      const created = await putRes.json();
+      id = created?.id;
+    } catch {
+      /* réponse vide sur Android */
+    }
+    if (!id) {
+      id = await findFileInFolder(token, folderId, fileName, 'application/pdf');
+    }
+  }
+  if (!id) throw new Error(`Upload Drive : identifiant fichier manquant (${fileName})`);
+
+  const placed = await ensureFileInFolder(token, id, folderId);
+  return placed || id;
 };
 
 const createPdfOnDrive = async (token, folderId, fileName, blob) =>
@@ -782,7 +871,14 @@ export const syncNotebookPdfsToDrive = async (workspaceData) => {
 
   await savePdfMap(map);
   await prefSet(PREFS.LAST_SYNC, String(Date.now()));
-  return { count: Object.keys(map).length };
+  const inFolder = (await listPdfsInFolder(token, folderId)).length;
+  const folderUrl = `https://drive.google.com/drive/folders/${folderId}`;
+  return {
+    count: Object.keys(map).length,
+    inFolder,
+    folderId,
+    folderUrl,
+  };
 };
 
 /** Sync Drive = PDF uniquement (pas de JSON visible). */
