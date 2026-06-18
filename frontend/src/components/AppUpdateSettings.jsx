@@ -56,17 +56,21 @@ const AppUpdateSettings = () => {
     setDownloadPercent(0);
     try {
       toast.message('Téléchargement de la mise à jour…');
-      await downloadAndInstallUpdate(remote.downloadUrl, (phase, percent) => {
-        if (phase === 'download' && typeof percent === 'number') {
-          setDownloadPercent(percent);
-        }
-        if (phase === 'install') {
-          setDownloadPercent(100);
-          toast.message('Confirmez l’installation dans la fenêtre Android.', {
-            duration: 8000,
-          });
-        }
-      });
+      await downloadAndInstallUpdate(
+        remote.downloadUrl,
+        (phase, percent) => {
+          if (phase === 'download' && typeof percent === 'number') {
+            setDownloadPercent(percent);
+          }
+          if (phase === 'install') {
+            setDownloadPercent(100);
+            toast.message('Confirmez l’installation dans la fenêtre Android.', {
+              duration: 8000,
+            });
+          }
+        },
+        remote.versionName
+      );
     } catch (e) {
       console.warn('App update install', e);
       toast.error(e.message || 'Mise à jour impossible');

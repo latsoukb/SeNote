@@ -1,7 +1,11 @@
 import { isNativeApp } from './platform';
 
 const DEFAULT_CONFIG_URL = 'https://latsoukb.github.io/SeNote/app-config.json';
+const APK_DIR = 'updates';
 const APK_FILE_NAME = 'senote-update.apk';
+const APK_RELATIVE_PATH = `${APK_DIR}/${APK_FILE_NAME}`;
+/** APK release signe ~11 Mo — en dessous = fichier corrompu ou page HTML */
+const MIN_APK_BYTES = 8_000_000;
 
 const remoteConfigUrl = () => {
   const fromEnv = (process.env.REACT_APP_UPDATE_CONFIG_URL || '').trim();
@@ -35,7 +39,6 @@ const networkError = (cause) => {
   return cause instanceof Error ? cause : new Error(msg || 'Erreur réseau');
 };
 
-/** GET JSON — CapacitorHttp natif sur APK (WebView fetch échoue souvent). */
 const httpGetJson = async (url) => {
   if (isNativeApp()) {
     const { CapacitorHttp } = await import('@capacitor/core');
@@ -125,12 +128,47 @@ const bustUrl = (url) => {
   return `${url}${sep}t=${Date.now()}`;
 };
 
-const downloadApkNative = async (downloadUrl, onProgress) => {
+const apkDownloadCandidates = (primaryUrl, versionName) => {
+  const urls = new Set();
+  if (primaryUrl) urls.add(primaryUrl);
+  urls.add('https://latsoukb.github.io/SeNote/SeNote-tablet.apk');
+  if (versionName) {
+    urls.add(
+      `https://github.com/latsoukb/SeNote/releases/download/v${versionName}/SeNote-tablet.apk`
+    );
+  }
+  urls.add('https://github.com/latsoukb/SeNote/releases/latest/download/SeNote-tablet.apk');
+  return [...urls];
+};
+
+const verifyApkStat = async (Filesystem, Directory) => {
+  const stat = await Filesystem.stat({
+    path: APK_RELATIVE_PATH,
+    directory: Directory.External,
+  });
+  if (!stat.size || stat.size < MIN_APK_BYTES) {
+    throw new Error(
+      `Fichier APK incomplet (${stat.size || 0} octets). Réessayez sur Wi‑Fi.`
+    );
+  }
+  if (!stat.uri) {
+    throw new Error('URI du fichier APK introuvable.');
+  }
+  return stat;
+};
+
+const downloadApkToStorage = async (downloadUrl, onProgress) => {
   const { Filesystem, Directory } = await import('@capacitor/filesystem');
 
+  await Filesystem.mkdir({
+    path: APK_DIR,
+    directory: Directory.External,
+    recursive: true,
+  }).catch(() => {});
+
   await Filesystem.deleteFile({
-    path: APK_FILE_NAME,
-    directory: Directory.Cache,
+    path: APK_RELATIVE_PATH,
+    directory: Directory.External,
   }).catch(() => {});
 
   let progressHandle = null;
@@ -145,39 +183,115 @@ const downloadApkNative = async (downloadUrl, onProgress) => {
       }
     });
 
-    const result = await Filesystem.downloadFile({
+    await Filesystem.downloadFile({
       url: bustUrl(downloadUrl),
-      path: APK_FILE_NAME,
-      directory: Directory.Cache,
+      path: APK_RELATIVE_PATH,
+      directory: Directory.External,
       recursive: true,
       progress: true,
+      headers: {
+        Accept: 'application/vnd.android.package-archive, application/octet-stream, */*',
+        'Cache-Control': 'no-cache',
+      },
     });
-
-    const savedPath = result.path || APK_FILE_NAME;
-    const { uri } = await Filesystem.getUri({
-      path: savedPath,
-      directory: Directory.Cache,
-    });
-    return uri;
   } finally {
     await progressHandle?.remove?.();
   }
+
+  return verifyApkStat(Filesystem, Directory);
 };
 
-export const downloadAndInstallUpdate = async (downloadUrl, onProgress) => {
+const downloadApkViaHttpWrite = async (downloadUrl, onProgress) => {
+  const { CapacitorHttp } = await import('@capacitor/core');
+  const { Filesystem, Directory } = await import('@capacitor/filesystem');
+
+  onProgress?.('download', 5);
+
+  const res = await CapacitorHttp.get({
+    url: bustUrl(downloadUrl),
+    responseType: 'arraybuffer',
+    headers: {
+      Accept: 'application/vnd.android.package-archive, application/octet-stream, */*',
+      'Cache-Control': 'no-cache',
+    },
+  });
+
+  if (res.status < 200 || res.status >= 300) {
+    throw new Error(`HTTP ${res.status}`);
+  }
+
+  let base64;
+  if (typeof res.data === 'string') {
+    base64 = res.data;
+  } else if (res.data instanceof ArrayBuffer) {
+    const bytes = new Uint8Array(res.data);
+    let binary = '';
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+    }
+    base64 = btoa(binary);
+  } else {
+    throw new Error('Format de telechargement non supporte.');
+  }
+
+  onProgress?.('download', 80);
+
+  await Filesystem.mkdir({
+    path: APK_DIR,
+    directory: Directory.External,
+    recursive: true,
+  }).catch(() => {});
+
+  await Filesystem.writeFile({
+    path: APK_RELATIVE_PATH,
+    data: base64,
+    directory: Directory.External,
+    recursive: true,
+  });
+
+  onProgress?.('download', 100);
+  return verifyApkStat(Filesystem, Directory);
+};
+
+const downloadApkNative = async (primaryUrl, versionName, onProgress) => {
+  const candidates = apkDownloadCandidates(primaryUrl, versionName);
+  let lastError;
+
+  for (const url of candidates) {
+    try {
+      return await downloadApkToStorage(url, onProgress);
+    } catch (err) {
+      console.warn('Filesystem download failed', url, err);
+      lastError = err;
+    }
+
+    try {
+      return await downloadApkViaHttpWrite(url, onProgress);
+    } catch (err) {
+      console.warn('HTTP write download failed', url, err);
+      lastError = err;
+    }
+  }
+
+  throw lastError || new Error('Telechargement APK impossible.');
+};
+
+export const downloadAndInstallUpdate = async (downloadUrl, onProgress, versionName) => {
   if (!isNativeApp()) {
     throw new Error('Mise à jour disponible uniquement sur l’application tablette.');
   }
 
   onProgress?.('download', 0);
 
-  let fileUri;
+  let stat;
   try {
-    fileUri = await downloadApkNative(downloadUrl, onProgress);
+    stat = await downloadApkNative(downloadUrl, versionName, onProgress);
   } catch (err) {
     console.warn('APK download failed', err);
     throw new Error(
-      'Téléchargement impossible. Vérifiez le Wi‑Fi et réessayez dans quelques minutes.'
+      err?.message ||
+        'Téléchargement impossible. Vérifiez le Wi‑Fi et réessayez dans quelques minutes.'
     );
   }
 
@@ -185,7 +299,7 @@ export const downloadAndInstallUpdate = async (downloadUrl, onProgress) => {
 
   const { FileOpener } = await import('@capawesome-team/capacitor-file-opener');
   await FileOpener.openFile({
-    path: fileUri,
+    path: stat.uri,
     mimeType: 'application/vnd.android.package-archive',
   });
 };
