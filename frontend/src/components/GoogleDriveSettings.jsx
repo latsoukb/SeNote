@@ -80,7 +80,8 @@ const GoogleDriveSettings = ({ onBeforeConnect }) => {
     const result = await syncNowToDrive();
     if (result?.ok) {
       await refresh();
-      toast.success('Cahiers synchronisés vers Drive');
+      const n = result.count ?? 1;
+      toast.success(`${n} cahier${n > 1 ? 's' : ''} synchronisé${n > 1 ? 's' : ''} vers Drive`);
     } else {
       toast.error(result?.error || 'Synchronisation impossible');
     }

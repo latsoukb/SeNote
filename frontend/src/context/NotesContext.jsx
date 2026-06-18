@@ -139,10 +139,7 @@ export const NotesProvider = ({ children }) => {
     }
   }, []);
 
-  const flushDriveSync = useCallback(async () => {
-    if (!isAutoSyncEnabled()) {
-      return { ok: false, error: 'Synchronisation automatique désactivée.' };
-    }
+  const performDriveSync = useCallback(async () => {
     const status = await getDriveStatus();
     if (!status.connected) {
       return { ok: false, error: 'Compte Google Drive non connecté.' };
@@ -155,9 +152,15 @@ export const NotesProvider = ({ children }) => {
     setDriveSyncing(true);
     try {
       await saveWorkspace(workspaceRef.current);
-      await syncNotebookPdfsToDrive(workspaceRef.current);
+      const result = await syncNotebookPdfsToDrive(workspaceRef.current);
       setLastDriveSync(Date.now());
-      return { ok: true };
+      if (!result.count) {
+        return {
+          ok: false,
+          error: 'Aucun cahier avec écriture à envoyer. Écrivez dans un cahier, puis réessayez.',
+        };
+      }
+      return { ok: true, count: result.count };
     } catch (e) {
       console.warn('Sync Google Drive échouée', e);
       return { ok: false, error: e.message || 'Synchronisation impossible' };
@@ -165,7 +168,14 @@ export const NotesProvider = ({ children }) => {
       driveSyncInFlightRef.current = false;
       setDriveSyncing(false);
     }
-  }, [isAutoSyncEnabled]);
+  }, []);
+
+  const flushDriveSync = useCallback(async () => {
+    if (!isAutoSyncEnabled()) {
+      return { ok: false, error: 'Synchronisation automatique désactivée.' };
+    }
+    return performDriveSync();
+  }, [isAutoSyncEnabled, performDriveSync]);
 
   const scheduleDriveSync = useCallback(() => {
     if (!isAutoSyncEnabled()) return;
@@ -242,8 +252,8 @@ export const NotesProvider = ({ children }) => {
     if (driveDebounceRef.current) clearTimeout(driveDebounceRef.current);
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     await saveWorkspace(workspaceRef.current);
-    return flushDriveSync();
-  }, [flushDriveSync]);
+    return performDriveSync();
+  }, [performDriveSync]);
 
   const addNotebook = useCallback((title, cover, pageTemplate, folderId = null) => {
     const nb = createNotebook(title, cover, pageTemplate, folderId);
