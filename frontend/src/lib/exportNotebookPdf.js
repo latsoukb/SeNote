@@ -43,7 +43,7 @@ const renderPageToCanvas = async (page) => {
   canvas.width = PDF_W;
   canvas.height = PDF_H;
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  await drawPageToCanvas(ctx, page, PDF_W, PDF_H);
+  await drawPageToCanvas(ctx, page, PDF_W, PDF_H, { forExport: true });
 
   (page.textBoxes || []).forEach((t) => {
     const size = (t.size || 16) * SCALE_X;

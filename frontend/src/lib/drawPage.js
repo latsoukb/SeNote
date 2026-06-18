@@ -1,44 +1,64 @@
 import { PAGE_W, PAGE_H, getTemplateImageUrl } from './pageDimensions';
-import { getPageBackground, drawTemplateBackground } from './pageTemplates';
+import { getPageBackground, drawTemplateOnCanvas } from './pageTemplates';
+import { isNativeApp } from './platform';
 
 const imageCache = new Map();
-const preloaded = new Set();
 
-const loadBgImage = (src) => {
-  if (!src) return Promise.resolve(null);
-  if (imageCache.has(src)) return imageCache.get(src);
-  const p = new Promise((resolve) => {
+const loadImageFromUrl = (url) =>
+  new Promise((resolve) => {
     const img = new Image();
-    img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
     img.onerror = () => resolve(null);
-    img.src = src;
+    img.src = url;
   });
-  imageCache.set(src, p);
-  preloaded.add(src);
-  return p;
+
+const bytesToImage = async (bytes, mime = 'image/png') => {
+  const blob = bytes instanceof Blob ? bytes : new Blob([bytes], { type: mime });
+  const objectUrl = URL.createObjectURL(blob);
+  try {
+    return await loadImageFromUrl(objectUrl);
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
 };
 
-const drawPaperFallback = (ctx, templateId, destW, destH) => {
-  const id = templateId || 'seyes';
-  const mode = drawTemplateBackground(ctx, id, destW, destH);
-  if (mode !== 'image') return;
-  drawTemplateBackground(ctx, 'lined', destW, destH);
+const loadBgImageNative = async (src) => {
+  try {
+    const { CapacitorHttp } = await import('@capacitor/core');
+    const res = await CapacitorHttp.get({ url: src, responseType: 'arraybuffer' });
+    if (res.status < 200 || res.status >= 300 || !res.data) return null;
+    return bytesToImage(res.data);
+  } catch {
+    return null;
+  }
+};
+
+const loadBgImage = async (src) => {
+  if (!src) return null;
+  if (imageCache.has(src)) return imageCache.get(src);
+
+  const p = (async () => {
+    if (isNativeApp()) {
+      const nativeImg = await loadBgImageNative(src);
+      if (nativeImg) return nativeImg;
+    }
+    return loadImageFromUrl(src);
+  })();
+
+  imageCache.set(src, p);
+  return p;
 };
 
 const seyesLoad = loadBgImage(getTemplateImageUrl('seyes'));
 
-export const preloadTemplateImages = () => {
-  Object.keys({
-    seyes: 1,
-    grid: 1,
-    'grid-margin': 1,
-    millimeter: 1,
-    music: 1,
-  }).forEach((id) => {
-    const src = getTemplateImageUrl(id);
-    if (src && !preloaded.has(src)) loadBgImage(src);
-  });
+export const preloadTemplateImages = async () => {
+  const ids = ['seyes', 'grid', 'grid-margin', 'millimeter', 'music'];
+  await Promise.all(
+    ids.map((id) => {
+      const src = getTemplateImageUrl(id);
+      return src ? loadBgImage(src) : Promise.resolve(null);
+    })
+  );
 };
 
 const drawStroke = (ctx, s, sx, sy) => {
@@ -86,19 +106,25 @@ const drawStroke = (ctx, s, sx, sy) => {
   ctx.restore();
 };
 
-export const drawPageToCanvas = async (ctx, page, destW, destH) => {
+export const drawPageToCanvas = async (ctx, page, destW, destH, { forExport = false } = {}) => {
   const sx = destW / PAGE_W;
   const sy = destH / PAGE_H;
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, destW, destH);
+  const templateId = page?.template || 'seyes';
+
+  if (forExport) {
+    drawTemplateOnCanvas(ctx, templateId, destW, destH);
+  } else {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, destW, destH);
+  }
 
   const bg = getPageBackground(page);
   if (bg.type === 'image') {
     const img = await loadBgImage(bg.src);
     if (img) ctx.drawImage(img, 0, 0, destW, destH);
-    else drawPaperFallback(ctx, page.template, destW, destH);
-  } else {
-    drawTemplateBackground(ctx, page.template, destW, destH);
+    else if (!forExport) drawTemplateOnCanvas(ctx, templateId, destW, destH);
+  } else if (!forExport) {
+    drawTemplateOnCanvas(ctx, templateId, destW, destH);
   }
 
   const strokes = page.strokes || [];

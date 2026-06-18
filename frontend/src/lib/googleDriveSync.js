@@ -617,6 +617,45 @@ const savePdfMap = async (map) => {
   await prefSet(PREFS.PDF_MAP, JSON.stringify(map));
 };
 
+const blobToBase64 = (blob) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const raw = String(reader.result || '');
+      const comma = raw.indexOf(',');
+      resolve(comma >= 0 ? raw.slice(comma + 1) : raw);
+    };
+    reader.onerror = () => reject(new Error('Encodage PDF impossible'));
+    reader.readAsDataURL(blob);
+  });
+
+/** Upload PDF binaire — CapacitorHttp base64 sur Android (fetch corrompt le binaire). */
+const driveUploadPdfBlob = async (path, token, blob) => {
+  if (isNativeApp()) {
+    const { CapacitorHttp } = await import('@capacitor/core');
+    const base64 = await blobToBase64(blob);
+    const res = await CapacitorHttp.request({
+      url: `${DRIVE_UPLOAD_API}${path}`,
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/pdf',
+      },
+      data: base64,
+    });
+    if (res.status < 200 || res.status >= 300) {
+      throw new Error(`Drive upload ${res.status}: ${JSON.stringify(res.data)}`);
+    }
+    return;
+  }
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  await driveUploadFetch(path, token, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/pdf' },
+    body: bytes,
+  });
+};
+
 const createPdfOnDrive = async (token, folderId, fileName, blob) => {
   const create = await driveFetch('/files', token, {
     method: 'POST',
@@ -628,22 +667,14 @@ const createPdfOnDrive = async (token, folderId, fileName, blob) => {
     }),
   });
   const created = await create.json();
-  await driveUploadFetch(`/files/${created.id}?uploadType=media`, token, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/pdf' },
-    body: blob,
-  });
+  await driveUploadPdfBlob(`/files/${created.id}?uploadType=media`, token, blob);
   return created.id;
 };
 
 const uploadPdfToDrive = async (token, folderId, fileName, blob, fileId, previousName) => {
   if (fileId) {
     try {
-      await driveUploadFetch(`/files/${fileId}?uploadType=media`, token, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/pdf' },
-        body: blob,
-      });
+      await driveUploadPdfBlob(`/files/${fileId}?uploadType=media`, token, blob);
       if (previousName !== fileName) {
         await driveFetch(`/files/${fileId}?fields=id`, token, {
           method: 'PATCH',

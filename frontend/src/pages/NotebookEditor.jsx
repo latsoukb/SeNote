@@ -22,7 +22,7 @@ import Toolbar from '../components/Toolbar';
 import PdfDocumentView from '../components/PdfDocumentView';
 import NativeSinglePageView from '../components/NativeSinglePageView';
 import PageTemplatePreview from '../components/PageTemplatePreview';
-import { isNativeApp } from '../lib/platform';
+import { isNativeApp, isKioskApp } from '../lib/platform';
 import PageLiveThumbnail from '../components/PageLiveThumbnail';
 import SettingsDialog from '../components/SettingsDialog';
 import OpenNotebookTabBar from '../components/OpenNotebookTabBar';
@@ -150,7 +150,10 @@ const NotebookEditor = () => {
     setCurrentPageIdx(pageIdx);
     setWriteZoom(session.writeZoom);
     setWritePan({ ...session.writePan });
-    setSidebarOpen(session.sidebarOpen);
+    setSidebarOpen(isKioskApp() ? false : session.sidebarOpen);
+    if (isKioskApp()) {
+      updateNotebookSession(id, { sidebarOpen: false });
+    }
     setPageSyncRevision(session.pageSyncRevision ?? 0);
     setEditingTitle(false);
     setAddPageOpen(false);
