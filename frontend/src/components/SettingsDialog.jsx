@@ -167,7 +167,7 @@ const SettingsDialog = ({ trigger }) => {
             />
           </div>
 
-          <GoogleDriveSettings />
+          <GoogleDriveSettings onBeforeConnect={() => setOpen(false)} />
 
           <AppUpdateSettings />
 

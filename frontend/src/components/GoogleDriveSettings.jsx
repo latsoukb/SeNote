@@ -25,7 +25,7 @@ const formatSyncTime = (ts) => {
   });
 };
 
-const GoogleDriveSettings = () => {
+const GoogleDriveSettings = ({ onBeforeConnect }) => {
   const { driveSyncing, syncNowToDrive } = useNotes();
   const { settings, updateSettings } = useSettings();
   const [ready, setReady] = useState(false);
@@ -54,17 +54,18 @@ const GoogleDriveSettings = () => {
     if (!configured || connecting) return;
     setConnecting(true);
     try {
+      if (isNativeApp()) {
+        toast.message('Ouverture de Google pour vous connecter…');
+        await signInGoogleDrive({ onBeforeNavigate: () => onBeforeConnect?.() });
+        return;
+      }
       toast.message('Choisissez votre compte Google sur l’écran suivant…');
       const result = await signInGoogleDrive();
-      if (isNativeApp()) {
-        await refresh();
-        toast.success(`Compte Google Drive connecté : ${result?.email || ''}`);
-      }
-      return result;
+      await refresh();
+      toast.success(`Compte Google Drive connecté : ${result?.email || ''}`);
     } catch (e) {
       console.warn('Google Drive connect', e);
       toast.error(e.message || 'Connexion impossible');
-    } finally {
       setConnecting(false);
     }
   };

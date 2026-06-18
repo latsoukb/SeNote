@@ -30,6 +30,7 @@ Sync optionnelle vers votre Drive personnel (gratuit, 15 Go). Les cahiers resten
      ```
      https://latsoukb.github.io/SeNote/
      http://localhost:3000/
+     https://localhost/
      ```
 6. Copiez le **Client ID** (se termine par `.apps.googleusercontent.com`)
 
@@ -107,7 +108,7 @@ npm start
 
 ## APK Android (tablette)
 
-L’APK utilise le **même Client ID Web** que le site (`googleWebClientId`). Il charge la config depuis `app-config.json` sur GitHub Pages au démarrage.
+L’APK utilise le **même Client ID Web** que le site (`googleWebClientId`). La connexion passe par une **redirection OAuth** (comme le site) vers `https://localhost/` — ajoutez cette URI dans les **URI de redirection autorisées** du client Web (voir §1).
 
 ### Credentials Google Cloud (obligatoire pour l’APK)
 
@@ -127,9 +128,11 @@ En plus du client **Application Web**, créez un client **Android** :
 
 1. **Paramètres → Sauvegarde cloud**
 2. Le bouton **Connecter Google Drive** doit apparaître (plus le message « non disponible »)
-3. Connexion → dossier **SeNote** sur Drive
+3. Connexion → **Chrome s’ouvre** (onglet Google) → retour automatique dans l’app → dossier **SeNote** sur Drive
 
-Si la connexion échoue avec `DEVELOPER_ERROR` : vérifiez package `com.senote.tablet` et SHA-1 ci-dessus dans Google Cloud.
+Google bloque la connexion dans la WebView intégrée : l’APK ouvre donc un onglet Chrome (Custom Tab).
+
+Si la connexion échoue avec `redirect_uri_mismatch` : ajoutez `https://localhost/` dans les URI de redirection du client Web OAuth.
 
 ---
 | Popup bloquée | Autoriser les popups pour le site |

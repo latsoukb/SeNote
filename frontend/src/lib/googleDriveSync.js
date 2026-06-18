@@ -25,6 +25,7 @@ const DRIVE_SCOPES = [
   'https://www.googleapis.com/auth/drive.file',
   'https://www.googleapis.com/auth/userinfo.email',
 ];
+const DRIVE_SCOPE_STRING = DRIVE_SCOPES.join(' ');
 const DRIVE_API = 'https://www.googleapis.com/drive/v3';
 const DRIVE_UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
 const OAUTH_PENDING_KEY = 'senote_drive_oauth_pending';
@@ -53,9 +54,10 @@ const generatePkcePair = async () => {
   return { verifier, challenge };
 };
 
-const parseOAuthReturn = () => {
-  const query = new URLSearchParams(window.location.search);
-  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+const parseOAuthReturn = (rawUrl) => {
+  const source = rawUrl ? new URL(rawUrl) : new URL(window.location.href);
+  const query = new URLSearchParams(source.search);
+  const hash = new URLSearchParams(source.hash.replace(/^#/, ''));
   const get = (key) => query.get(key) || hash.get(key);
   return {
     code: get('code'),
@@ -68,14 +70,50 @@ const parseOAuthReturn = () => {
 };
 
 const cleanOAuthUrl = () => {
-  const cleanUrl = window.location.pathname + window.location.search;
-  window.history.replaceState(null, '', cleanUrl);
+  window.history.replaceState(null, '', window.location.pathname);
+};
+
+const nativeHttp = async (url, init = {}) => {
+  const { CapacitorHttp } = await import('@capacitor/core');
+  const method = (init.method || 'GET').toUpperCase();
+  const headers = { ...(init.headers || {}) };
+  let data = init.body;
+  if (data && headers['Content-Type']?.includes('json') && typeof data === 'string') {
+    try {
+      data = JSON.parse(data);
+    } catch {
+      /* string body */
+    }
+  }
+  const res = await CapacitorHttp.request({ url, method, headers, data });
+  return {
+    ok: res.status >= 200 && res.status < 300,
+    status: res.status,
+    json: async () =>
+      typeof res.data === 'object' && res.data !== null
+        ? res.data
+        : JSON.parse(String(res.data || '{}')),
+    text: async () =>
+      typeof res.data === 'string' ? res.data : JSON.stringify(res.data ?? ''),
+  };
+};
+
+const httpFetch = (url, init = {}) => {
+  const body = init.body;
+  if (
+    isNativeApp() &&
+    (body instanceof Blob || body instanceof ArrayBuffer || body instanceof FormData)
+  ) {
+    return fetch(url, init);
+  }
+  if (isNativeApp()) return nativeHttp(url, init);
+  return fetch(url, init);
 };
 
 const postTokenExchange = async (payload) => {
   const proxyUrl = getGoogleTokenExchangeUrl();
   if (proxyUrl) {
-    const res = await fetch(proxyUrl, {
+    const res = await httpFetch(proxyUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -107,10 +145,10 @@ const postTokenExchange = async (payload) => {
     if (payload.code_verifier) params.set('code_verifier', payload.code_verifier);
   }
 
-  const res = await fetch('https://oauth2.googleapis.com/token', {
+  const res = await httpFetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: params,
+    body: params.toString(),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -176,138 +214,7 @@ const prefRemove = async (key) => {
   localStorage.removeItem(PREF_PREFIX + key);
 };
 
-/* ── Native (APK Android) — sélecteur de compte Google in-app ── */
-
-let authModule = null;
-let authInitialized = false;
-
-const withTimeout = (promise, ms, message) =>
-  Promise.race([
-    promise,
-    new Promise((_, reject) => {
-      setTimeout(() => reject(new Error(message)), ms);
-    }),
-  ]);
-
-const mapNativeGoogleError = (err) => {
-  const msg = String(err?.message || err || '');
-  if (/12501|canceled|cancelled/i.test(msg)) {
-    return new Error('Connexion annulée.');
-  }
-  if (/\b10\b|DEVELOPER_ERROR|developer_error/i.test(msg)) {
-    return new Error(
-      'Erreur Google (configuration). Vérifiez le client Android OAuth : package com.senote.tablet et empreinte SHA-1 dans Google Cloud.'
-    );
-  }
-  if (/retrieving access token/i.test(msg)) {
-    return new Error('Jeton Google inaccessible. Réessayez ou reconnectez le compte.');
-  }
-  return err instanceof Error ? err : new Error(msg || 'Connexion Google impossible');
-};
-
-const loadGoogleAuth = async () => {
-  if (!isNativeApp()) return null;
-  await ensureAppConfig();
-  const clientId = getGoogleAuthClientId();
-  if (!clientId) return null;
-
-  try {
-    if (!authModule) {
-      const mod = await import('@codetrix-studio/capacitor-google-auth');
-      authModule = mod.GoogleAuth;
-    }
-    if (!authInitialized) {
-      // Scopes : tableau séparé (virgules) — une seule chaîne avec espaces casse Android
-      await authModule.initialize({
-        clientId,
-        scopes: DRIVE_SCOPES,
-        grantOfflineAccess: true,
-      });
-      authInitialized = true;
-    }
-    return authModule;
-  } catch (e) {
-    console.warn('Google Auth non disponible', e);
-    authModule = null;
-    authInitialized = false;
-    return null;
-  }
-};
-
-const persistNativeTokens = async (tokenResponse, email) => {
-  await prefSet(PREFS.TOKEN, tokenResponse.access_token);
-  const expiresIn = Number(tokenResponse.expires_in || 3600);
-  await prefSet(PREFS.TOKEN_EXPIRY, String(Date.now() + expiresIn * 1000));
-  if (tokenResponse.refresh_token) {
-    await prefSet(PREFS.REFRESH_TOKEN, tokenResponse.refresh_token);
-  }
-  await prefSet(PREFS.EMAIL, email);
-  return { email, accessToken: tokenResponse.access_token };
-};
-
-const signInNativeGoogleDrive = async () => {
-  await ensureAppConfig();
-  const GoogleAuth = await loadGoogleAuth();
-  if (!GoogleAuth) {
-    throw new Error(
-      'Google Drive indisponible — client OAuth non configuré (googleWebClientId).'
-    );
-  }
-
-  let result;
-  try {
-    result = await withTimeout(
-      GoogleAuth.signIn(),
-      120_000,
-      'Connexion Google expirée. Réessayez.'
-    );
-  } catch (e) {
-    throw mapNativeGoogleError(e);
-  }
-
-  const email = result?.email || 'compte Google';
-  const serverAuthCode = result?.serverAuthCode;
-
-  if (serverAuthCode && getGoogleTokenExchangeUrl()) {
-    const tokenResponse = await postTokenExchange({
-      code: serverAuthCode,
-      grant_type: 'authorization_code',
-    });
-    if (!tokenResponse?.access_token) {
-      throw new Error('Échange du code Google impossible.');
-    }
-    return persistNativeTokens(tokenResponse, email);
-  }
-
-  const token = result?.authentication?.accessToken;
-  if (!token) throw new Error('Connexion Google échouée — aucun jeton reçu.');
-  await prefSet(PREFS.TOKEN, token);
-  await prefSet(PREFS.EMAIL, email);
-  return { email, accessToken: token };
-};
-
-const signOutNativeGoogleDrive = async () => {
-  try {
-    const GoogleAuth = await loadGoogleAuth();
-    if (GoogleAuth) await GoogleAuth.signOut();
-  } catch {
-    /* ignore */
-  }
-  authInitialized = false;
-};
-
-const getNativeAccessToken = async () => {
-  const token = await prefGet(PREFS.TOKEN);
-  const expiry = Number((await prefGet(PREFS.TOKEN_EXPIRY)) || 0);
-  if (token && Date.now() < expiry - 60_000) return token;
-
-  const email = await prefGet(PREFS.EMAIL);
-  if (!email) return null;
-
-  return refreshWebAccessToken();
-};
-
-/* ── Web (navigateur) — Google Identity Services ── */
+/* ── Web (navigateur + APK via redirection OAuth) ── */
 
 let gsiPromise = null;
 
@@ -335,7 +242,7 @@ const loadGoogleGsi = () => {
 
 const fetchGoogleEmail = async (token) => {
   try {
-    const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+    const res = await httpFetch('https://www.googleapis.com/oauth2/v3/userinfo', {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) return 'compte Google';
@@ -381,7 +288,7 @@ const requestWebAccessToken = async (prompt = '') =>
       .then((google) => {
         const client = google.accounts.oauth2.initTokenClient({
           client_id: clientId,
-          scope: DRIVE_SCOPE,
+          scope: DRIVE_SCOPE_STRING,
           callback: (response) => {
             if (response.error) {
               const msg =
@@ -415,7 +322,7 @@ const storeWebToken = async (response) => {
   return response.access_token;
 };
 
-const signInWebGoogleDrive = async () => {
+const signInWebGoogleDrive = async ({ onBeforeNavigate } = {}) => {
   await ensureAppConfig();
   const clientId = getGoogleWebClientId();
   if (!clientId) {
@@ -430,7 +337,7 @@ const signInWebGoogleDrive = async () => {
     client_id: clientId,
     redirect_uri: getOAuthRedirectUri(),
     response_type: 'code',
-    scope: DRIVE_SCOPE,
+    scope: DRIVE_SCOPE_STRING,
     include_granted_scopes: 'true',
     access_type: 'offline',
     prompt: 'consent',
@@ -438,12 +345,20 @@ const signInWebGoogleDrive = async () => {
     code_challenge: challenge,
     code_challenge_method: 'S256',
   });
-  window.location.assign(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
+  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+  onBeforeNavigate?.();
+
+  if (isNativeApp()) {
+    const { Browser } = await import('@capacitor/browser');
+    await Browser.open({ url: authUrl });
+    return;
+  }
+  window.location.assign(authUrl);
 };
 
 /** Au retour de Google (?code=…), échange le code et nettoie l’URL. */
-export const completeWebOAuthRedirect = async () => {
-  const returned = parseOAuthReturn();
+export const completeWebOAuthRedirect = async (returnUrl) => {
+  const returned = parseOAuthReturn(returnUrl);
   if (!returned.code && !returned.error && !returned.accessToken) return null;
 
   cleanOAuthUrl();
@@ -529,7 +444,7 @@ const getWebAccessToken = async () => {
 /* ── API Drive (commun web + native) ── */
 
 const driveFetch = async (path, token, options = {}) => {
-  const res = await fetch(`${DRIVE_API}${path}`, {
+  const res = await httpFetch(`${DRIVE_API}${path}`, {
     ...options,
     headers: {
       Authorization: `Bearer ${token}`,
@@ -545,7 +460,7 @@ const driveFetch = async (path, token, options = {}) => {
 
 /** Mises à jour du contenu fichier (JSON, PDF) — endpoint upload, pas metadata. */
 const driveUploadFetch = async (path, token, options = {}) => {
-  const res = await fetch(`${DRIVE_UPLOAD_API}${path}`, {
+  const res = await httpFetch(`${DRIVE_UPLOAD_API}${path}`, {
     ...options,
     headers: {
       Authorization: `Bearer ${token}`,
@@ -615,24 +530,21 @@ export const getDriveStatus = async () => {
   };
 };
 
-export const signInGoogleDrive = async () => {
+export const signInGoogleDrive = async (options) => {
   await ensureAppConfig();
   if (!isDriveConfigured()) {
     throw new Error('Sauvegarde cloud non configurée sur cet appareil.');
   }
-  if (isNativeApp()) return signInNativeGoogleDrive();
-  return signInWebGoogleDrive();
+  return signInWebGoogleDrive(options);
 };
 
 export const signOutGoogleDrive = async () => {
-  if (isNativeApp()) await signOutNativeGoogleDrive();
-  else await signOutWebGoogleDrive();
+  await signOutWebGoogleDrive();
   await Promise.all(Object.values(PREFS).map((k) => prefRemove(k)));
 };
 
 const getAccessToken = async () => {
   await ensureAppConfig();
-  if (isNativeApp()) return getNativeAccessToken();
   return getWebAccessToken();
 };
 
