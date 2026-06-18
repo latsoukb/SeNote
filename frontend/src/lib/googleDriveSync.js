@@ -617,64 +617,69 @@ const savePdfMap = async (map) => {
   await prefSet(PREFS.PDF_MAP, JSON.stringify(map));
 };
 
-const blobToBase64 = (blob) =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const raw = String(reader.result || '');
-      const comma = raw.indexOf(',');
-      resolve(comma >= 0 ? raw.slice(comma + 1) : raw);
-    };
-    reader.onerror = () => reject(new Error('Encodage PDF impossible'));
-    reader.readAsDataURL(blob);
-  });
+const pdfBytes = async (blob) => new Uint8Array(await blob.arrayBuffer());
 
-/** Upload PDF binaire — CapacitorHttp base64 sur Android (fetch corrompt le binaire). */
-const driveUploadPdfBlob = async (path, token, blob) => {
-  if (isNativeApp()) {
-    const { CapacitorHttp } = await import('@capacitor/core');
-    const base64 = await blobToBase64(blob);
-    const res = await CapacitorHttp.request({
-      url: `${DRIVE_UPLOAD_API}${path}`,
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/pdf',
-      },
-      data: base64,
-    });
-    if (res.status < 200 || res.status >= 300) {
-      throw new Error(`Drive upload ${res.status}: ${JSON.stringify(res.data)}`);
-    }
-    return;
+/** Upload PDF via session resumable (binaire correct sur Android). */
+const uploadPdfResumable = async (token, blob, { fileId, fileName, folderId }) => {
+  const bytes = await pdfBytes(blob);
+  const authHeaders = { Authorization: `Bearer ${token}` };
+
+  const initRes = fileId
+    ? await driveHttpFetch(`${DRIVE_UPLOAD_API}/files/${fileId}?uploadType=resumable`, {
+        method: 'PATCH',
+        headers: {
+          ...authHeaders,
+          'X-Upload-Content-Type': 'application/pdf',
+          'X-Upload-Content-Length': String(bytes.length),
+        },
+      })
+    : await driveHttpFetch(`${DRIVE_UPLOAD_API}/files?uploadType=resumable`, {
+        method: 'POST',
+        headers: {
+          ...authHeaders,
+          'Content-Type': 'application/json',
+          'X-Upload-Content-Type': 'application/pdf',
+          'X-Upload-Content-Length': String(bytes.length),
+        },
+        body: JSON.stringify({
+          name: fileName,
+          parents: [folderId],
+          mimeType: 'application/pdf',
+        }),
+      });
+
+  if (!initRes.ok) {
+    throw new Error(`Drive upload init ${initRes.status}: ${await initRes.text()}`);
   }
-  const bytes = new Uint8Array(await blob.arrayBuffer());
-  await driveUploadFetch(path, token, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/pdf' },
+
+  const uploadUrl = initRes.headers.get('Location');
+  if (!uploadUrl) throw new Error('Upload Drive : URL resumable manquante');
+
+  const putRes = await driveHttpFetch(uploadUrl, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/pdf',
+      'Content-Length': String(bytes.length),
+    },
     body: bytes,
   });
-};
 
-const createPdfOnDrive = async (token, folderId, fileName, blob) => {
-  const create = await driveFetch('/files', token, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      name: fileName,
-      parents: [folderId],
-      mimeType: 'application/pdf',
-    }),
-  });
-  const created = await create.json();
-  await driveUploadPdfBlob(`/files/${created.id}?uploadType=media`, token, blob);
+  if (!putRes.ok) {
+    throw new Error(`Drive upload ${putRes.status}: ${await putRes.text()}`);
+  }
+
+  if (fileId) return fileId;
+  const created = await putRes.json();
   return created.id;
 };
+
+const createPdfOnDrive = async (token, folderId, fileName, blob) =>
+  uploadPdfResumable(token, blob, { fileName, folderId });
 
 const uploadPdfToDrive = async (token, folderId, fileName, blob, fileId, previousName) => {
   if (fileId) {
     try {
-      await driveUploadPdfBlob(`/files/${fileId}?uploadType=media`, token, blob);
+      await uploadPdfResumable(token, blob, { fileId, fileName, folderId });
       if (previousName !== fileName) {
         await driveFetch(`/files/${fileId}?fields=id`, token, {
           method: 'PATCH',
