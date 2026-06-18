@@ -4,5 +4,5 @@
   "latestApkVersion": "1.1",
   "latestApkVersionCode": 2,
   "apkDownloadUrl": "https://github.com/latsoukb/SeNote/releases/download/v1.6/SeNote-tablet.apk",
-  "releaseNotes": "Correctif telechargement MAJ in-app (fichier APK valide). Mise a jour test sans autre changement."
+  "releaseNotes": "Mise a jour test v1.11 — aucun changement fonctionnel. Pour tester la MAJ in-app depuis la v1.10."
 }
