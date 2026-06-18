@@ -482,9 +482,35 @@ const driveUploadFetch = async (path, token, options = {}) => {
   return res;
 };
 
+const isDriveNotFound = (err) => /404|not found|notFound/i.test(String(err?.message || err));
+
+const driveFileExists = async (token, fileId) => {
+  if (!fileId) return false;
+  try {
+    const res = await driveFetch(`/files/${fileId}?fields=id,trashed`, token);
+    const data = await res.json();
+    return Boolean(data.id) && data.trashed !== true;
+  } catch (e) {
+    if (isDriveNotFound(e)) return false;
+    throw e;
+  }
+};
+
+const findFileInFolder = async (token, folderId, name, mimeType) => {
+  const safeName = name.replace(/'/g, "\\'");
+  const mimeClause = mimeType ? ` and mimeType='${mimeType}'` : '';
+  const q = encodeURIComponent(
+    `name='${safeName}' and '${folderId}' in parents and trashed=false${mimeClause}`
+  );
+  const list = await driveFetch(`/files?q=${q}&spaces=drive&fields=files(id)`, token);
+  const data = await list.json();
+  return data.files?.[0]?.id || null;
+};
+
 const findOrCreateFolder = async (token) => {
   const cached = await prefGet(PREFS.FOLDER_ID);
-  if (cached) return cached;
+  if (cached && (await driveFileExists(token, cached))) return cached;
+  if (cached) await prefRemove(PREFS.FOLDER_ID);
 
   const q = encodeURIComponent(
     `name='${FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`
@@ -511,16 +537,18 @@ const findOrCreateFolder = async (token) => {
 
 const findWorkspaceFile = async (token, folderId) => {
   const cached = await prefGet(PREFS.FILE_ID);
-  if (cached) return cached;
+  if (cached && (await driveFileExists(token, cached))) return cached;
+  if (cached) await prefRemove(PREFS.FILE_ID);
 
-  const q = encodeURIComponent(
-    `name='${WORKSPACE_NAME}' and '${folderId}' in parents and trashed=false`
+  const byName = await findFileInFolder(
+    token,
+    folderId,
+    WORKSPACE_NAME,
+    'application/json'
   );
-  const list = await driveFetch(`/files?q=${q}&spaces=drive&fields=files(id)`, token);
-  const data = await list.json();
-  if (data.files?.length) {
-    await prefSet(PREFS.FILE_ID, data.files[0].id);
-    return data.files[0].id;
+  if (byName) {
+    await prefSet(PREFS.FILE_ID, byName);
+    return byName;
   }
   return null;
 };
@@ -573,25 +601,7 @@ const savePdfMap = async (map) => {
 const asUploadBody = async (blob) =>
   isNativeApp() && blob instanceof Blob ? blob.arrayBuffer() : blob;
 
-const uploadPdfToDrive = async (token, folderId, fileName, blob, fileId, previousName) => {
-  const pdfBody = await asUploadBody(blob);
-
-  if (fileId) {
-    await driveUploadFetch(`/files/${fileId}?uploadType=media`, token, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/pdf' },
-      body: pdfBody,
-    });
-    if (previousName !== fileName) {
-      await driveFetch(`/files/${fileId}?fields=id`, token, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: fileName }),
-      });
-    }
-    return fileId;
-  }
-
+const createPdfOnDrive = async (token, folderId, fileName, pdfBody) => {
   const create = await driveFetch('/files', token, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -608,6 +618,37 @@ const uploadPdfToDrive = async (token, folderId, fileName, blob, fileId, previou
     body: pdfBody,
   });
   return created.id;
+};
+
+const uploadPdfToDrive = async (token, folderId, fileName, blob, fileId, previousName) => {
+  const pdfBody = await asUploadBody(blob);
+
+  if (fileId) {
+    try {
+      await driveUploadFetch(`/files/${fileId}?uploadType=media`, token, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/pdf' },
+        body: pdfBody,
+      });
+      if (previousName !== fileName) {
+        await driveFetch(`/files/${fileId}?fields=id`, token, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: fileName }),
+        });
+      }
+      return fileId;
+    } catch (e) {
+      if (!isDriveNotFound(e)) throw e;
+    }
+  }
+
+  const existingId = await findFileInFolder(token, folderId, fileName, 'application/pdf');
+  if (existingId) {
+    return uploadPdfToDrive(token, folderId, fileName, blob, existingId, previousName);
+  }
+
+  return createPdfOnDrive(token, folderId, fileName, pdfBody);
 };
 
 /** Un PDF par cahier dans le dossier SeNote (lisible dans Drive). */
@@ -665,12 +706,20 @@ export const uploadToGoogleDrive = async (workspaceData) => {
   let fileId = await findWorkspaceFile(token, folderId);
 
   if (fileId) {
-    await driveUploadFetch(`/files/${fileId}?uploadType=media`, token, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body,
-    });
-  } else {
+    try {
+      await driveUploadFetch(`/files/${fileId}?uploadType=media`, token, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      });
+    } catch (e) {
+      if (!isDriveNotFound(e)) throw e;
+      await prefRemove(PREFS.FILE_ID);
+      fileId = null;
+    }
+  }
+
+  if (!fileId) {
     const create = await driveFetch('/files', token, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
