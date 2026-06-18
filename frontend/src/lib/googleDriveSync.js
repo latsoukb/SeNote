@@ -535,22 +535,41 @@ const findOrCreateFolder = async (token) => {
   return folder.id;
 };
 
-const findWorkspaceFile = async (token, folderId) => {
+const findWorkspaceFile = async (token) => {
   const cached = await prefGet(PREFS.FILE_ID);
   if (cached && (await driveFileExists(token, cached))) return cached;
   if (cached) await prefRemove(PREFS.FILE_ID);
 
-  const byName = await findFileInFolder(
+  const safeName = WORKSPACE_NAME.replace(/'/g, "\\'");
+  const q = encodeURIComponent(`name='${safeName}' and trashed=false`);
+  const list = await driveFetch(
+    `/files?q=${q}&spaces=appDataFolder&fields=files(id)`,
+    token
+  );
+  const data = await list.json();
+  if (data.files?.length) {
+    await prefSet(PREFS.FILE_ID, data.files[0].id);
+    return data.files[0].id;
+  }
+  return null;
+};
+
+/** Supprime l'ancien JSON visible dans le dossier SeNote (migration). */
+const removeLegacyWorkspaceFromFolder = async (token, folderId) => {
+  const legacyId = await findFileInFolder(
     token,
     folderId,
     WORKSPACE_NAME,
     'application/json'
   );
-  if (byName) {
-    await prefSet(PREFS.FILE_ID, byName);
-    return byName;
+  if (!legacyId) return;
+  try {
+    await driveFetch(`/files/${legacyId}`, token, { method: 'DELETE' });
+  } catch {
+    /* déjà supprimé */
   }
-  return null;
+  const cached = await prefGet(PREFS.FILE_ID);
+  if (cached === legacyId) await prefRemove(PREFS.FILE_ID);
 };
 
 export const getDriveStatus = async () => {
@@ -598,10 +617,7 @@ const savePdfMap = async (map) => {
   await prefSet(PREFS.PDF_MAP, JSON.stringify(map));
 };
 
-const asUploadBody = async (blob) =>
-  isNativeApp() && blob instanceof Blob ? blob.arrayBuffer() : blob;
-
-const createPdfOnDrive = async (token, folderId, fileName, pdfBody) => {
+const createPdfOnDrive = async (token, folderId, fileName, blob) => {
   const create = await driveFetch('/files', token, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -615,20 +631,18 @@ const createPdfOnDrive = async (token, folderId, fileName, pdfBody) => {
   await driveUploadFetch(`/files/${created.id}?uploadType=media`, token, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/pdf' },
-    body: pdfBody,
+    body: blob,
   });
   return created.id;
 };
 
 const uploadPdfToDrive = async (token, folderId, fileName, blob, fileId, previousName) => {
-  const pdfBody = await asUploadBody(blob);
-
   if (fileId) {
     try {
       await driveUploadFetch(`/files/${fileId}?uploadType=media`, token, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/pdf' },
-        body: pdfBody,
+        body: blob,
       });
       if (previousName !== fileName) {
         await driveFetch(`/files/${fileId}?fields=id`, token, {
@@ -648,7 +662,7 @@ const uploadPdfToDrive = async (token, folderId, fileName, blob, fileId, previou
     return uploadPdfToDrive(token, folderId, fileName, blob, existingId, previousName);
   }
 
-  return createPdfOnDrive(token, folderId, fileName, pdfBody);
+  return createPdfOnDrive(token, folderId, fileName, blob);
 };
 
 /** Un PDF par cahier dans le dossier SeNote (lisible dans Drive). */
@@ -659,13 +673,11 @@ export const syncNotebookPdfsToDrive = async (workspaceData) => {
   if (!token) throw new Error('Non connecté à Google Drive');
 
   const folderId = await findOrCreateFolder(token);
+  await removeLegacyWorkspaceFromFolder(token, folderId);
   const map = await getPdfMap();
   const activeIds = new Set((workspaceData?.notebooks || []).map((n) => n.id));
 
   for (const nb of workspaceData?.notebooks || []) {
-    const updatedAt = nb.updatedAt || 0;
-    if (map[nb.id]?.updatedAt >= updatedAt) continue;
-
     const fileName = pdfFileName(nb);
     const blob = await notebookToPdfBlob(nb);
     const fileId = await uploadPdfToDrive(
@@ -676,7 +688,7 @@ export const syncNotebookPdfsToDrive = async (workspaceData) => {
       map[nb.id]?.fileId,
       map[nb.id]?.fileName
     );
-    map[nb.id] = { fileId, fileName, updatedAt };
+    map[nb.id] = { fileId, fileName, updatedAt: nb.updatedAt || Date.now() };
   }
 
   for (const id of Object.keys(map)) {
@@ -700,10 +712,9 @@ export const uploadToGoogleDrive = async (workspaceData) => {
   const token = await getAccessToken();
   if (!token) throw new Error('Non connecté à Google Drive');
 
-  const folderId = await findOrCreateFolder(token);
   const payload = wrapWorkspace(workspaceData);
   const body = JSON.stringify(payload);
-  let fileId = await findWorkspaceFile(token, folderId);
+  let fileId = await findWorkspaceFile(token);
 
   if (fileId) {
     try {
@@ -725,7 +736,7 @@ export const uploadToGoogleDrive = async (workspaceData) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: WORKSPACE_NAME,
-        parents: [folderId],
+        parents: ['appDataFolder'],
         mimeType: 'application/json',
       }),
     });
@@ -748,8 +759,7 @@ export const downloadFromGoogleDrive = async () => {
   const token = await getAccessToken();
   if (!token) throw new Error('Non connecté à Google Drive');
 
-  const folderId = await findOrCreateFolder(token);
-  const fileId = await findWorkspaceFile(token, folderId);
+  const fileId = await findWorkspaceFile(token);
   if (!fileId) return null;
 
   const res = await driveFetch(`/files/${fileId}?alt=media`, token);

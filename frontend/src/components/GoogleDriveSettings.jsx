@@ -87,7 +87,7 @@ const GoogleDriveSettings = ({ onBeforeConnect }) => {
   };
 
   const storageHint =
-    'Vos cahiers restent sur cet appareil. Le dossier Drive « SeNote » reçoit un PDF par cahier (lisible dans Drive) plus une sauvegarde technique senote-workspace.json.';
+    'Vos cahiers restent sur cet appareil. Le dossier Drive « SeNote » reçoit un PDF par cahier, mis à jour à chaque synchronisation.';
 
   return (
     <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-chrome-800">

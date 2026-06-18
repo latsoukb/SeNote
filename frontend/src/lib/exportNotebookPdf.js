@@ -1,38 +1,15 @@
 import { jsPDF } from 'jspdf';
-import { PAGE_W, PAGE_H, SEYES_BG } from './pageDimensions';
-import { getPageBackground, drawTemplateBackground } from './pageTemplates';
-import { drawStrokesLayered } from './strokeRenderer';
+import { PAGE_W, PAGE_H } from './pageDimensions';
 import { getAllNotebookPages } from './notebookSections';
+import { drawPageToCanvas, seyesLoad } from './drawPage';
 
-const loadImage = (src) =>
-  new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = src;
-  });
-
-const renderPageToCanvas = async (page, imageCache) => {
+const renderPageToCanvas = async (page) => {
+  await seyesLoad;
   const canvas = document.createElement('canvas');
   canvas.width = PAGE_W;
   canvas.height = PAGE_H;
   const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, PAGE_W, PAGE_H);
-
-  const bg = getPageBackground(page);
-  if (bg.type === 'image') {
-    let img = imageCache.get(bg.src);
-    if (!img) {
-      img = await loadImage(bg.src);
-      imageCache.set(bg.src, img);
-    }
-    ctx.drawImage(img, 0, 0, PAGE_W, PAGE_H);
-  } else {
-    drawTemplateBackground(ctx, page.template, PAGE_W, PAGE_H);
-  }
-
-  drawStrokesLayered(ctx, page.strokes || []);
+  await drawPageToCanvas(ctx, page, PAGE_W, PAGE_H);
 
   (page.textBoxes || []).forEach((t) => {
     ctx.fillStyle = t.color || '#0F172A';
@@ -62,17 +39,10 @@ export const buildNotebookPdf = async (notebook) => {
     format: 'a4',
   });
 
-  const imageCache = new Map();
-  try {
-    imageCache.set(SEYES_BG, await loadImage(SEYES_BG));
-  } catch {
-    /* optional */
-  }
-
   const pages = getAllNotebookPages(notebook);
   for (let i = 0; i < pages.length; i++) {
     if (i > 0) pdf.addPage();
-    const canvas = await renderPageToCanvas(pages[i], imageCache);
+    const canvas = await renderPageToCanvas(pages[i]);
     const data = canvas.toDataURL('image/jpeg', 0.92);
     pdf.addImage(data, 'JPEG', 0, 0, 595, 842);
   }
@@ -82,7 +52,8 @@ export const buildNotebookPdf = async (notebook) => {
 
 export const notebookToPdfBlob = async (notebook) => {
   const pdf = await buildNotebookPdf(notebook);
-  return pdf.output('blob');
+  const buf = pdf.output('arraybuffer');
+  return new Blob([buf], { type: 'application/pdf' });
 };
 
 export const exportNotebookToPdf = async (notebook) => {
