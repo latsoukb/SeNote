@@ -13,7 +13,7 @@ Sync optionnelle vers votre Drive personnel (gratuit, 15 Go). Les cahiers resten
    - Type : **External** (ou Internal si compte Google Workspace)
    - Nom de l'app : `SeNote`
    - Email de support : le vôtre
-   - Scopes : ajoutez `.../auth/drive.file` (accès aux fichiers créés par l'app)
+   - Scopes : ajoutez `.../auth/drive.file` et `.../auth/drive.appdata` (sauvegarde technique invisible)
    - Utilisateurs test : ajoutez **votre adresse Gmail** (obligatoire tant que l'app n'est pas publiée)
 5. **APIs & Services → Credentials → Create credentials → OAuth client ID**
    - Type : **Application Web**

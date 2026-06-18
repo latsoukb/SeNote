@@ -23,6 +23,7 @@ const WORKSPACE_NAME = 'senote-workspace.json';
 /** Scopes Drive — ne pas passer en une seule chaîne (bug plugin Android). */
 const DRIVE_SCOPES = [
   'https://www.googleapis.com/auth/drive.file',
+  'https://www.googleapis.com/auth/drive.appdata',
   'https://www.googleapis.com/auth/userinfo.email',
 ];
 const DRIVE_SCOPE_STRING = DRIVE_SCOPES.join(' ');
