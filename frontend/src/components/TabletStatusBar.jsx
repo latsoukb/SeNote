@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import { useDeviceStatus } from '../hooks/useDeviceStatus';
 import { useTabletShell } from '../context/TabletShellContext';
+import { WifiConnect } from '../plugins/wifiConnect';
+import { toast } from 'sonner';
 
 const formatClock = (date) =>
   date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
@@ -36,6 +38,18 @@ const TabletStatusBar = () => {
       ? 'Wi‑Fi'
       : 'Wi‑Fi off';
 
+  const handleWifiTap = async () => {
+    if (status.deviceOwner) {
+      try {
+        await WifiConnect.openWifiPanel();
+      } catch {
+        toast.error('Panneau Wi‑Fi indisponible.');
+      }
+      return;
+    }
+    openWifiPanel();
+  };
+
   return (
     <header
       className="tablet-os-bar shrink-0 z-50 grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-3 sm:px-4 border-b border-slate-200/80 dark:border-chrome-800/80 bg-white/95 dark:bg-chrome-950/95 backdrop-blur-md text-xs sm:text-sm text-slate-700 dark:text-slate-200"
@@ -44,7 +58,7 @@ const TabletStatusBar = () => {
     >
       <button
         type="button"
-        onClick={() => openWifiPanel()}
+        onClick={handleWifiTap}
         className="flex items-center gap-1.5 min-w-0 justify-self-start px-2 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-chrome-800 transition-colors"
         aria-label={`Wi‑Fi : ${wifiLabel}`}
       >

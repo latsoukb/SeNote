@@ -79,7 +79,7 @@ public final class KioskManager {
         hideApplication(dpm, admin, "com.google.android.youtube");
         hideApplication(dpm, admin, "com.zhiliaoapp.musically");
         hideApplication(dpm, admin, "com.ss.android.ugc.trill");
-        hideApplication(dpm, admin, SETTINGS_PKG);
+        // Ne pas masquer com.android.settings : requis pour les panneaux Wi‑Fi / sécurité en Lock Task
     }
 
     private static void setUserRestriction(
@@ -180,9 +180,42 @@ public final class KioskManager {
     }
 
     public static void openWifiPanel(Activity activity) {
-        openAdminSystemSettings(activity, "wifi");
+        openStudentPanel(activity, "wifi");
     }
 
+    /**
+     * Panneau Android natif (Wi‑Fi, verrouillage) — élèves, Device Owner requis.
+     * Reste en Lock Task : SeNote + Paramètres autorisés le temps du panneau.
+     */
+    public static boolean openStudentPanel(Activity activity, String type) {
+        if (activity == null || maintenanceMode) return false;
+        Context ctx = activity.getApplicationContext();
+        if (!isDeviceOwner(ctx)) return false;
+
+        DevicePolicyManager dpm = ctx.getSystemService(DevicePolicyManager.class);
+        if (dpm == null) return false;
+        ComponentName admin = adminComponent(ctx);
+
+        try {
+            dpm.setApplicationHidden(admin, SETTINGS_PKG, false);
+        } catch (Exception ignored) {
+            // Settings absent sur cet appareil
+        }
+
+        dpm.setLockTaskPackages(admin, new String[] { PKG, SETTINGS_PKG });
+        restartLockTask(activity);
+
+        if (activity.getWindow() != null) {
+            MainActivity.showSystemBars(activity.getWindow());
+        }
+
+        Intent intent = buildSettingsIntent(type);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        activity.startActivity(intent);
+        return true;
+    }
+
+    /** Réglages complets — maintenance IT uniquement. */
     public static void openAdminSystemSettings(Activity activity, String type) {
         if (activity == null || !isMaintenanceMode()) return;
 

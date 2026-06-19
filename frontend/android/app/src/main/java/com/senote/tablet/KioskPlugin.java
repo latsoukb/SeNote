@@ -131,10 +131,15 @@ public class KioskPlugin extends Plugin {
     @PluginMethod
     public void openSystemSettings(PluginCall call) {
         String type = call.getString("type", "wifi");
-        getActivity().runOnUiThread(() -> {
-            KioskManager.openAdminSystemSettings(getActivity(), type);
-            call.resolve();
-        });
+        getActivity()
+                .runOnUiThread(
+                        () -> {
+                            if (!KioskManager.openStudentPanel(getActivity(), type)) {
+                                call.reject("NOT_DEVICE_OWNER");
+                                return;
+                            }
+                            call.resolve();
+                        });
     }
 
     @PluginMethod

@@ -167,7 +167,15 @@ public class WifiConnectPlugin extends Plugin {
 
     @PluginMethod
     public void openWifiPanel(PluginCall call) {
-        call.reject("Utilisez le panneau Wi-Fi in-app");
+        getActivity()
+                .runOnUiThread(
+                        () -> {
+                            if (!KioskManager.openStudentPanel(getActivity(), "wifi")) {
+                                call.reject("NOT_DEVICE_OWNER");
+                                return;
+                            }
+                            call.resolve();
+                        });
     }
 
     @PluginMethod

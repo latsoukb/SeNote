@@ -4,11 +4,12 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import Logo from './Logo';
 import { hasStudentLockPin, verifyStudentLockPin } from '../lib/studentScreenLock';
+import { getKioskStatus } from '../lib/kioskLock';
 import { isNativeApp } from '../lib/platform';
 
 const SESSION_KEY = 'senote-student-unlocked';
 
-/** Écran de verrouillage élève (100 % in-app, sans réglages Android). */
+/** Verrou SeNote in-app — uniquement sans Device Owner (sinon verrou Android). */
 const StudentScreenLockGate = ({ children }) => {
   const [checking, setChecking] = useState(true);
   const [required, setRequired] = useState(false);
@@ -22,6 +23,11 @@ const StudentScreenLockGate = ({ children }) => {
       return;
     }
     try {
+      const status = await getKioskStatus();
+      if (status.deviceOwner) {
+        setRequired(false);
+        return;
+      }
       const hasPin = await hasStudentLockPin();
       const unlocked = sessionStorage.getItem(SESSION_KEY) === '1';
       setRequired(hasPin && !unlocked);

@@ -12,6 +12,7 @@ import {
 import { Lock, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { isNativeApp } from '../lib/platform';
+import { getKioskStatus, openSystemSettings } from '../lib/kioskLock';
 import {
   clearStudentLockPin,
   hasStudentLockPin,
@@ -19,6 +20,7 @@ import {
 } from '../lib/studentScreenLock';
 
 const StudentScreenLockSettings = () => {
+  const [deviceOwner, setDeviceOwner] = useState(false);
   const [active, setActive] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [pin, setPin] = useState('');
@@ -26,7 +28,11 @@ const StudentScreenLockSettings = () => {
   const [saving, setSaving] = useState(false);
 
   const refresh = useCallback(async () => {
-    setActive(await hasStudentLockPin());
+    const status = await getKioskStatus();
+    setDeviceOwner(Boolean(status.deviceOwner));
+    if (!status.deviceOwner) {
+      setActive(await hasStudentLockPin());
+    }
   }, []);
 
   useEffect(() => {
@@ -34,6 +40,15 @@ const StudentScreenLockSettings = () => {
   }, [refresh]);
 
   if (!isNativeApp()) return null;
+
+  const handleOpenAndroid = async () => {
+    try {
+      await openSystemSettings('security');
+      toast.message('Configurez votre PIN dans le panneau Android, puis revenez à SeNote.');
+    } catch (e) {
+      toast.error(e.message || 'Panneau indisponible — activez Device Owner d\'abord.');
+    }
+  };
 
   const handleSave = async () => {
     if (pin !== confirm) {
@@ -44,7 +59,7 @@ const StudentScreenLockSettings = () => {
     try {
       await setStudentLockPin(pin);
       sessionStorage.removeItem('senote-student-unlocked');
-      toast.success('Code enregistré. SeNote demandera ce code au démarrage.');
+      toast.success('Code enregistré.');
       setDialogOpen(false);
       setPin('');
       setConfirm('');
@@ -69,24 +84,38 @@ const StudentScreenLockSettings = () => {
         <Lock className="w-4 h-4" />
         Verrouillage de la tablette
       </Label>
-      <p className="text-xs text-slate-500 leading-relaxed">
-        Code personnel pour ouvrir SeNote (4 à 8 chiffres). Tout se passe dans l&apos;application,
-        sans quitter SeNote.
-      </p>
 
-      {active ? (
-        <div className="flex gap-2">
-          <Button type="button" variant="outline" className="flex-1" onClick={() => setDialogOpen(true)}>
-            Changer le code
+      {deviceOwner ? (
+        <>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Ouvre le panneau Android pour choisir un PIN ou mot de passe (anti-vol au démarrage de
+            la tablette). Vous restez dans SeNote.
+          </p>
+          <Button type="button" variant="outline" className="w-full" onClick={handleOpenAndroid}>
+            Configurer le verrouillage écran
           </Button>
-          <Button type="button" variant="outline" size="icon" aria-label="Supprimer le code" onClick={handleRemove}>
-            <Trash2 className="w-4 h-4" />
-          </Button>
-        </div>
+        </>
       ) : (
-        <Button type="button" variant="outline" className="w-full" onClick={() => setDialogOpen(true)}>
-          Créer un code
-        </Button>
+        <>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Code personnel SeNote (4 à 8 chiffres). Pour le verrou Android complet, activez Device
+            Owner via <code className="text-[11px]">./scripts/setup-tablet.sh</code>.
+          </p>
+          {active ? (
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" className="flex-1" onClick={() => setDialogOpen(true)}>
+                Changer le code
+              </Button>
+              <Button type="button" variant="outline" size="icon" aria-label="Supprimer le code" onClick={handleRemove}>
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+          ) : (
+            <Button type="button" variant="outline" className="w-full" onClick={() => setDialogOpen(true)}>
+              Créer un code SeNote
+            </Button>
+          )}
+        </>
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
