@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { isNativeApp } from './platform';
+import { isNativeApp } from '../lib/platform';
 import { Kiosk } from '../plugins/kiosk';
 
 const DEFAULT_STATUS = {
