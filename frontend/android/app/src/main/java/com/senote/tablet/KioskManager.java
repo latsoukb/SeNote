@@ -57,12 +57,12 @@ public final class KioskManager {
             dpm.setLockTaskFeatures(admin, DevicePolicyManager.LOCK_TASK_FEATURE_NONE);
         }
 
-        setUserRestriction(dpm, admin, UserManager.DISALLOW_INSTALL_APPS);
         setUserRestriction(dpm, admin, UserManager.DISALLOW_UNINSTALL_APPS);
         setUserRestriction(dpm, admin, UserManager.DISALLOW_FACTORY_RESET);
         setUserRestriction(dpm, admin, UserManager.DISALLOW_SAFE_BOOT);
         setUserRestriction(dpm, admin, UserManager.DISALLOW_ADD_USER);
         setUserRestriction(dpm, admin, UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES);
+        // Pas DISALLOW_INSTALL_APPS : bloquerait les mises a jour SeNote in-app
 
         hideApplication(dpm, admin, "com.android.vending");
         hideApplication(dpm, admin, "com.android.chrome");

@@ -67,8 +67,10 @@ cd "$ANDROID"
 chmod +x gradlew
 
 PKG=com.senote.tablet
+ADMIN="${PKG}/.SeNoteDeviceAdminReceiver"
 if adb shell pm list packages | grep -q "$PKG"; then
-  echo "→ Désinstallation de l'ancienne version (signature différente possible)…"
+  echo "→ Retrait Device Owner / désinstallation si nécessaire…"
+  adb shell dpm remove-active-admin "$ADMIN" >/dev/null 2>&1 || true
   adb uninstall "$PKG" >/dev/null 2>&1 || true
 fi
 
@@ -88,5 +90,5 @@ echo "    · stockage natif (Preferences)"
 echo "    · verrou Lock Task (impossible de quitter SeNote)"
 echo "    · barres système adaptées au thème clair/sombre"
 echo ""
-echo "  Pour réinstaller après des changements : ./scripts/run-emulator.sh"
+echo "  Après install, pour le verrou définitif : ./scripts/provision-tablet.sh"
 echo ""
