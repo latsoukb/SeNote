@@ -39,7 +39,7 @@ chmod +x scripts/provision-tablet.sh
 | **Verrouillage de la tablette** | Choisir son propre PIN / mot de passe anti-vol |
 | **Mise à jour SeNote** | Mettre à jour l'app quand une version est disponible |
 
-Pas de code admin — tout est dans Paramètres.
+Pas de menu maintenance dans l'app — **aucune désactivation du verrou** depuis SeNote.
 
 ## Ce que bloque le Device Owner (pour l'élève)
 
@@ -68,4 +68,4 @@ Puis dans l'app : **Paramètres** → tester Wi‑Fi, verrouillage, mise à jour
 | `Not allowed to set device owner` | Réinitialiser usine, pas de compte Google |
 | Élève sort de SeNote | Relancer `provision-tablet.sh` |
 | Conflit de package (mise à jour) | `adb uninstall com.senote.tablet` puis réinstaller l'APK release |
-| Maintenance (Mac) | `adb shell dpm remove-active-admin com.senote.tablet/.SeNoteDeviceAdminReceiver` |
+| Intervention technique (Mac, USB) | `adb shell dpm remove-active-admin com.senote.tablet/.SeNoteDeviceAdminReceiver` puis réinitialisation usine si besoin |

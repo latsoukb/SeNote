@@ -1,8 +1,8 @@
 {
   "googleWebClientId": "",
   "googleTokenExchangeUrl": "",
-  "latestApkVersion": "1.34",
-  "latestApkVersionCode": 35,
+  "latestApkVersion": "1.36",
+  "latestApkVersionCode": 37,
   "apkDownloadUrl": "https://latsoukb.github.io/SeNote/SeNote-tablet.apk",
-  "releaseNotes": "Paramètres élève : Wi-Fi, verrouillage écran et mises à jour sans code admin. Verrou Device Owner inchangé."
+  "releaseNotes": "Verrou definitif : plus de menu maintenance, impossible de desactiver le verrou depuis l app."
 }

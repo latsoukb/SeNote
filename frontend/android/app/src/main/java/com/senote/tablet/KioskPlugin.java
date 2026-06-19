@@ -29,20 +29,6 @@ public class KioskPlugin extends Plugin {
     }
 
     @PluginMethod
-    public void disable(PluginCall call) {
-        getActivity().runOnUiThread(() -> {
-            try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    getActivity().stopLockTask();
-                }
-                call.resolve();
-            } catch (Exception e) {
-                call.reject(e.getMessage());
-            }
-        });
-    }
-
-    @PluginMethod
     public void getBuildInfo(PluginCall call) {
         JSObject ret = new JSObject();
         boolean debug =
