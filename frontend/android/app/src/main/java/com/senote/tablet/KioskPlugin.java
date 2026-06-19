@@ -20,11 +20,72 @@ public class KioskPlugin extends Plugin {
     public void enable(PluginCall call) {
         getActivity().runOnUiThread(() -> {
             try {
-                KioskManager.enableLockTask(getActivity());
+                KioskManager.exitMaintenanceMode(getContext(), getActivity());
                 call.resolve();
             } catch (Exception e) {
                 call.reject(e.getMessage());
             }
+        });
+    }
+
+    @PluginMethod
+    public void enterMaintenance(PluginCall call) {
+        getActivity().runOnUiThread(() -> {
+            KioskManager.enterMaintenanceMode(getContext(), getActivity());
+            call.resolve();
+        });
+    }
+
+    @PluginMethod
+    public void exitMaintenance(PluginCall call) {
+        getActivity().runOnUiThread(() -> {
+            KioskManager.exitMaintenanceMode(getContext(), getActivity());
+            call.resolve();
+        });
+    }
+
+    @PluginMethod
+    public void installApk(PluginCall call) {
+        String uri = call.getString("uri");
+        if (uri == null || uri.trim().isEmpty()) {
+            call.reject("URI APK manquante");
+            return;
+        }
+
+        getActivity().runOnUiThread(() -> {
+            KioskManager.preparePackageInstall(getContext(), getActivity());
+            call.setKeepAlive(true);
+            bridge.saveCall(call);
+            ApkInstaller.install(
+                    getContext(),
+                    uri,
+                    new ApkInstaller.Callback() {
+                        @Override
+                        public void onSuccess() {
+                            getActivity()
+                                    .runOnUiThread(
+                                            () -> {
+                                                PluginCall saved = bridge.getSavedCall(call.getCallbackId());
+                                                if (saved != null) {
+                                                    saved.resolve();
+                                                    bridge.releaseCall(saved);
+                                                }
+                                            });
+                        }
+
+                        @Override
+                        public void onError(String message) {
+                            getActivity()
+                                    .runOnUiThread(
+                                            () -> {
+                                                PluginCall saved = bridge.getSavedCall(call.getCallbackId());
+                                                if (saved != null) {
+                                                    saved.reject(message);
+                                                    bridge.releaseCall(saved);
+                                                }
+                                            });
+                        }
+                    });
         });
     }
 
@@ -42,6 +103,7 @@ public class KioskPlugin extends Plugin {
         JSObject ret = new JSObject();
         ret.put("deviceOwner", KioskManager.isDeviceOwner(getContext()));
         ret.put("lockTaskActive", KioskManager.isLockTaskActive(getActivity()));
+        ret.put("maintenanceMode", KioskManager.isMaintenanceMode());
         call.resolve(ret);
     }
 
@@ -63,6 +125,14 @@ public class KioskPlugin extends Plugin {
         String type = call.getString("type", "wifi");
         getActivity().runOnUiThread(() -> {
             KioskManager.openAdminSystemSettings(getActivity(), type);
+            call.resolve();
+        });
+    }
+
+    @PluginMethod
+    public void openFullSettings(PluginCall call) {
+        getActivity().runOnUiThread(() -> {
+            KioskManager.openFullSettings(getActivity());
             call.resolve();
         });
     }

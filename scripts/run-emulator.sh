@@ -49,6 +49,7 @@ echo "→ Build web (mode kiosk tablette)…"
 REACT_APP_KIOSK_MODE=true \
 REACT_APP_USE_BACKEND=false \
 REACT_APP_BETA_PIN= \
+REACT_APP_IT_ADMIN_PIN="${REACT_APP_IT_ADMIN_PIN:-482916}" \
 PUBLIC_URL= \
 CI=false \
 npm run build

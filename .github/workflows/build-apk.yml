@@ -50,6 +50,7 @@ jobs:
           REACT_APP_GOOGLE_WEB_CLIENT_ID: ${{ secrets.REACT_APP_GOOGLE_WEB_CLIENT_ID }}
           REACT_APP_GOOGLE_TOKEN_URL: ${{ secrets.REACT_APP_GOOGLE_TOKEN_URL }}
           REACT_APP_JOKKO_SYNC_URL: ${{ secrets.REACT_APP_JOKKO_SYNC_URL }}
+          REACT_APP_IT_ADMIN_PIN: ${{ secrets.REACT_APP_IT_ADMIN_PIN }}
           REACT_APP_UPDATE_CONFIG_URL: 'https://latsoukb.github.io/SeNote/app-config.json'
           PUBLIC_URL: ''
           CI: false

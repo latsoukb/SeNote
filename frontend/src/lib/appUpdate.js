@@ -317,9 +317,14 @@ export const downloadAndInstallUpdate = async (downloadUrl, onProgress, versionN
 
   onProgress?.('install');
 
-  const { FileOpener } = await import('@capawesome-team/capacitor-file-opener');
-  await FileOpener.openFile({
-    path: stat.uri,
-    mimeType: 'application/vnd.android.package-archive',
-  });
+  try {
+    const { installApk } = await import('./kioskLock');
+    await installApk(stat.uri);
+  } catch (err) {
+    console.warn('APK install failed', err);
+    throw new Error(
+      err?.message ||
+        'Installation impossible. Activez le mode maintenance IT (7× logo SeNote) ou réessayez.'
+    );
+  }
 };

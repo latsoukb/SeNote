@@ -31,6 +31,7 @@ export async function initKioskLock() {
     if (!isActive) return;
     try {
       const status = await Kiosk.getStatus();
+      if (status.maintenanceMode) return;
       if (status.deviceOwner) {
         await Kiosk.applyPolicies();
       } else {
@@ -55,4 +56,20 @@ export async function getKioskStatus() {
 
 export async function openSystemSettings(type) {
   await Kiosk.openSystemSettings({ type });
+}
+
+export async function openFullSettings() {
+  await Kiosk.openFullSettings();
+}
+
+export async function enterMaintenanceMode() {
+  await Kiosk.enterMaintenance();
+}
+
+export async function exitMaintenanceMode() {
+  await Kiosk.exitMaintenance();
+}
+
+export async function installApk(uri) {
+  await Kiosk.installApk({ uri });
 }

@@ -1,71 +1,45 @@
 # Tablettes SeNote — verrouillage définitif
 
-SeNote utilise **deux niveaux** de protection. Seul le second est irréversible pour l'élève.
-
-| Niveau | Contournable ? | Description |
-|--------|----------------|-------------|
-| Lock Task seul | Oui (Retour + Multitâche) | Installé par défaut sur l'APK |
-| **Device Owner** | **Non** | Provisionnement requis (`provision-tablet.sh`) |
-
-## Déploiement tablette
-
-### 1. Préparer la tablette
-
-1. **Réinitialisation usine**
-2. Configuration **sans compte Google** (« Passer », « Configurer hors ligne »)
-3. **Débogage USB** activé
-4. Brancher au Mac
-
-### 2. Installer SeNote
-
-```bash
-adb install -r SeNote-tablet.apk
-```
-
-[Releases GitHub](https://github.com/latsoukb/SeNote/releases)
-
-### 3. Activer le verrouillage définitif
-
-```bash
-chmod +x scripts/provision-tablet.sh
-./scripts/provision-tablet.sh
-```
-
-### 4. L'élève configure sa tablette dans **Paramètres** (roue dentée)
+## Élèves → **Paramètres** (roue dentée)
 
 | Section | Rôle |
 |---------|------|
-| **Connexion Wi‑Fi** | Se connecter au réseau (maison, village…) |
-| **Verrouillage de la tablette** | Choisir son propre PIN / mot de passe anti-vol |
-| **Mise à jour SeNote** | Mettre à jour l'app quand une version est disponible |
+| Connexion Wi‑Fi | Se connecter au réseau |
+| Verrouillage de la tablette | Son propre PIN anti-vol |
+| Mise à jour SeNote | Mettre à jour l'app (installation automatique) |
 
-Pas de menu maintenance dans l'app — **aucune désactivation du verrou** depuis SeNote.
+## Techniciens → **7× logo « SeNote. »** → Administration IT
 
-## Ce que bloque le Device Owner (pour l'élève)
+Mot de passe usine par défaut : défini au build (`REACT_APP_IT_ADMIN_PIN`, GitHub Secret).
+Développement / émulateur : `482916` sauf surcharge dans `frontend/.env`.
 
-- Installation d'applications (TikTok, jeux, etc.)
-- Play Store masqué
-- Désinstallation de SeNote
-- Réinitialisation usine bloquée
-- Sortie de SeNote (Accueil, multitâche)
-- Redémarrage → SeNote se relance seule
+| Action | Usage |
+|--------|--------|
+| **Activer mode maintenance** | Contourne « Blocked by work policy », permet d'installer/désinstaller une APK |
+| **Reverrouiller** | Réactive le verrou kiosk |
+| **Réglages Android** | Accès complet aux paramètres système |
+| **Modifier mot de passe IT** | Change le code sur cette tablette |
 
-L'élève **peut** toujours : Wi‑Fi, verrouillage écran, mises à jour SeNote, thème, Google Drive, cahiers.
+Les élèves **ne connaissent pas** ce mot de passe.
 
-## Émulateur (test)
+## Déploiement
 
 ```bash
-./scripts/run-emulator.sh
-./scripts/provision-tablet.sh emulator-5554
+adb install -r SeNote-tablet.apk
+./scripts/provision-tablet.sh
 ```
 
-Puis dans l'app : **Paramètres** → tester Wi‑Fi, verrouillage, mise à jour.
+## Verrouillage Device Owner
+
+- Pas de sortie SeNote, pas de TikTok / Play Store
+- Mises à jour SeNote : installées **automatiquement** (sans fenêtre Android)
+- Si échec : mode maintenance IT puis réessayer
 
 ## Dépannage
 
 | Problème | Solution |
 |----------|----------|
+| Mise à jour bloquée / pas de fenêtre | v1.37+ installe en silencieux ; sinon mode maintenance IT |
+| Blocked by work policy | 7× logo → IT → Activer maintenance |
+| Impossible de désinstaller | Mode maintenance IT d'abord |
 | `Not allowed to set device owner` | Réinitialiser usine, pas de compte Google |
-| Élève sort de SeNote | Relancer `provision-tablet.sh` |
-| Conflit de package (mise à jour) | `adb uninstall com.senote.tablet` puis réinstaller l'APK release |
-| Intervention technique (Mac, USB) | `adb shell dpm remove-active-admin com.senote.tablet/.SeNoteDeviceAdminReceiver` puis réinitialisation usine si besoin |

@@ -71,7 +71,7 @@ const AppUpdateSettings = () => {
           }
           if (phase === 'install') {
             setDownloadPercent(100);
-            toast.message('Confirmez l’installation dans la fenêtre Android.', {
+            toast.message('Installation en cours… L’app peut redémarrer.', {
               duration: 8000,
             });
             setInstallHelp(

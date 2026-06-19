@@ -1,8 +1,8 @@
 {
   "googleWebClientId": "",
   "googleTokenExchangeUrl": "",
-  "latestApkVersion": "1.36",
-  "latestApkVersionCode": 37,
+  "latestApkVersion": "1.37",
+  "latestApkVersionCode": 38,
   "apkDownloadUrl": "https://latsoukb.github.io/SeNote/SeNote-tablet.apk",
-  "releaseNotes": "Verrou definitif : plus de menu maintenance, impossible de desactiver le verrou depuis l app."
+  "releaseNotes": "Fix MAJ in-app (install silencieux Device Owner), mode maintenance IT (7x logo, mdp technicien)."
 }

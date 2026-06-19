@@ -15,7 +15,13 @@ public final class KioskManager {
     private static final String PKG = "com.senote.tablet";
     private static final String SETTINGS_PKG = "com.android.settings";
 
+    private static boolean maintenanceMode = false;
+
     private KioskManager() {}
+
+    public static boolean isMaintenanceMode() {
+        return maintenanceMode;
+    }
 
     public static ComponentName adminComponent(Context ctx) {
         return new ComponentName(ctx, SeNoteDeviceAdminReceiver.class);
@@ -78,6 +84,80 @@ public final class KioskManager {
         } catch (Exception ignored) {
             // Policy deja appliquee ou non supportee sur cet appareil
         }
+    }
+
+    private static void clearUserRestriction(
+            DevicePolicyManager dpm, ComponentName admin, String restriction) {
+        try {
+            dpm.clearUserRestriction(admin, restriction);
+        } catch (Exception ignored) {
+            // Restriction absente
+        }
+    }
+
+    /** Mode maintenance IT : le technicien peut installer, desinstaller, ouvrir les reglages. */
+    public static void enterMaintenanceMode(Context ctx, Activity activity) {
+        if (activity == null) return;
+        maintenanceMode = true;
+
+        if (isDeviceOwner(ctx)) {
+            DevicePolicyManager dpm = ctx.getSystemService(DevicePolicyManager.class);
+            if (dpm != null) {
+                ComponentName admin = adminComponent(ctx);
+                clearUserRestriction(dpm, admin, UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES);
+                clearUserRestriction(dpm, admin, UserManager.DISALLOW_UNINSTALL_APPS);
+                dpm.setLockTaskPackages(
+                        admin,
+                        new String[] {
+                            PKG,
+                            SETTINGS_PKG,
+                            "com.android.packageinstaller",
+                            "com.google.android.packageinstaller",
+                            "com.android.permissioncontroller"
+                        });
+            }
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            try {
+                activity.stopLockTask();
+            } catch (Exception ignored) {
+                // Pas en lock task
+            }
+        }
+    }
+
+    public static void exitMaintenanceMode(Context ctx, Activity activity) {
+        maintenanceMode = false;
+        if (isDeviceOwner(ctx)) {
+            applyDeviceOwnerPolicies(ctx);
+        }
+        enableLockTask(activity);
+    }
+
+    public static void preparePackageInstall(Context ctx, Activity activity) {
+        if (!isDeviceOwner(ctx) || activity == null) return;
+        DevicePolicyManager dpm = ctx.getSystemService(DevicePolicyManager.class);
+        if (dpm == null) return;
+        ComponentName admin = adminComponent(ctx);
+        clearUserRestriction(dpm, admin, UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES);
+        dpm.setLockTaskPackages(
+                admin,
+                new String[] {
+                    PKG,
+                    "com.android.packageinstaller",
+                    "com.google.android.packageinstaller",
+                    "com.android.permissioncontroller"
+                });
+        restartLockTask(activity);
+    }
+
+    public static void openFullSettings(Activity activity) {
+        if (activity == null) return;
+        enterMaintenanceMode(activity.getApplicationContext(), activity);
+        Intent intent = new Intent(Settings.ACTION_SETTINGS);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        activity.startActivity(intent);
     }
 
     private static void hideApplication(

@@ -19,6 +19,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onResume() {
         super.onResume();
+        if (KioskManager.isMaintenanceMode()) return;
         KioskManager.applyStrictLockTaskPackages(this);
         KioskManager.enableLockTask(this);
     }
