@@ -18,6 +18,7 @@ import { usePWAInstall } from '../hooks/usePWAInstall';
 import GoogleDriveSettings from './GoogleDriveSettings';
 import AppUpdateSettings from './AppUpdateSettings';
 import StudentDeviceCode from './StudentDeviceCode';
+import StudentWifiSettings from './StudentWifiSettings';
 import { isNativeApp } from '../lib/platform';
 
 const SettingsDialog = ({ trigger }) => {
@@ -47,6 +48,8 @@ const SettingsDialog = ({ trigger }) => {
         </DialogHeader>
         <div className="space-y-6 py-2 px-6 pb-6 overflow-y-auto overscroll-contain thin-scroll min-h-0 flex-1">
           {studentSession && <StudentDeviceCode variant="settings" />}
+
+          <StudentWifiSettings />
 
           <div className="space-y-3">
             <Label>Apparence</Label>

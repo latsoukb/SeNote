@@ -222,7 +222,7 @@ const TabletAdminDialog = ({ open, onOpenChange }) => {
               </div>
 
               <div className="space-y-2">
-                <Label>Réseau</Label>
+                <Label>Réseau (maintenance)</Label>
                 <Button
                   type="button"
                   variant="outline"
@@ -230,10 +230,11 @@ const TabletAdminDialog = ({ open, onOpenChange }) => {
                   onClick={handleOpenWifi}
                 >
                   <Wifi className="w-4 h-4" />
-                  Connexion Wi‑Fi
+                  Panneau Wi‑Fi Android
                 </Button>
                 <p className="text-xs text-slate-500">
-                  Ouvre le panneau Wi‑Fi Android. Seule l&apos;administration y a accès.
+                  Réservé à la maintenance. Les élèves se connectent via Paramètres → Connexion
+                  Wi‑Fi (sans code admin).
                 </p>
               </div>
 

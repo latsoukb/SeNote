@@ -9,6 +9,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         registerPlugin(KioskPlugin.class);
+        registerPlugin(WifiConnectPlugin.class);
         super.onCreate(savedInstanceState);
         if (getWindow() != null) {
             KioskPlugin.applySystemBars(getWindow(), false);

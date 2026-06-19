@@ -51,9 +51,15 @@ Si plusieurs appareils : `./scripts/provision-tablet.sh SERIAL`
 
 ## Wi‑Fi
 
-Les élèves **ne peuvent pas** ouvrir les réglages Android. Seul l'administrateur, avec le **code admin**, peut ouvrir le panneau Wi‑Fi depuis SeNote.
+Les élèves se connectent **eux-mêmes**, sans code admin :
 
-**Ordre recommandé :** provisionner Device Owner → code admin → Wi‑Fi → verrouillage écran.
+1. **Paramètres** (roue dentée) → **Connexion Wi‑Fi**
+2. **Rechercher les réseaux** → choisir le Wi‑Fi → mot de passe
+3. Si le Wi‑Fi est désactivé : **Activer le Wi‑Fi** (petit panneau Android), puis revenir à SeNote
+
+Tout se passe **dans SeNote** — pas d'accès aux réglages Android complets (pas de Play Store, pas d'installation d'apps).
+
+Le **code admin** sert uniquement à la maintenance (mises à jour, verrouillage écran tablette, etc.).
 
 ## Sécurité anti-vol (PIN tablette)
 

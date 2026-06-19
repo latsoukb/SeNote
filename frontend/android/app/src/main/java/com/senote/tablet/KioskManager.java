@@ -89,6 +89,10 @@ public final class KioskManager {
         }
     }
 
+    public static void openWifiPanel(Activity activity) {
+        openAdminSystemSettings(activity, "wifi");
+    }
+
     public static void openAdminSystemSettings(Activity activity, String type) {
         if (activity == null) return;
 
