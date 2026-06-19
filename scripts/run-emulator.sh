@@ -77,19 +77,22 @@ fi
 
 ./gradlew installDebug
 
-echo "→ Lancement SeNote sur l'émulateur…"
+SERIAL="$(adb devices | awk 'NR>1 && /device$/{print $1; exit}')"
+echo "→ Activation verrou définitif (Device Owner)…"
+if "$ROOT/scripts/provision-tablet.sh" "${SERIAL}"; then
+  echo "→ Device Owner activé."
+else
+  echo "⚠️  Device Owner non activé — configurez l'émulateur SANS compte Google, puis :"
+  echo "    ./scripts/provision-tablet.sh ${SERIAL}"
+fi
+
+echo "→ Lancement SeNote…"
 adb shell am start -n "$PKG/.MainActivity" >/dev/null 2>&1 || adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null
 
 echo ""
-echo "  ✅ SeNote kiosk installé sur l'émulateur"
+echo "  ✅ SeNote installé + verrou activé"
 echo "  ───────────────────────────────────────"
-echo "  Mode kiosk = APK natif + verrou Android :"
-echo "    · pas de code PIN bêta"
-echo "    · bibliothèque vide au premier lancement"
-echo "    · sidebar pages fermée dans un cahier"
-echo "    · stockage natif (Preferences)"
-echo "    · verrou Lock Task (impossible de quitter SeNote)"
-echo "    · barres système adaptées au thème clair/sombre"
-echo ""
-echo "  Après install, pour le verrou définitif : ./scripts/provision-tablet.sh"
+echo "  Élèves : Paramètres → Wi‑Fi, verrouillage écran, mises à jour"
+echo "  IT (toi) : 7× logo SeNote → mot de passe → activer/désactiver le verrou"
+echo "  Mot de passe IT par défaut : 482916"
 echo ""

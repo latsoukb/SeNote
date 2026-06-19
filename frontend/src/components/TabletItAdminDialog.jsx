@@ -8,50 +8,33 @@ import {
 import { Button } from './ui/button';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
-import {
-  Shield,
-  Settings,
-  Wrench,
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
-  Lock,
-  Unlock,
-} from 'lucide-react';
+import { Shield, Lock, Unlock, CheckCircle2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { isNativeApp } from '../lib/platform';
-import { getKioskStatus, enterMaintenanceMode, exitMaintenanceMode, openFullSettings } from '../lib/kioskLock';
 import {
-  hasCustomItPin,
-  isValidItPin,
-  resetItPin,
-  setItPin,
-  verifyItPin,
-} from '../lib/itAdminPin';
+  getKioskStatus,
+  enterMaintenanceMode,
+  exitMaintenanceMode,
+} from '../lib/kioskLock';
+import { verifyItPin } from '../lib/itAdminPin';
 
+/** 7× logo SeNote → mot de passe IT → activer / désactiver le verrou uniquement. */
 const TabletItAdminDialog = ({ open, onOpenChange }) => {
-  const [step, setStep] = useState('login');
   const [password, setPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [status, setStatus] = useState({
-    deviceOwner: false,
-    lockTaskActive: false,
-    maintenanceMode: false,
-  });
-  const [customPin, setCustomPin] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [locked, setLocked] = useState(true);
+  const [deviceOwner, setDeviceOwner] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const resetForm = useCallback(() => {
-    setStep('login');
-    setPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
+  const refresh = useCallback(async () => {
+    const status = await getKioskStatus();
+    setDeviceOwner(Boolean(status.deviceOwner));
+    setLocked(Boolean(status.lockTaskActive) && !status.maintenanceMode);
   }, []);
 
-  const refresh = useCallback(async () => {
-    setStatus(await getKioskStatus());
-    setCustomPin(await hasCustomItPin());
+  const resetForm = useCallback(() => {
+    setPassword('');
+    setAuthenticated(false);
   }, []);
 
   useEffect(() => {
@@ -68,80 +51,29 @@ const TabletItAdminDialog = ({ open, onOpenChange }) => {
     try {
       const ok = await verifyItPin(password);
       if (!ok) {
-        toast.error('Mot de passe IT incorrect.');
+        toast.error('Mot de passe incorrect.');
         return;
       }
-      setStep('panel');
+      setAuthenticated(true);
       await refresh();
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEnterMaintenance = async () => {
+  const handleToggleLock = async () => {
     setLoading(true);
     try {
-      await enterMaintenanceMode();
+      if (locked) {
+        await enterMaintenanceMode();
+        toast.success('Verrou désactivé (maintenance IT).');
+      } else {
+        await exitMaintenanceMode();
+        toast.success('Verrou activé.');
+      }
       await refresh();
-      toast.success('Mode maintenance activé — installation et réglages Android possibles.');
     } catch (e) {
-      toast.error(e.message || 'Activation impossible');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleExitMaintenance = async () => {
-    setLoading(true);
-    try {
-      await exitMaintenanceMode();
-      await refresh();
-      toast.success('Verrou kiosk réactivé.');
-    } catch (e) {
-      toast.error(e.message || 'Réactivation impossible');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleOpenSettings = async () => {
-    try {
-      await openFullSettings();
-      toast.message('Réglages Android — revenez à SeNote une fois terminé.');
-    } catch (e) {
-      toast.error(e.message || 'Ouverture impossible');
-    }
-  };
-
-  const handleChangePin = async () => {
-    if (!isValidItPin(newPassword)) {
-      toast.error('Minimum 6 caractères.');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      toast.error('Les mots de passe ne correspondent pas.');
-      return;
-    }
-    setLoading(true);
-    try {
-      await setItPin(newPassword);
-      setCustomPin(true);
-      setNewPassword('');
-      setConfirmPassword('');
-      toast.success('Mot de passe IT mis à jour sur cette tablette.');
-    } catch (e) {
-      toast.error(e.message || 'Erreur');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResetPin = async () => {
-    setLoading(true);
-    try {
-      await resetItPin();
-      setCustomPin(false);
-      toast.success('Mot de passe IT réinitialisé au code usine.');
+      toast.error(e.message || 'Action impossible');
     } finally {
       setLoading(false);
     }
@@ -155,103 +87,71 @@ const TabletItAdminDialog = ({ open, onOpenChange }) => {
         onOpenChange(next);
       }}
     >
-      <DialogContent className="sm:max-w-md max-h-[min(90dvh,100vh-2rem)] flex flex-col gap-0 p-0 overflow-hidden">
-        <DialogHeader className="shrink-0 px-6 pt-6 pb-2">
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Shield className="w-5 h-5 text-brand-600" />
-            Administration IT
+            Verrou SeNote (IT)
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-5 py-2 px-6 pb-6 overflow-y-auto overscroll-contain thin-scroll min-h-0 flex-1">
-          {step === 'login' ? (
-            <form onSubmit={handleLogin} className="space-y-4">
-              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                Accès réservé aux techniciens. Les élèves utilisent les Paramètres normaux
-                (Wi‑Fi, verrouillage, mises à jour).
+        {!authenticated ? (
+          <form onSubmit={handleLogin} className="space-y-4 pt-2">
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              Accès technicien uniquement. Les élèves utilisent Paramètres pour le Wi‑Fi et le
+              verrouillage écran.
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="it-password">Mot de passe</Label>
+              <Input
+                id="it-password"
+                type="password"
+                autoComplete="off"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••"
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={loading}>
+              Valider
+            </Button>
+          </form>
+        ) : (
+          <div className="space-y-4 pt-2">
+            <div className="rounded-lg border border-slate-200 dark:border-chrome-700 p-3 space-y-2 text-sm">
+              <StatusRow ok={deviceOwner} label="Verrou définitif (Device Owner)" />
+              <StatusRow ok={locked} label="Tablette verrouillée dans SeNote" />
+            </div>
+
+            {!deviceOwner && (
+              <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
+                Verrou partiel seulement. Branchez la tablette au Mac et lancez{' '}
+                <code className="text-[11px]">./scripts/provision-tablet.sh</code> une fois pour le
+                verrou complet.
               </p>
-              <div className="space-y-2">
-                <Label htmlFor="it-password">Mot de passe IT</Label>
-                <Input
-                  id="it-password"
-                  type="password"
-                  autoComplete="off"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••"
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={loading}>
-                Accéder
-              </Button>
-            </form>
-          ) : (
-            <>
-              <div className="rounded-lg border border-slate-200 dark:border-chrome-700 p-3 space-y-2 text-sm">
-                <p className="font-medium">État</p>
-                <StatusRow ok={status.deviceOwner} label="Device Owner actif" />
-                <StatusRow
-                  ok={status.lockTaskActive && !status.maintenanceMode}
-                  label="Verrou kiosk actif"
-                />
-                <StatusRow ok={status.maintenanceMode} label="Mode maintenance IT actif" />
-              </div>
+            )}
 
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Wrench className="w-4 h-4" />
-                  Maintenance tablette
-                </Label>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  Active le mode maintenance pour installer une APK, désinstaller SeNote ou ouvrir
-                  tous les réglages Android (contourne « Blocked by work policy »).
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  <Button type="button" variant="outline" className="gap-2" onClick={handleEnterMaintenance} disabled={loading || status.maintenanceMode}>
-                    <Unlock className="w-4 h-4" />
-                    Activer
-                  </Button>
-                  <Button type="button" className="gap-2" onClick={handleExitMaintenance} disabled={loading || !status.maintenanceMode}>
-                    <Lock className="w-4 h-4" />
-                    Reverrouiller
-                  </Button>
-                </div>
-                <Button type="button" variant="outline" className="w-full gap-2" onClick={handleOpenSettings}>
-                  <Settings className="w-4 h-4" />
-                  Ouvrir les réglages Android
-                </Button>
-              </div>
-
-              <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-chrome-800">
-                <Label>Mot de passe IT (techniciens)</Label>
-                <Input
-                  type="password"
-                  placeholder="Nouveau mot de passe"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                />
-                <Input
-                  type="password"
-                  placeholder="Confirmer"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <Button type="button" variant="outline" onClick={handleChangePin} disabled={loading}>
-                    Modifier
-                  </Button>
-                  <Button type="button" variant="outline" onClick={handleResetPin} disabled={loading || !customPin}>
-                    Réinitialiser
-                  </Button>
-                </div>
-                <p className="text-xs text-slate-500 flex gap-2">
-                  <AlertTriangle className="w-4 h-4 shrink-0" />
-                  Ne communiquez jamais ce mot de passe aux élèves.
-                </p>
-              </div>
-            </>
-          )}
-        </div>
+            <Button
+              type="button"
+              className="w-full gap-2"
+              variant={locked ? 'outline' : 'default'}
+              onClick={handleToggleLock}
+              disabled={loading}
+            >
+              {locked ? (
+                <>
+                  <Unlock className="w-4 h-4" />
+                  Désactiver le verrou
+                </>
+              ) : (
+                <>
+                  <Lock className="w-4 h-4" />
+                  Activer le verrou
+                </>
+              )}
+            </Button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

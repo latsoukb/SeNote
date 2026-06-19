@@ -8,26 +8,33 @@
 | Verrouillage de la tablette | Son propre PIN anti-vol |
 | Mise à jour SeNote | Mettre à jour l'app (installation automatique) |
 
-## Techniciens → **7× logo « SeNote. »** → Administration IT
+## Techniciens → **7× logo « SeNote. »** → mot de passe IT
 
-Mot de passe usine par défaut : défini au build (`REACT_APP_IT_ADMIN_PIN`, GitHub Secret).
-Développement / émulateur : `482916` sauf surcharge dans `frontend/.env`.
+Mot de passe par défaut (développement / émulateur) : **`482916`**
+(surcharge possible via `REACT_APP_IT_ADMIN_PIN` au build).
 
 | Action | Usage |
 |--------|--------|
-| **Activer mode maintenance** | Contourne « Blocked by work policy », permet d'installer/désinstaller une APK |
-| **Reverrouiller** | Réactive le verrou kiosk |
-| **Réglages Android** | Accès complet aux paramètres système |
-| **Modifier mot de passe IT** | Change le code sur cette tablette |
+| **Activer le verrou** | Tablette bloquée dans SeNote (comportement normal) |
+| **Désactiver le verrou** | Maintenance IT (installer/désinstaller une APK, etc.) |
 
 Les élèves **ne connaissent pas** ce mot de passe.
 
-## Déploiement
+## Déploiement (verrou actif par défaut)
+
+**Une seule commande** (émulateur ou tablette USB, sans compte Google) :
 
 ```bash
-adb install -r SeNote-tablet.apk
-./scripts/provision-tablet.sh
+./scripts/setup-tablet.sh SeNote-tablet.apk
 ```
+
+Ou développement :
+
+```bash
+./scripts/run-emulator.sh
+```
+
+(`run-emulator.sh` installe + active Device Owner + lance SeNote.)
 
 ## Verrouillage Device Owner
 
@@ -40,6 +47,7 @@ adb install -r SeNote-tablet.apk
 | Problème | Solution |
 |----------|----------|
 | Mise à jour bloquée / pas de fenêtre | v1.37+ installe en silencieux ; sinon mode maintenance IT |
-| Blocked by work policy | 7× logo → IT → Activer maintenance |
-| Impossible de désinstaller | Mode maintenance IT d'abord |
+| Blocked by work policy | 7× logo → IT → Désactiver le verrou (maintenance) |
+| Impossible de désinstaller | Désactiver le verrou IT d'abord |
+| SeNote pas bloqué après install | Lancer `./scripts/setup-tablet.sh` ou `./scripts/provision-tablet.sh` |
 | `Not allowed to set device owner` | Réinitialiser usine, pas de compte Google |

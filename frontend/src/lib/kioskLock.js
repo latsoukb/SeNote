@@ -8,11 +8,11 @@ export async function initKioskLock() {
 
   try {
     const status = await Kiosk.getStatus();
+    if (status.maintenanceMode) return;
     if (status.deviceOwner) {
       await Kiosk.applyPolicies();
-    } else {
-      await Kiosk.enable();
     }
+    await Kiosk.enable();
   } catch {
     try {
       await Kiosk.enable();
@@ -34,9 +34,8 @@ export async function initKioskLock() {
       if (status.maintenanceMode) return;
       if (status.deviceOwner) {
         await Kiosk.applyPolicies();
-      } else {
-        await Kiosk.enable();
       }
+      await Kiosk.enable();
     } catch {
       // Re-verrouillage silencieux au retour dans l'app
     }

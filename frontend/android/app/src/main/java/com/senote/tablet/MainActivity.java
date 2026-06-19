@@ -14,6 +14,10 @@ public class MainActivity extends BridgeActivity {
         if (getWindow() != null) {
             KioskPlugin.applySystemBars(getWindow(), false);
         }
+        if (!KioskManager.isMaintenanceMode()) {
+            KioskManager.applyStrictLockTaskPackages(this);
+            KioskManager.enableLockTask(this);
+        }
     }
 
     @Override
