@@ -166,12 +166,48 @@ public class WifiConnectPlugin extends Plugin {
 
     @PluginMethod
     public void openWifiPanel(PluginCall call) {
-        getActivity()
-                .runOnUiThread(
-                        () -> {
-                            KioskManager.openWifiPanel(getActivity());
-                            call.resolve();
-                        });
+        call.reject("Utilisez le panneau Wi-Fi in-app");
+    }
+
+    @PluginMethod
+    public void setWifiEnabled(PluginCall call) {
+        boolean enabled = Boolean.TRUE.equals(call.getBoolean("enabled", true));
+        WifiManager wifi = wifiManager();
+        if (wifi == null) {
+            call.reject("Wi-Fi indisponible");
+            return;
+        }
+
+        Context ctx = getContext();
+        if (KioskManager.isDeviceOwner(ctx)) {
+            DevicePolicyManager dpm = ctx.getSystemService(DevicePolicyManager.class);
+            if (dpm != null) {
+                try {
+                    dpm.setGlobalSetting(
+                            KioskManager.adminComponent(ctx),
+                            android.provider.Settings.Global.WIFI_ON,
+                            enabled ? "1" : "0");
+                    call.resolve();
+                    return;
+                } catch (Exception e) {
+                    call.reject(e.getMessage());
+                    return;
+                }
+            }
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            call.reject("WIFI_TOGGLE_BLOCKED");
+            return;
+        }
+
+        @SuppressWarnings("deprecation")
+        boolean ok = wifi.setWifiEnabled(enabled);
+        if (ok) {
+            call.resolve();
+        } else {
+            call.reject("Impossible de modifier le Wi-Fi");
+        }
     }
 
     private void connectModern(PluginCall call, String ssid, String password, boolean secure) {

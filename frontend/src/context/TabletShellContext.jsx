@@ -5,10 +5,15 @@ const TabletShellContext = createContext(null);
 export function TabletShellProvider({ children }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsFocus, setSettingsFocus] = useState(null);
+  const [wifiOpen, setWifiOpen] = useState(false);
 
   const openSettings = useCallback((focus) => {
     setSettingsFocus(focus || null);
     setSettingsOpen(true);
+  }, []);
+
+  const openWifiPanel = useCallback(() => {
+    setWifiOpen(true);
   }, []);
 
   const value = useMemo(
@@ -17,8 +22,11 @@ export function TabletShellProvider({ children }) {
       setSettingsOpen,
       settingsFocus,
       openSettings,
+      wifiOpen,
+      setWifiOpen,
+      openWifiPanel,
     }),
-    [settingsOpen, settingsFocus, openSettings]
+    [settingsOpen, settingsFocus, openSettings, wifiOpen, openWifiPanel]
   );
 
   return <TabletShellContext.Provider value={value}>{children}</TabletShellContext.Provider>;

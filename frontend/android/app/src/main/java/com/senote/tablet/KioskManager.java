@@ -79,6 +79,7 @@ public final class KioskManager {
         hideApplication(dpm, admin, "com.google.android.youtube");
         hideApplication(dpm, admin, "com.zhiliaoapp.musically");
         hideApplication(dpm, admin, "com.ss.android.ugc.trill");
+        hideApplication(dpm, admin, SETTINGS_PKG);
     }
 
     private static void setUserRestriction(
@@ -110,6 +111,11 @@ public final class KioskManager {
                 ComponentName admin = adminComponent(ctx);
                 clearUserRestriction(dpm, admin, UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES);
                 clearUserRestriction(dpm, admin, UserManager.DISALLOW_UNINSTALL_APPS);
+                try {
+                    dpm.setApplicationHidden(admin, SETTINGS_PKG, false);
+                } catch (Exception ignored) {
+                    // Settings absent
+                }
                 dpm.setLockTaskPackages(
                         admin,
                         new String[] {
@@ -178,7 +184,7 @@ public final class KioskManager {
     }
 
     public static void openAdminSystemSettings(Activity activity, String type) {
-        if (activity == null) return;
+        if (activity == null || !isMaintenanceMode()) return;
 
         if (isDeviceOwner(activity)) {
             DevicePolicyManager dpm = activity.getSystemService(DevicePolicyManager.class);
@@ -187,12 +193,6 @@ public final class KioskManager {
                         adminComponent(activity), new String[] { PKG, SETTINGS_PKG });
             }
             restartLockTask(activity);
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            try {
-                activity.stopLockTask();
-            } catch (Exception ignored) {
-                // Pas en lock task
-            }
         }
 
         Intent intent = buildSettingsIntent(type);

@@ -123,33 +123,43 @@ const TabletItAdminDialog = ({ open, onOpenChange }) => {
               <StatusRow ok={locked} label="Tablette verrouillée dans SeNote" />
             </div>
 
-            {!deviceOwner && (
-              <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
-                Verrou partiel seulement. Branchez la tablette au Mac et lancez{' '}
-                <code className="text-[11px]">./scripts/provision-tablet.sh</code> une fois pour le
-                verrou complet.
-              </p>
+            {!deviceOwner ? (
+              <div className="rounded-lg border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 p-3 text-xs text-amber-900 dark:text-amber-200 leading-relaxed space-y-2">
+                <p className="font-semibold">Activer le verrou définitif (une seule fois) :</p>
+                <ol className="list-decimal list-inside space-y-1">
+                  <li>Tablette ou émulateur <strong>sans compte Google</strong></li>
+                  <li>Brancher la tablette au Mac (USB)</li>
+                  <li>
+                    Dans le terminal :{' '}
+                    <code className="text-[11px] bg-white/60 dark:bg-black/20 px-1 rounded">
+                      ./scripts/setup-tablet.sh
+                    </code>
+                  </li>
+                  <li>Relancer SeNote — le bouclier vert apparaît dans Paramètres IT</li>
+                </ol>
+                <p>Sans cette étape, on peut encore quitter SeNote via Android.</p>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                className="w-full gap-2"
+                variant={locked ? 'outline' : 'default'}
+                onClick={handleToggleLock}
+                disabled={loading}
+              >
+                {locked ? (
+                  <>
+                    <Unlock className="w-4 h-4" />
+                    Désactiver le verrou (maintenance IT)
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-4 h-4" />
+                    Activer le verrou
+                  </>
+                )}
+              </Button>
             )}
-
-            <Button
-              type="button"
-              className="w-full gap-2"
-              variant={locked ? 'outline' : 'default'}
-              onClick={handleToggleLock}
-              disabled={loading}
-            >
-              {locked ? (
-                <>
-                  <Unlock className="w-4 h-4" />
-                  Désactiver le verrou
-                </>
-              ) : (
-                <>
-                  <Lock className="w-4 h-4" />
-                  Activer le verrou
-                </>
-              )}
-            </Button>
           </div>
         )}
       </DialogContent>

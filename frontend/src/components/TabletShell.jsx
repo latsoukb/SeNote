@@ -3,26 +3,39 @@ import { Settings } from 'lucide-react';
 import { Button } from './ui/button';
 import SettingsDialog from './SettingsDialog';
 import TabletStatusBar from './TabletStatusBar';
+import StudentWifiPanel from './StudentWifiPanel';
+import StudentScreenLockGate from './StudentScreenLockGate';
 import { TabletShellProvider, useTabletShell } from '../context/TabletShellContext';
+import { useDeviceStatus } from '../hooks/useDeviceStatus';
 
 const TabletShellFrame = ({ children }) => {
-  const { settingsOpen, setSettingsOpen, settingsFocus } = useTabletShell();
+  const { settingsOpen, setSettingsOpen, settingsFocus, wifiOpen, setWifiOpen } = useTabletShell();
+  const { refresh } = useDeviceStatus();
 
   return (
     <div className="min-h-dvh flex flex-col">
       <TabletStatusBar />
-      <div className="flex-1 min-h-0 flex flex-col">{children}</div>
+      <StudentScreenLockGate>
+        <div className="flex-1 min-h-0 flex flex-col">{children}</div>
+      </StudentScreenLockGate>
       <SettingsDialog
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
         focusSection={settingsFocus}
         hideTrigger
       />
+      <StudentWifiPanel
+        open={wifiOpen}
+        onOpenChange={(next) => {
+          setWifiOpen(next);
+          if (!next) refresh();
+        }}
+      />
     </div>
   );
 };
 
-/** Enveloppe tablette : barre système + paramètres globaux. */
+/** Enveloppe tablette : barre système + Wi‑Fi / paramètres in-app. */
 export default function TabletShell({ children }) {
   return (
     <TabletShellProvider>
@@ -31,7 +44,7 @@ export default function TabletShell({ children }) {
   );
 }
 
-/** Bouton paramètres branché sur la coque tablette (ou dialog autonome sur le web). */
+/** Bouton paramètres (une seule instance dans l'app, pas dans la barre système). */
 export function SettingsTrigger({ className }) {
   const shell = useTabletShell();
 

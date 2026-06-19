@@ -37,7 +37,11 @@ export async function initKioskLock() {
       }
       await Kiosk.enable();
     } catch {
-      // Re-verrouillage silencieux au retour dans l'app
+      try {
+        await Kiosk.enable();
+      } catch {
+        // Re-verrouillage silencieux
+      }
     }
   });
 }

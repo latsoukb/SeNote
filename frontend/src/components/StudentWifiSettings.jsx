@@ -21,7 +21,7 @@ const signalLabel = (level) => {
   return 'Faible';
 };
 
-const StudentWifiSettings = () => {
+const StudentWifiSettings = ({ panelMode = false, autoScanKey = 0 }) => {
   const [status, setStatus] = useState({ wifiEnabled: false, connected: false, ssid: '' });
   const [networks, setNetworks] = useState([]);
   const [scanning, setScanning] = useState(false);
@@ -37,13 +37,7 @@ const StudentWifiSettings = () => {
     }
   }, []);
 
-  useEffect(() => {
-    if (isNativeApp()) refreshStatus();
-  }, [refreshStatus]);
-
-  if (!isNativeApp()) return null;
-
-  const handleScan = async () => {
+  const handleScan = useCallback(async () => {
     setScanning(true);
     try {
       await refreshStatus();
@@ -55,7 +49,7 @@ const StudentWifiSettings = () => {
     } catch (e) {
       const msg = e?.message || String(e);
       if (msg.includes('WIFI_DISABLED')) {
-        toast.message('Activez le Wi‑Fi pour rechercher les réseaux.');
+        toast.message('Activez le Wi‑Fi ci-dessous, puis recherchez à nouveau.');
       } else if (/permission|autorisation/i.test(msg)) {
         toast.error('Autorisez la recherche Wi‑Fi quand Android le demande.');
       } else {
@@ -65,14 +59,27 @@ const StudentWifiSettings = () => {
     } finally {
       setScanning(false);
     }
-  };
+  }, [refreshStatus]);
+
+  useEffect(() => {
+    if (isNativeApp()) refreshStatus();
+  }, [refreshStatus]);
+
+  useEffect(() => {
+    if (!autoScanKey || !isNativeApp()) return;
+    handleScan();
+  }, [autoScanKey, handleScan]);
+
+  if (!isNativeApp()) return null;
 
   const handleEnableWifi = async () => {
     try {
-      await WifiConnect.openWifiPanel();
-      toast.message('Activez le Wi‑Fi, puis revenez à SeNote et recherchez les réseaux.');
+      await WifiConnect.setWifiEnabled({ enabled: true });
+      await refreshStatus();
+      toast.success('Wi‑Fi activé');
+      await handleScan();
     } catch (e) {
-      toast.error(e.message || 'Impossible d\'ouvrir le panneau Wi‑Fi');
+      toast.error(e.message || 'Impossible d\'activer le Wi‑Fi');
     }
   };
 
@@ -109,15 +116,23 @@ const StudentWifiSettings = () => {
     }
   };
 
+  const wrapperClass = panelMode
+    ? 'space-y-3'
+    : 'space-y-3 pt-2 border-t border-slate-200 dark:border-chrome-800';
+
   return (
-    <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-chrome-800">
-      <Label className="flex items-center gap-2">
-        <Wifi className="w-4 h-4" />
-        Connexion Wi‑Fi
-      </Label>
-      <p className="text-xs text-slate-500 leading-relaxed">
-        Connectez la tablette au Wi‑Fi de la maison ou du village — directement depuis SeNote.
-      </p>
+    <div className={wrapperClass}>
+      {!panelMode && (
+        <Label className="flex items-center gap-2">
+          <Wifi className="w-4 h-4" />
+          Connexion Wi‑Fi
+        </Label>
+      )}
+      {!panelMode && (
+        <p className="text-xs text-slate-500 leading-relaxed">
+          Connectez la tablette au Wi‑Fi — directement dans SeNote, sans quitter l&apos;application.
+        </p>
+      )}
 
       <div className="rounded-lg border border-slate-200 dark:border-chrome-700 px-3 py-2 text-sm">
         {!status.wifiEnabled ? (
@@ -133,7 +148,7 @@ const StudentWifiSettings = () => {
         ) : (
           <p className="text-slate-600 dark:text-slate-300 flex items-center gap-2">
             <Wifi className="w-4 h-4 shrink-0" />
-            Wi‑Fi activé — non connecté
+            Wi‑Fi activé — choisissez un réseau
           </p>
         )}
       </div>
@@ -157,7 +172,7 @@ const StudentWifiSettings = () => {
       </div>
 
       {networks.length > 0 && (
-        <ul className="space-y-1 max-h-48 overflow-y-auto thin-scroll rounded-lg border border-slate-200 dark:border-chrome-700 divide-y divide-slate-100 dark:divide-chrome-800">
+        <ul className={`space-y-1 overflow-y-auto thin-scroll rounded-lg border border-slate-200 dark:border-chrome-700 divide-y divide-slate-100 dark:divide-chrome-800 ${panelMode ? 'max-h-[50dvh]' : 'max-h-48'}`}>
           {networks.map((network) => (
             <li key={network.ssid}>
               <button

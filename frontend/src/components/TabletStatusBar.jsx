@@ -1,14 +1,10 @@
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Battery,
   BatteryCharging,
-  Settings,
-  Shield,
-  ShieldOff,
   Wifi,
   WifiOff,
 } from 'lucide-react';
-import { Button } from './ui/button';
 import { useDeviceStatus } from '../hooks/useDeviceStatus';
 import { useTabletShell } from '../context/TabletShellContext';
 
@@ -29,101 +25,52 @@ const BatteryIcon = ({ level, charging }) => {
   return <Battery className={`w-4 h-4 shrink-0 ${tone}`} />;
 };
 
-/** Barre système SeNote : heure, réseau, batterie, accès paramètres. */
+/** Wi‑Fi à gauche · heure au centre · batterie à droite. */
 const TabletStatusBar = () => {
-  const { openSettings } = useTabletShell();
+  const { openWifiPanel } = useTabletShell();
   const { status, clock } = useDeviceStatus();
 
-  const locked = status.lockTaskActive && !status.maintenanceMode;
   const wifiLabel = status.wifiConnected
-    ? status.wifiSsid || 'Wi‑Fi'
+    ? status.wifiSsid || 'Connecté'
     : status.wifiEnabled
-      ? 'Non connecté'
+      ? 'Wi‑Fi'
       : 'Wi‑Fi off';
 
   return (
     <header
-      className="tablet-os-bar shrink-0 z-50 flex items-center gap-2 px-3 sm:px-4 border-b border-slate-200/80 dark:border-chrome-800/80 bg-white/95 dark:bg-chrome-950/95 backdrop-blur-md text-xs sm:text-sm text-slate-700 dark:text-slate-200"
+      className="tablet-os-bar shrink-0 z-50 grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-3 sm:px-4 border-b border-slate-200/80 dark:border-chrome-800/80 bg-white/95 dark:bg-chrome-950/95 backdrop-blur-md text-xs sm:text-sm text-slate-700 dark:text-slate-200"
       role="banner"
-      aria-label="Barre système SeNote"
+      aria-label="Barre système"
     >
-      <div className="flex items-center gap-1.5 min-w-0 flex-1">
-        <span className="font-semibold tracking-tight text-brand-700 dark:text-brand-300 shrink-0">
-          SeNote
-        </span>
-        {status.deviceOwner ? (
-          <Shield
-            className="w-3.5 h-3.5 shrink-0 text-green-600 dark:text-green-400"
-            aria-label="Verrou définitif actif"
-          />
+      <button
+        type="button"
+        onClick={() => openWifiPanel()}
+        className="flex items-center gap-1.5 min-w-0 justify-self-start px-2 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-chrome-800 transition-colors"
+        aria-label={`Wi‑Fi : ${wifiLabel}`}
+      >
+        {status.wifiConnected ? (
+          <Wifi className="w-4 h-4 shrink-0 text-green-600 dark:text-green-400" />
         ) : (
-          <ShieldOff
-            className="w-3.5 h-3.5 shrink-0 text-amber-600 dark:text-amber-400"
-            aria-label="Verrou partiel"
-            title="Verrou partiel — provision IT requis"
-          />
+          <WifiOff className="w-4 h-4 shrink-0 text-slate-400" />
         )}
-        {!locked && (
-          <span className="hidden sm:inline text-amber-700 dark:text-amber-300 truncate">
-            · maintenance
-          </span>
-        )}
-      </div>
+        <span className="truncate max-w-[8rem] sm:max-w-[10rem]">{wifiLabel}</span>
+      </button>
 
-      <div className="hidden md:flex flex-col items-center leading-tight px-2">
+      <div className="flex flex-col items-center leading-tight justify-self-center px-1">
         <time dateTime={clock.toISOString()} className="font-medium tabular-nums">
           {formatClock(clock)}
         </time>
-        <span className="text-[10px] text-slate-500 dark:text-slate-400 capitalize">
+        <span className="text-[10px] text-slate-500 dark:text-slate-400 capitalize hidden sm:inline">
           {formatDate(clock)}
         </span>
       </div>
-      <time
-        dateTime={clock.toISOString()}
-        className="md:hidden font-medium tabular-nums px-1"
+
+      <div
+        className="flex items-center gap-1 justify-self-end tabular-nums px-1"
+        aria-label={`Batterie ${status.batteryLevel} pour cent${status.batteryCharging ? ', en charge' : ''}`}
       >
-        {formatClock(clock)}
-      </time>
-
-      <div className="flex items-center gap-1 sm:gap-2 flex-1 justify-end min-w-0">
-        <button
-          type="button"
-          onClick={() => openSettings('wifi')}
-          className="flex items-center gap-1 min-w-0 max-w-[9rem] sm:max-w-[12rem] px-2 py-1 rounded-md hover:bg-slate-100 dark:hover:bg-chrome-800 transition-colors"
-          aria-label={`Wi‑Fi : ${wifiLabel}`}
-        >
-          {status.wifiConnected ? (
-            <Wifi className="w-4 h-4 shrink-0 text-green-600 dark:text-green-400" />
-          ) : (
-            <WifiOff className="w-4 h-4 shrink-0 text-slate-400" />
-          )}
-          <span className="truncate hidden sm:inline">{wifiLabel}</span>
-        </button>
-
-        <div
-          className="flex items-center gap-1 px-1 tabular-nums"
-          aria-label={`Batterie ${status.batteryLevel} pour cent${status.batteryCharging ? ', en charge' : ''}`}
-        >
-          <BatteryIcon level={status.batteryLevel} charging={status.batteryCharging} />
-          <span>{status.batteryLevel > 0 ? `${status.batteryLevel}%` : '—'}</span>
-        </div>
-
-        {!status.networkConnected && status.wifiConnected && (
-          <span className="hidden lg:inline text-[10px] text-amber-700 dark:text-amber-300">
-            sans Internet
-          </span>
-        )}
-
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 rounded-full shrink-0"
-          aria-label="Paramètres"
-          onClick={() => openSettings()}
-        >
-          <Settings className="w-4 h-4" />
-        </Button>
+        <BatteryIcon level={status.batteryLevel} charging={status.batteryCharging} />
+        <span>{status.batteryLevel > 0 ? `${status.batteryLevel}%` : '—'}</span>
       </div>
     </header>
   );
