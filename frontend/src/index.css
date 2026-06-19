@@ -12,6 +12,12 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
+.tablet-os-bar {
+    min-height: 2.25rem;
+    height: max(2.25rem, env(safe-area-inset-top, 0px) + 2rem);
+    padding-top: env(safe-area-inset-top, 0px);
+}
+
 code {
     font-family:
         source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;

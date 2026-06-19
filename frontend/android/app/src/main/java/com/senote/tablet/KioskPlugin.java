@@ -108,6 +108,14 @@ public class KioskPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void getDeviceStatus(PluginCall call) {
+        JSObject ret = DeviceStatusHelper.read(getContext());
+        ret.put("lockTaskActive", KioskManager.isLockTaskActive(getActivity()));
+        ret.put("maintenanceMode", KioskManager.isMaintenanceMode());
+        call.resolve(ret);
+    }
+
+    @PluginMethod
     public void applyPolicies(PluginCall call) {
         getActivity().runOnUiThread(() -> {
             if (!KioskManager.isDeviceOwner(getContext())) {

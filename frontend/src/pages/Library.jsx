@@ -57,7 +57,7 @@ import { useNotes } from '../context/NotesContext';
 import { COVER_TEMPLATES, PAGE_TEMPLATES, FOLDER_COLORS, FOLDER_ICONS } from '../mock/mock';
 import Logo from '../components/Logo';
 import PageTemplatePreview from '../components/PageTemplatePreview';
-import SettingsDialog from '../components/SettingsDialog';
+import { SettingsTrigger } from '../components/TabletShell';
 import TabletItAdminDialog from '../components/TabletItAdminDialog';
 import { isNativeApp } from '../lib/platform';
 import StudentInbox from '../components/StudentInbox';
@@ -581,7 +581,7 @@ const Library = () => {
             >
               {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </Button>
-            <SettingsDialog />
+            <SettingsTrigger />
           </div>
         </div>
         <div className="sm:hidden px-4 pb-3">

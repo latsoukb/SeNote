@@ -1,6 +1,21 @@
 # Tablettes SeNote — verrouillage définitif
 
-## Élèves → **Paramètres** (roue dentée)
+## Interface tablette (mode OS)
+
+En haut de l'écran, une **barre système SeNote** affiche en permanence :
+
+| Élément | Action |
+|---------|--------|
+| Heure / date | Information |
+| Wi‑Fi + nom du réseau | Ouvre Paramètres → Wi‑Fi |
+| Batterie (%) | Information |
+| Bouclier vert | Verrou définitif actif (Device Owner) |
+| Bouclier orange | Verrou partiel — lancer `setup-tablet.sh` |
+| ⚙ Paramètres | Wi‑Fi, verrouillage écran, mises à jour, apparence |
+
+Tout se fait **sans quitter SeNote**.
+
+## Élèves → **Paramètres** (roue dentée ou barre système)
 
 | Section | Rôle |
 |---------|------|

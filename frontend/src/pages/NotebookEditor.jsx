@@ -24,7 +24,7 @@ import NativeSinglePageView from '../components/NativeSinglePageView';
 import PageTemplatePreview from '../components/PageTemplatePreview';
 import { isNativeApp, isKioskApp } from '../lib/platform';
 import PageLiveThumbnail from '../components/PageLiveThumbnail';
-import SettingsDialog from '../components/SettingsDialog';
+import { SettingsTrigger } from '../components/TabletShell';
 import OpenNotebookTabBar from '../components/OpenNotebookTabBar';
 import { useOpenNotebooks } from '../context/OpenNotebooksContext';
 import { getNotebookSections } from '../lib/notebookSections';
@@ -486,7 +486,7 @@ const NotebookEditor = () => {
           <span className="text-xs text-slate-500 dark:text-slate-400">
             {currentPageIdx + 1} / {pages.length}
           </span>
-          <SettingsDialog />
+          <SettingsTrigger />
           <Button
             variant="ghost"
             size="icon"

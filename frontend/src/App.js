@@ -17,6 +17,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import GoogleDriveOAuthHandler from './components/GoogleDriveOAuthHandler';
 import { ensureAppConfig } from './lib/appConfig';
 import { initKioskLock } from './lib/kioskLock';
+import TabletShell from './components/TabletShell';
 
 function App() {
   React.useEffect(() => {
@@ -25,12 +26,23 @@ function App() {
   }, []);
 
   const native = isNativeApp();
-  // Capacitor utilise file:// — HashRouter obligatoire pour que les routes fonctionnent
   const Router = native
     ? ({ children }) => <HashRouter>{children}</HashRouter>
     : ({ children }) => (
         <BrowserRouter basename={process.env.PUBLIC_URL || ''}>{children}</BrowserRouter>
       );
+
+  const routes = (
+    <Router>
+      {!native && <StudentNotifications />}
+      <Routes>
+        <Route path="/" element={<Library />} />
+        <Route path="/view/:id" element={<CommViewer />} />
+        <Route path="/notebook/:id" element={<NotebookEditor />} />
+        <Route path="/notebook/:id/page/:pageId" element={<NotebookEditor />} />
+      </Routes>
+    </Router>
+  );
 
   return (
     <ErrorBoundary>
@@ -42,16 +54,7 @@ function App() {
             <OpenNotebooksProvider>
             <StudentClassProvider>
               <div className="App bg-slate-50 dark:bg-chrome-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">
-                <Router>
-                  {/* Notifications désactivées sur APK : polling réseau inutile */}
-                  {!native && <StudentNotifications />}
-                  <Routes>
-                    <Route path="/" element={<Library />} />
-                    <Route path="/view/:id" element={<CommViewer />} />
-                    <Route path="/notebook/:id" element={<NotebookEditor />} />
-                    <Route path="/notebook/:id/page/:pageId" element={<NotebookEditor />} />
-                  </Routes>
-                </Router>
+                {native ? <TabletShell>{routes}</TabletShell> : routes}
                 <Toaster richColors position="bottom-right" />
               </div>
             </StudentClassProvider>

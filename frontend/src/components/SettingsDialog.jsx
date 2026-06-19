@@ -21,12 +21,30 @@ import StudentDeviceCode from './StudentDeviceCode';
 import StudentWifiSettings from './StudentWifiSettings';
 import StudentScreenLockSettings from './StudentScreenLockSettings';
 
-const SettingsDialog = ({ trigger }) => {
+const SettingsDialog = ({
+  trigger,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+  focusSection,
+  hideTrigger = false,
+}) => {
   const { settings, updateSettings } = useSettings();
   const { theme, accent, toggleTheme, setAccent } = useTheme();
   const { session: studentSession } = useStudentClass();
   const { canInstall, isInstalled, install } = usePWAInstall();
-  const [open, setOpen] = React.useState(false);
+  const [internalOpen, setInternalOpen] = React.useState(false);
+  const scrollRef = React.useRef(null);
+
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = controlledOnOpenChange ?? setInternalOpen;
+
+  React.useEffect(() => {
+    if (!open || focusSection !== 'wifi') return;
+    const timer = setTimeout(() => {
+      scrollRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [open, focusSection]);
 
   const handleInstall = async () => {
     const ok = await install();
@@ -35,13 +53,15 @@ const SettingsDialog = ({ trigger }) => {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger || (
-          <Button variant="ghost" size="icon" className="rounded-full" aria-label="Paramètres">
-            <Settings className="w-5 h-5" />
-          </Button>
-        )}
-      </DialogTrigger>
+      {!hideTrigger && (
+        <DialogTrigger asChild>
+          {trigger || (
+            <Button variant="ghost" size="icon" className="rounded-full" aria-label="Paramètres">
+              <Settings className="w-5 h-5" />
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-md max-h-[min(90dvh,100vh-2rem)] flex flex-col gap-0 p-0 overflow-hidden">
         <DialogHeader className="shrink-0 px-6 pt-6 pb-2">
           <DialogTitle>Paramètres</DialogTitle>
@@ -49,7 +69,9 @@ const SettingsDialog = ({ trigger }) => {
         <div className="space-y-6 py-2 px-6 pb-6 overflow-y-auto overscroll-contain thin-scroll min-h-0 flex-1">
           {studentSession && <StudentDeviceCode variant="settings" />}
 
-          <StudentWifiSettings />
+          <div ref={scrollRef} id="settings-wifi">
+            <StudentWifiSettings />
+          </div>
 
           <StudentScreenLockSettings />
 

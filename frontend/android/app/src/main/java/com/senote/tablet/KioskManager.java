@@ -60,7 +60,11 @@ public final class KioskManager {
         applyStrictLockTaskPackages(ctx);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            dpm.setLockTaskFeatures(admin, DevicePolicyManager.LOCK_TASK_FEATURE_NONE);
+            int features =
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+                            ? DevicePolicyManager.LOCK_TASK_FEATURE_SYSTEM_INFO
+                            : DevicePolicyManager.LOCK_TASK_FEATURE_NONE;
+            dpm.setLockTaskFeatures(admin, features);
         }
 
         setUserRestriction(dpm, admin, UserManager.DISALLOW_UNINSTALL_APPS);
