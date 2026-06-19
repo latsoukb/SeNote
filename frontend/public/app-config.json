@@ -1,8 +1,8 @@
 {
   "googleWebClientId": "",
   "googleTokenExchangeUrl": "",
-  "latestApkVersion": "1.30",
-  "latestApkVersionCode": 31,
+  "latestApkVersion": "1.31",
+  "latestApkVersionCode": 32,
   "apkDownloadUrl": "https://latsoukb.github.io/SeNote/SeNote-tablet.apk",
-  "releaseNotes": "Verrou kiosk Android (Lock Task), barres système adaptées au thème clair/sombre, interrupteurs verts style iOS."
+  "releaseNotes": "Device Owner (verrouillage définitif), code admin, Wi‑Fi et verrouillage écran protégés, blocage installation apps."
 }

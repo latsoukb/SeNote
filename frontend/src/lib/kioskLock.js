@@ -7,16 +7,65 @@ export async function initKioskLock() {
   if (!isNativeApp()) return;
 
   try {
-    await Kiosk.enable();
+    const status = await Kiosk.getStatus();
+    if (status.deviceOwner) {
+      await Kiosk.applyPolicies();
+    } else {
+      await Kiosk.enable();
+    }
   } catch {
-    // startLockTask peut échouer si lockTaskMode absent
+    try {
+      await Kiosk.enable();
+    } catch {
+      // Lock task indisponible
+    }
   }
 
-  // Empêche la fermeture de l'app au bouton Retour (navigation interne gérée par React Router)
   App.addListener('backButton', ({ canGoBack }) => {
     if (canGoBack) {
       window.history.back();
     }
-    // Sans listener par défaut, Capacitor quitte l'app — ce listener la garde ouverte
   });
+
+  App.addListener('appStateChange', async ({ isActive }) => {
+    if (!isActive) return;
+    try {
+      const status = await Kiosk.getStatus();
+      if (status.deviceOwner) {
+        await Kiosk.applyPolicies();
+      } else {
+        await Kiosk.enable();
+      }
+    } catch {
+      // Re-verrouillage silencieux au retour dans l'app
+    }
+  });
+}
+
+export async function getKioskStatus() {
+  if (!isNativeApp()) {
+    return { deviceOwner: false, lockTaskActive: false };
+  }
+  try {
+    return await Kiosk.getStatus();
+  } catch {
+    return { deviceOwner: false, lockTaskActive: false };
+  }
+}
+
+export async function openAdminSystemSettings(type) {
+  await Kiosk.openSystemSettings({ type });
+}
+
+export async function temporarilyDisableKiosk() {
+  await Kiosk.disable();
+}
+
+export async function reEnableKiosk() {
+  const status = await getKioskStatus();
+  if (status.deviceOwner) {
+    await Kiosk.applyPolicies();
+  } else {
+    await Kiosk.enable();
+  }
 }

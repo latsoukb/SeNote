@@ -18,6 +18,7 @@ import { usePWAInstall } from '../hooks/usePWAInstall';
 import GoogleDriveSettings from './GoogleDriveSettings';
 import AppUpdateSettings from './AppUpdateSettings';
 import StudentDeviceCode from './StudentDeviceCode';
+import { isNativeApp } from '../lib/platform';
 
 const SettingsDialog = ({ trigger }) => {
   const { settings, updateSettings } = useSettings();
@@ -169,7 +170,7 @@ const SettingsDialog = ({ trigger }) => {
 
           <GoogleDriveSettings onBeforeConnect={() => setOpen(false)} />
 
-          <AppUpdateSettings />
+          {!isNativeApp() && <AppUpdateSettings />}
 
           {(canInstall || isInstalled) && (
           <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-chrome-800">

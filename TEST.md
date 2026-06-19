@@ -47,26 +47,29 @@ Ouvre l'adresse affichée (ex. `http://192.168.1.x:3000`) sur la tablette dans C
 
 ## Option 3 — Émulateur Android Studio (APK kiosk)
 
-SeNote sur tablette combine **deux niveaux** :
+SeNote sur tablette combine **trois niveaux** :
 
 | Niveau | Rôle |
 |--------|------|
-| **App kiosk** (`isKioskApp()`) | Pas de PIN bêta, bibliothèque vide, sidebar fermée, stockage natif |
-| **Verrou Android** (`lockTaskMode`) | L'élève ne peut pas quitter SeNote (pas d'accueil Android, pas de multitâche) |
+| **App kiosk** (`isKioskApp()`) | Pas de PIN bêta, bibliothèque vide, sidebar fermée |
+| **Lock Task** | SeNote épinglée (contournable sans Device Owner) |
+| **Device Owner** | Verrouillage **définitif** — voir [docs/KIOSK-TABLETTE.md](./docs/KIOSK-TABLETTE.md) |
 
-Comportements app kiosk :
-- pas de code PIN bêta
-- bibliothèque vide au premier lancement
-- sidebar pages **fermée** dans un cahier
-- stockage natif (Capacitor Preferences)
-- sync Google Drive / JokkoNote comme sur tablette
+### Verrouillage définitif (tablettes élèves)
 
-Comportements verrou Android (APK natif uniquement) :
-- **Lock Task Mode** activé au lancement (`startLockTask`)
-- bouton **Retour** ne ferme plus l'app
-- barres système (haut/bas) suivent le thème clair/sombre
+```bash
+# Après réinitialisation usine + install APK, sans compte Google :
+chmod +x scripts/provision-tablet.sh
+./scripts/provision-tablet.sh
+```
 
-**Sortir du verrou** (admin / test) : maintenir **Retour + Aperçu** (multitâche) quelques secondes, ou `adb shell am task lock stop`.
+Puis sur la tablette : **7× logo SeNote** → code admin → Wi‑Fi → verrouillage écran PIN.
+
+Comportements Device Owner :
+- installation d'apps bloquée (TikTok, Play Store masqué)
+- sortie SeNote impossible sans code admin
+- redémarrage → SeNote se relance
+- Wi‑Fi et sécurité accessibles uniquement via code admin
 
 ### Prérequis
 

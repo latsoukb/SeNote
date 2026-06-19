@@ -6,6 +6,7 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowInsetsController;
 
+import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
@@ -18,9 +19,7 @@ public class KioskPlugin extends Plugin {
     public void enable(PluginCall call) {
         getActivity().runOnUiThread(() -> {
             try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    getActivity().startLockTask();
-                }
+                KioskManager.enableLockTask(getActivity());
                 call.resolve();
             } catch (Exception e) {
                 call.reject(e.getMessage());
@@ -39,6 +38,36 @@ public class KioskPlugin extends Plugin {
             } catch (Exception e) {
                 call.reject(e.getMessage());
             }
+        });
+    }
+
+    @PluginMethod
+    public void getStatus(PluginCall call) {
+        JSObject ret = new JSObject();
+        ret.put("deviceOwner", KioskManager.isDeviceOwner(getContext()));
+        ret.put("lockTaskActive", KioskManager.isLockTaskActive(getActivity()));
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void applyPolicies(PluginCall call) {
+        getActivity().runOnUiThread(() -> {
+            if (!KioskManager.isDeviceOwner(getContext())) {
+                call.reject("NOT_DEVICE_OWNER");
+                return;
+            }
+            KioskManager.applyDeviceOwnerPolicies(getContext());
+            KioskManager.enableLockTask(getActivity());
+            call.resolve();
+        });
+    }
+
+    @PluginMethod
+    public void openSystemSettings(PluginCall call) {
+        String type = call.getString("type", "wifi");
+        getActivity().runOnUiThread(() -> {
+            KioskManager.openAdminSystemSettings(getActivity(), type);
+            call.resolve();
         });
     }
 
