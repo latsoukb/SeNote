@@ -1,4 +1,5 @@
 import { isNativeApp } from './platform';
+import { Kiosk } from '../plugins/kiosk';
 
 const DEFAULT_CONFIG_URL = 'https://latsoukb.github.io/SeNote/app-config.json';
 const APK_DIR = 'updates';
@@ -60,6 +61,25 @@ const httpGetJson = async (url) => {
   const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
+};
+
+export const SIGNATURE_CONFLICT_HELP =
+  'Conflit de signature : cette tablette a une ancienne version de test. ' +
+  'Désinstallez SeNote, réinstallez l’APK officiel depuis GitHub Releases, puis relancez provision-tablet.sh si besoin. ' +
+  'Vos cahiers reviennent si Google Drive était connecté.';
+
+export const isSignatureConflictMessage = (message) =>
+  /conflict|incompatible|signature|UPDATE_INCOMPATIBLE|existing package/i.test(
+    String(message || '')
+  );
+
+export const getBuildInfo = async () => {
+  if (!isNativeApp()) return { debug: false };
+  try {
+    return await Kiosk.getBuildInfo();
+  } catch {
+    return { debug: false };
+  }
 };
 
 export const fetchRemoteUpdateInfo = async () => {

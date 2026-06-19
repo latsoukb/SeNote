@@ -1,5 +1,6 @@
 package com.senote.tablet;
 
+import android.content.pm.ApplicationInfo;
 import android.graphics.Color;
 import android.os.Build;
 import android.view.View;
@@ -39,6 +40,15 @@ public class KioskPlugin extends Plugin {
                 call.reject(e.getMessage());
             }
         });
+    }
+
+    @PluginMethod
+    public void getBuildInfo(PluginCall call) {
+        JSObject ret = new JSObject();
+        boolean debug =
+                (getContext().getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+        ret.put("debug", debug);
+        call.resolve(ret);
     }
 
     @PluginMethod

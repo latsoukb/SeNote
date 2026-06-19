@@ -96,4 +96,5 @@ L'émulateur **avec compte Google** refuse souvent Device Owner. Créez un AVD *
 | `Not allowed to set device owner` | Réinitialiser usine, ne pas ajouter de compte Google |
 | Élève sort de SeNote | Device Owner non provisionné — relancer `provision-tablet.sh` |
 | Pas de Wi‑Fi | Menu admin → Connexion Wi‑Fi |
+| **Conflit de package / mise à jour impossible** | L’APK installé n’est pas signé comme l’officiel. Sur Mac : `adb uninstall com.senote.tablet` puis réinstaller [SeNote-tablet.apk](https://github.com/latsoukb/SeNote/releases/latest/download/SeNote-tablet.apk), puis `provision-tablet.sh` |
 | Tablette volée sans PIN | Configurer verrouillage écran Android via menu admin |

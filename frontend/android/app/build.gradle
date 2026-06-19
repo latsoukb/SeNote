@@ -13,8 +13,8 @@ android {
         applicationId "com.senote.tablet"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 33
-        versionName "1.32"
+        versionCode 34
+        versionName "1.33"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -36,6 +36,12 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (keystorePropertiesFile.exists()) {
+                signingConfig signingConfigs.release
+            }
+        }
+        debug {
+            // Meme signature que release → mises a jour in-app possibles (emulateur / tests)
             if (keystorePropertiesFile.exists()) {
                 signingConfig signingConfigs.release
             }

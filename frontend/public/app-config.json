@@ -1,8 +1,8 @@
 {
   "googleWebClientId": "",
   "googleTokenExchangeUrl": "",
-  "latestApkVersion": "1.32",
-  "latestApkVersionCode": 33,
+  "latestApkVersion": "1.33",
+  "latestApkVersionCode": 34,
   "apkDownloadUrl": "https://latsoukb.github.io/SeNote/SeNote-tablet.apk",
-  "releaseNotes": "Connexion Wi-Fi intégrée pour les élèves (Paramètres, sans code admin). Device Owner et code admin pour la maintenance."
+  "releaseNotes": "Fix mises à jour : même signature debug/release. Si conflit de package, réinstaller l'APK officiel une fois."
 }

@@ -6,7 +6,9 @@ import { isNativeApp } from '../lib/platform';
 import {
   checkForAppUpdate,
   downloadAndInstallUpdate,
+  getBuildInfo,
   getInstalledAppInfo,
+  SIGNATURE_CONFLICT_HELP,
 } from '../lib/appUpdate';
 import { toast } from 'sonner';
 
@@ -16,10 +18,14 @@ const AppUpdateSettings = () => {
   const [checking, setChecking] = useState(false);
   const [installing, setInstalling] = useState(false);
   const [downloadPercent, setDownloadPercent] = useState(null);
+  const [installHelp, setInstallHelp] = useState('');
+  const [debugBuild, setDebugBuild] = useState(false);
 
   const refreshInstalled = useCallback(async () => {
     try {
       setInstalled(await getInstalledAppInfo());
+      const build = await getBuildInfo();
+      setDebugBuild(Boolean(build.debug));
     } catch {
       setInstalled(null);
     }
@@ -52,6 +58,7 @@ const AppUpdateSettings = () => {
 
   const handleInstall = async () => {
     if (!remote?.downloadUrl) return;
+    setInstallHelp('');
     setInstalling(true);
     setDownloadPercent(0);
     try {
@@ -67,6 +74,9 @@ const AppUpdateSettings = () => {
             toast.message('Confirmez l’installation dans la fenêtre Android.', {
               duration: 8000,
             });
+            setInstallHelp(
+              'Si Android affiche « conflit de package » ou « not installed », voir la notice ci-dessous.'
+            );
           }
         },
         remote.versionName
@@ -90,9 +100,20 @@ const AppUpdateSettings = () => {
         Mise à jour SeNote
       </Label>
       <p className="text-xs text-slate-500 leading-relaxed">
-        Télécharge et installe la mise à jour directement dans l&apos;app (Wi‑Fi requis).
-        Android affichera une confirmation — vous ne quittez pas SeNote.
+        Télécharge et installe la mise à jour officielle (Wi‑Fi requis). Android affichera une
+        confirmation.
       </p>
+      {(installHelp || debugBuild) && (
+        <div className="rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 p-3 text-xs text-amber-900 dark:text-amber-200 leading-relaxed space-y-2">
+          {debugBuild && (
+            <p>
+              Version de test détectée. Si la mise à jour échoue, réinstallez l&apos;APK officiel
+              depuis GitHub.
+            </p>
+          )}
+          <p>{installHelp || SIGNATURE_CONFLICT_HELP}</p>
+        </div>
+      )}
       {installed && (
         <p className="text-sm text-slate-600 dark:text-slate-300">
           Version installée : <span className="font-medium">{installed.version}</span>
