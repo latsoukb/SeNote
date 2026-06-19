@@ -63,7 +63,7 @@ chmod +x scripts/provision-tablet.sh
 ./scripts/provision-tablet.sh
 ```
 
-Puis sur la tablette : **7× logo SeNote** → code admin → Wi‑Fi → verrouillage écran PIN.
+Puis sur la tablette : **Paramètres** → Wi‑Fi, verrouillage écran, mises à jour.
 
 Comportements Device Owner :
 - installation d'apps bloquée (TikTok, Play Store masqué)

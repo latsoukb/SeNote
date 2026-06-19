@@ -53,19 +53,6 @@ export async function getKioskStatus() {
   }
 }
 
-export async function openAdminSystemSettings(type) {
+export async function openSystemSettings(type) {
   await Kiosk.openSystemSettings({ type });
-}
-
-export async function temporarilyDisableKiosk() {
-  await Kiosk.disable();
-}
-
-export async function reEnableKiosk() {
-  const status = await getKioskStatus();
-  if (status.deviceOwner) {
-    await Kiosk.applyPolicies();
-  } else {
-    await Kiosk.enable();
-  }
 }

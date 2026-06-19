@@ -19,7 +19,7 @@ import GoogleDriveSettings from './GoogleDriveSettings';
 import AppUpdateSettings from './AppUpdateSettings';
 import StudentDeviceCode from './StudentDeviceCode';
 import StudentWifiSettings from './StudentWifiSettings';
-import { isNativeApp } from '../lib/platform';
+import StudentScreenLockSettings from './StudentScreenLockSettings';
 
 const SettingsDialog = ({ trigger }) => {
   const { settings, updateSettings } = useSettings();
@@ -50,6 +50,8 @@ const SettingsDialog = ({ trigger }) => {
           {studentSession && <StudentDeviceCode variant="settings" />}
 
           <StudentWifiSettings />
+
+          <StudentScreenLockSettings />
 
           <div className="space-y-3">
             <Label>Apparence</Label>
@@ -173,7 +175,7 @@ const SettingsDialog = ({ trigger }) => {
 
           <GoogleDriveSettings onBeforeConnect={() => setOpen(false)} />
 
-          {!isNativeApp() && <AppUpdateSettings />}
+          <AppUpdateSettings />
 
           {(canInstall || isInstalled) && (
           <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-chrome-800">

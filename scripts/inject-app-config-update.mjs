@@ -29,7 +29,6 @@ if (!versionCode || !versionName) {
 const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 cfg.latestApkVersion = versionName;
 cfg.latestApkVersionCode = Number(versionCode);
-// GitHub Pages : telechargement natif (Filesystem.downloadFile), CORS OK
 cfg.apkDownloadUrl = 'https://latsoukb.github.io/SeNote/SeNote-tablet.apk';
 
 fs.writeFileSync(configPath, `${JSON.stringify(cfg, null, 2)}\n`);

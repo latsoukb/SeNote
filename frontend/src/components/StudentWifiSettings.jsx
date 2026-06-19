@@ -116,8 +116,7 @@ const StudentWifiSettings = () => {
         Connexion Wi‑Fi
       </Label>
       <p className="text-xs text-slate-500 leading-relaxed">
-        Connectez la tablette au Wi‑Fi de la maison ou du village — sans code admin, sans quitter
-        SeNote.
+        Connectez la tablette au Wi‑Fi de la maison ou du village — directement depuis SeNote.
       </p>
 
       <div className="rounded-lg border border-slate-200 dark:border-chrome-700 px-3 py-2 text-sm">

@@ -58,8 +58,6 @@ import { COVER_TEMPLATES, PAGE_TEMPLATES, FOLDER_COLORS, FOLDER_ICONS } from '..
 import Logo from '../components/Logo';
 import PageTemplatePreview from '../components/PageTemplatePreview';
 import SettingsDialog from '../components/SettingsDialog';
-import TabletAdminDialog from '../components/TabletAdminDialog';
-import { isNativeApp } from '../lib/platform';
 import StudentInbox from '../components/StudentInbox';
 import StudentLogin from '../components/StudentLogin';
 import StudentWaiting from '../components/StudentWaiting';
@@ -340,7 +338,6 @@ const Library = () => {
     permanentlyDeletePage,
     emptyTrash,
   } = useNotes();
-  const [adminOpen, setAdminOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const viewParam = searchParams.get('view');
   const mainView =
@@ -527,11 +524,7 @@ const Library = () => {
               />
             </SheetContent>
           </Sheet>
-          <Logo
-            size="md"
-            className="shrink-0"
-            onSecretTap={isNativeApp() ? () => setAdminOpen(true) : undefined}
-          />
+          <Logo size="md" className="shrink-0" />
           <div className="flex-1 min-w-0 max-w-md relative hidden sm:block">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input
@@ -1097,7 +1090,6 @@ const Library = () => {
           )}
         </main>
       </div>
-      <TabletAdminDialog open={adminOpen} onOpenChange={setAdminOpen} />
     </div>
   );
 };

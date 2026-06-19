@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>SeNote — Plan tablette + stylet</title>
+  <style>
+    @page { margin: 18mm 15mm; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-size: 10.5pt;
+      line-height: 1.45;
+      color: #1a1a1a;
+      margin: 0;
+      padding: 0;
+    }
+    .cover {
+      page-break-after: always;
+      min-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 2rem 0;
+    }
+    .cover h1 { font-size: 28pt; margin: 0 0 0.5rem; color: #c45c00; }
+    .cover .subtitle { font-size: 14pt; color: #444; margin-bottom: 2rem; }
+    .cover .meta { font-size: 11pt; color: #666; line-height: 1.8; }
+    .cover .highlight {
+      margin-top: 2rem;
+      padding: 1rem 1.25rem;
+      background: #fff8f0;
+      border-left: 4px solid #c45c00;
+      font-size: 11pt;
+    }
+    h1 { font-size: 20pt; color: #c45c00; margin-top: 1.5rem; page-break-after: avoid; }
+    h2 { font-size: 14pt; color: #333; margin-top: 1.25rem; border-bottom: 1px solid #e0e0e0; padding-bottom: 0.25rem; page-break-after: avoid; }
+    h3 { font-size: 12pt; margin-top: 1rem; page-break-after: avoid; }
+    p, li { orphans: 3; widows: 3; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 8.5pt;
+      margin: 0.75rem 0 1rem;
+    }
+    th, td { border: 1px solid #ccc; padding: 4px 6px; text-align: left; vertical-align: top; }
+    th { background: #f5f5f5; font-weight: 600; }
+    tr:nth-child(even) td { background: #fafafa; }
+    .table-wrap { page-break-inside: avoid; }
+    pre, code { font-family: Menlo, Consolas, monospace; font-size: 8pt; background: #f4f4f4; }
+    pre { padding: 0.75rem; border-radius: 4px; white-space: pre-wrap; word-break: break-word; }
+    code { padding: 1px 4px; border-radius: 3px; }
+    ul, ol { padding-left: 1.25rem; }
+    hr { border: none; border-top: 1px solid #ddd; margin: 1.5rem 0; }
+    .toc { page-break-after: always; }
+    .toc h2 { border: none; }
+    .toc ul { list-style: none; padding: 0; }
+    .toc li { padding: 0.35rem 0; border-bottom: 1px dotted #ddd; }
+    .section-break { page-break-before: always; }
+    .csv-section h2 { color: #c45c00; font-size: 12pt; }
+    .footer-note { margin-top: 2rem; font-size: 9pt; color: #888; text-align: center; }
+  </style>
+</head>
+<body>
+
+<div class="cover">
+  <h1>SeNote</h1>
+  <p class="subtitle">Plan chiffré — Kit tablette + stylet</p>
+  <p class="meta">
+    Marché : Sénégal · Élèves &amp; étudiants<br>
+    Feuille de route + tableaux financiers + checklist fournisseur<br>
+    Juin 2026
+  </p>
+  <div class="highlight">
+    <strong>Scénario médian cible (an 1)</strong><br>
+    Prix 70 000 XOF · 1 650 kits · CA 115 M XOF · Bénéfice net ~65 M XOF
+  </div>
+</div>
+
+<nav class="toc">
+  <h2>Sommaire</h2>
+  <ul>
+    <li>1. Feuille de route détaillée</li>
+    <li>2. Tableaux financiers (coûts, marges, marché an 1 &amp; 3 ans)</li>
+    <li>3. Checklist fournisseur Alibaba</li>
+    <li>4. Annexes CSV (KPI mensuels, coûts, marges, marché)</li>
+  </ul>
+</nav>
+
+<main>
+  <h1>SeNote — Plan chiffré tablette + stylet</h1>
+<p>Fournisseurs de référence :</p>
+<ul>
+<li>Tablette 10,1″ — Jilian Xingmeng</li>
+<li>Stylet KS-A02 — Kingstar</li>
+</ul>
+<p>Taux utilisé : <strong>1 € = 655 XOF</strong> (ajuster selon le jour).</p>
+<p>Hypothèses coût kit posé au Sénégal (tablette + stylet + fret + douane + prépa) :</p>
+<div class="table-wrap"><table>
+<tr><th>Scénario commande</th><th>Coût/kit (€)</th><th>Coût/kit (XOF)</th></tr>
+<tr><td>Pilote 30 kits</td><td>43 €</td><td><strong>28 200</strong></td></tr>
+<tr><td>Stock 100 kits</td><td>42 €</td><td><strong>27 500</strong></td></tr>
+<tr><td>Stock 200 kits</td><td>41 €</td><td><strong>26 850</strong></td></tr>
+<tr><td>Volume 2 000 kits</td><td>34 €</td><td><strong>22 300</strong></td></tr>
+</table></div>
+<p>Cible élèves/étudiants (collège, lycée, sup.) : <strong>~1,5 million</strong>.</p>
+<hr>
+<h2>Feuille de route — atteindre les chiffres du plan</h2>
+<p>Cette section décrit <strong>comment</strong> arriver aux objectifs des tableaux ci-dessous si le produit et la communication fonctionnent.  </p>
+<p>Les tableaux financiers restent en <strong>scénario médian</strong> : prix <strong>70 000 XOF</strong>, <strong>1 650 kits/an</strong>, <strong>115 M CA</strong>, <strong>65 M bénéfice net</strong>.</p>
+<h3>Objectifs de référence (à valider mois par mois)</h3>
+<div class="table-wrap"><table>
+<tr><th>Horizon</th><th>Kits vendus (cumul)</th><th>CA cumulé</th><th>Bénéfice net cumulé</th><th>Stock à commander</th></tr>
+<tr><td><strong>Mois 6</strong></td><td>80</td><td>~5,6 M</td><td>~2,5 M</td><td>30 puis 100</td></tr>
+<tr><td><strong>Mois 12</strong></td><td><strong>1 650</strong></td><td><strong>115 M</strong></td><td><strong>65 M</strong></td><td>100 + 200 + réassort</td></tr>
+<tr><td><strong>Mois 36</strong></td><td><strong>11 000</strong></td><td><strong>770 M</strong></td><td><strong>449 M</strong></td><td>paliers 500–2 000</td></tr>
+</table></div>
+<p>Équivalent mensuel pour tenir le médian an 1 : <strong>~138 kits/mois</strong> en moyenne (rampe progressive, pas dès le jour 1).</p>
+<hr>
+<h3>Phase 0 — Produit prêt (semaines 1 à 8)</h3>
+<p><strong>But :</strong> APK SeNote kiosk stable + JokkoNote messagerie fiable. <strong>Aucune vente.</strong></p>
+<div class="table-wrap"><table>
+<tr><th>Semaine</th><th>Actions</th><th>Livrable / critère GO</th></tr>
+<tr><td>S1–S2</td><td>Finir bugs critiques (onglets, échéances, sync prof)</td><td>0 crash en 30 min d'écriture</td></tr>
+<tr><td>S3</td><td>Commander <strong>2 tablettes + 10 stylets</strong> (checklist fournisseur)</td><td>Échantillons en route</td></tr>
+<tr><td>S4–S5</td><td>Tests stylet : latence, recharge, autonomie, RAM réelle</td><td>Fiche technique validée</td></tr>
+<tr><td>S6</td><td>Installer APK kiosk, Google Drive, mode hors ligne</td><td>Vidéo démo 60 s</td></tr>
+<tr><td>S7</td><td>5 bêta-testeurs (élèves/étudiants Dakar)</td><td>≥ 4/5 recommanderaient</td></tr>
+<tr><td>S8</td><td>Page WhatsApp Business + nom « SeNote Kit » + prix affiché</td><td>Prêt lancement pilote</td></tr>
+</table></div>
+<p><strong>Budget phase 0 :</strong> ~200 € échantillons + temps dev.</p>
+<p><strong>Gate :</strong> si écriture médiocre ou tablette &lt; 3 Go RAM réel → <strong>changer de fournisseur</strong>, ne pas commander 30 kits.</p>
+<hr>
+<h3>Phase 1 — Pilote 30 kits (mois 3 à 4)</h3>
+<p><strong>But :</strong> vendre les <strong>30 premiers kits</strong>, prouver que quelqu'un paie, affiner SAV.</p>
+<div class="table-wrap"><table>
+<tr><th>Action</th><th>Détail</th><th>Objectif</th></tr>
+<tr><td>Prix lancement</td><td><strong>69 000 XOF</strong> (psychologie « sous 70k »)</td><td>30 ventes en 6–8 semaines</td></tr>
+<tr><td>Offre pilote</td><td>Tablette + stylet + SeNote + housse simple + guide 1 page</td><td>Valeur perçue</td></tr>
+<tr><td>Paiement</td><td>Wave / Orange Money + <strong>3× sans frais</strong> dès le pilote</td><td>+30 % de conversions</td></tr>
+<tr><td>Démos physiques</td><td>2 lycées + 1 fac (UCAD ou privé Dakar)</td><td>15 contacts décideurs</td></tr>
+<tr><td>Contenu</td><td>3 vidéos/semaine TikTok + Reels + statuts WhatsApp</td><td>1 vidéo &gt; 10k vues</td></tr>
+<tr><td>Diaspora</td><td>Message type aux parents à l'étranger (« offrez le kit rentrée »)</td><td>5 ventes diaspora</td></tr>
+<tr><td>SAV</td><td>WhatsApp dédié, réponse &lt; 2 h, 1 stylet de rechange en stock</td><td>&lt; 10 % retours</td></tr>
+</table></div>
+<p><strong>KPI fin phase 1 :</strong> <strong>30 kits vendus</strong> · CA <strong>2,07 M</strong> · bénéfice net <strong>~1,2 M</strong>.</p>
+<p><strong>Gate :</strong> si &lt; 20 ventes en 2 mois → revoir prix (59k), message, ou modèle tablette avant commande 100.</p>
+<hr>
+<h3>Phase 2 — Accélération 100 kits (mois 5 à 8)</h3>
+<p><strong>But :</strong> passer de 30 à <strong>~450 kits cumulés</strong> (dont ~120 sur la période si rampe correcte).</p>
+<div class="table-wrap"><table>
+<tr><th>Levier</th><th>Actions concrètes</th><th>Cible</th></tr>
+<tr><td><strong>Écoles</strong></td><td>10 établissements partenaires ; démo 45 min en classe Terminale</td><td>2 commandes groupées (10–20 kits)</td></tr>
+<tr><td><strong>Ambassadeurs</strong></td><td>5 élèves « SeNote » (1 kit gratuit contre 10 filleuls)</td><td>50 ventes filleul</td></tr>
+<tr><td><strong>JokkoNote</strong></td><td>Bundle : prof envoie cours → élève ouvre sur tablette SeNote</td><td>20 écoles inscrites sync</td></tr>
+<tr><td><strong>Contenu</strong></td><td>Témoignages élèves, avant/après cahier papier, « 24h avec SeNote »</td><td>4 vidéos/mois</td></tr>
+<tr><td><strong>Géographie</strong></td><td>Dakar + Thiès + Saint-Louis + Ziguinchor (points retrait ou livraison)</td><td>4 villes</td></tr>
+<tr><td><strong>Prix</strong></td><td>Passage à <strong>72 000 XOF</strong> ; lot école <strong>65 000</strong>/kit (min. 10)</td><td>Marge préservée</td></tr>
+<tr><td><strong>Réassort</strong></td><td>Commander <strong>100 kits</strong> quand 20 en stock restant</td><td>Pas de rupture</td></tr>
+</table></div>
+<p><strong>KPI mois 8 (cumul) :</strong> <strong>~450 kits</strong> · CA cumulé <strong>~32 M</strong> · bénéfice net cumulé <strong>~18 M</strong>.</p>
+<div class="table-wrap"><table>
+<tr><th>Mois</th><th>Ventes du mois</th><th>Cumul</th><th>Actions clés</th></tr>
+<tr><td>M5</td><td>40</td><td>70</td><td>Relance pilote, premières écoles</td></tr>
+<tr><td>M6</td><td>50</td><td>120</td><td>TikTok sponsorisé léger (50–100k XOF)</td></tr>
+<tr><td>M7</td><td>80</td><td>200</td><td>1ère commande groupe école</td></tr>
+<tr><td>M8</td><td>100</td><td>300</td><td>Livraison express Dakar, bouche-à-oreille</td></tr>
+</table></div>
+<p>*(Ajuster si retard ; l'objectif 1 650 en M12 exige une <strong>accélération forte en M9–M12</strong>.)*</p>
+<hr>
+<h3>Phase 3 — Montée en charge (mois 9 à 12)</h3>
+<p><strong>But :</strong> atteindre <strong>1 650 kits cumulés</strong> — phase la plus exigeante.</p>
+<div class="table-wrap"><table>
+<tr><th>Mois</th><th>Ventes cible</th><th>Cumul</th><th>Focus</th></tr>
+<tr><td>M9</td><td>150</td><td>~600</td><td>Commande <strong>200 kits</strong> ; embauche 1 livreur/partenaire logistique</td></tr>
+<tr><td>M10</td><td>250</td><td>~850</td><td>Campagne « rentrée / examens » ; pub Facebook ciblée parents 35–50 ans</td></tr>
+<tr><td>M11</td><td>450</td><td>~1 150</td><td>Black Friday scolaire ; diaspora Noël</td></tr>
+<tr><td>M12</td><td>500</td><td><strong>~1 650</strong></td><td>Stock suffisant ; promo fin d'année limitée (pas de braderie)</td></tr>
+</table></div>
+<p><strong>Leviers obligatoires pour tenir 1 350 ventes sur M9–M12 :</strong></p>
+<ol>
+<li><strong>Paiement 3×</strong> sur 70 %+ des ventes  </li>
+<li><strong>10–15 commandes groupées</strong> écoles/associations (10–30 kits chacune)  </li>
+<li><strong>Diaspora</strong> : 15–20 % des ventes (parents qui paient depuis l'étranger)  </li>
+<li><strong>Influence</strong> : 3 micro-influenceurs éducation (50–150k followers)  </li>
+<li><strong>Presse locale</strong> : 1 article Sunuweb / Senego / radio Jeune Afrique  </li>
+<li><strong>SAV</strong> : pièces détachées (10 stylets + 2 tablettes échange)</li>
+</ol>
+<p><strong>Budget marketing M9–M12 :</strong> 3–5 M XOF (pub + ambassadeurs + déplacements) — financé par bénéfice phase 1–2.</p>
+<p><strong>Gate fin an 1 :</strong></p>
+<div class="table-wrap"><table>
+<tr><th>Résultat</th><th>Décision</th></tr>
+<tr><td>≥ 1 200 kits</td><td>Continuer plan an 2, commander 500 kits</td></tr>
+<tr><td>600 – 1 199</td><td>Revoir prix à 65k, doubler effort écoles, étaler objectif sur 18 mois</td></tr>
+<tr><td>&lt; 600</td><td>Stop gros stock, écouler, améliorer produit avant réinvestir</td></tr>
+</table></div>
+<hr>
+<h3>Phase 4 — Années 2 et 3 (vers 11 000 kits cumulés)</h3>
+<p><strong>But :</strong> tableaux <strong>an 3</strong> — <strong>11 000 kits</strong> à 70k, <strong>770 M CA</strong>, <strong>449 M bénéfice net</strong>.</p>
+<div class="table-wrap"><table>
+<tr><th>Année</th><th>Kits vendus</th><th>Cumul</th><th>Actions structurantes</th></tr>
+<tr><td><strong>An 2</strong></td><td>~3 500</td><td>~5 150</td><td>30 écoles partenaires ; 1 commercial temps plein ; stock 500–1 000 ; prix 75k</td></tr>
+<tr><td><strong>An 3</strong></td><td>~5 850</td><td><strong>~11 000</strong></td><td>Contrat distributeur régions ; version SeNote v2 ; négo 2 000 pcs Alibaba ; option location</td></tr>
+</table></div>
+<p><strong>Répartition cible des ventes an 2–3 :</strong></p>
+<div class="table-wrap"><table>
+<tr><th>Canal</th><th>Part des ventes</th></tr>
+<tr><td>Bouche-à-oreille + WhatsApp</td><td>35 %</td></tr>
+<tr><td>Écoles / groupes</td><td>30 %</td></tr>
+<tr><td>Diaspora</td><td>20 %</td></tr>
+<tr><td>Réseaux sociaux / pub</td><td>15 %</td></tr>
+</table></div>
+<hr>
+<h3>Rituels hebdomadaires (pendant toute l'an 1)</h3>
+<div class="table-wrap"><table>
+<tr><th>Jour</th><th>30 min minimum</th></tr>
+<tr><td>Lundi</td><td>Relance leads WhatsApp non convertis</td></tr>
+<tr><td>Mardi</td><td>Publier 1 contenu (vidéo ou témoignage)</td></tr>
+<tr><td>Mercredi</td><td>Contacter 2 établissements scolaires</td></tr>
+<tr><td>Jeudi</td><td>Suivi SAV + demander avis clients</td></tr>
+<tr><td>Vendredi</td><td>Chiffres : ventes semaine, stock, trésorerie</td></tr>
+<tr><td>Samedi</td><td>Démo physique ou live TikTok</td></tr>
+<tr><td>Dimanche</td><td>Préparer semaine + 1 action diaspora (groupes Facebook)</td></tr>
+</table></div>
+<hr>
+<h3>Indicateurs tableau de bord (Google Sheet / cahier)</h3>
+<p>À mettre à jour chaque vendredi :</p>
+<pre><code>
+Semaine n°___
+
+- Kits vendus cette semaine : ___
+
+- Cumul année : ___ / 1 650
+
+- Stock restant : ___
+
+- Leads WhatsApp nouveaux : ___
+
+- Taux conversion leads → vente : ___ %
+
+- Retours SAV : ___
+
+- CA semaine : ___ XOF
+
+- Dépenses marketing semaine : ___ XOF
+
+</code></pre>
+<hr>
+<h3>Checklist « prêt à viser le médian »</h3>
+<ul>
+<li>[ ] APK kiosk testé 14 jours sans crash sur le modèle exact vendu</li>
+<li>[ ] Prix affiché : 69–72k XOF + option 3×</li>
+<li>[ ] WhatsApp Business avec catalogue et lien paiement</li>
+<li>[ ] 3 vidéos démo publiées</li>
+<li>[ ] 5 lycées contactés, 2 démos planifiées</li>
+<li>[ ] Stock pilote 30 reçu et flashé</li>
+<li>[ ] Page diaspora (FR) : « Offrez SeNote au Sénégal »</li>
+<li>[ ] JokkoNote + SeNote démo prof/élève fonctionnelle</li>
+<li>[ ] Contrat type école (remise 10 % ≥ 10 kits)</li>
+</ul>
+<hr>
+<h3>Fichier suivi mensuel</h3>
+<p>Import Excel : <code>feuille-de-route-kpi.csv</code> — objectifs mois par mois vs réalisé.</p>
+<hr>
+<h2>1. Coût de revient par scénario d'achat</h2>
+<div class="table-wrap"><table>
+<tr><th>Scénario</th><th>Kits</th><th>Marchandise</th><th>Fret + douane + prep.*</th><th>**Investissement**</th><th>**Coût/kit**</th></tr>
+<tr><td>Échantillons</td><td>2</td><td>89 €</td><td>80 €</td><td><strong>169 €</strong></td><td>85 €</td></tr>
+<tr><td>Pilote</td><td>30</td><td>975 €</td><td>325 €</td><td><strong>1 300 €</strong></td><td>43 €</td></tr>
+<tr><td>Stock 1</td><td>100</td><td>3 250 €</td><td>950 €</td><td><strong>4 200 €</strong></td><td>42 €</td></tr>
+<tr><td>Stock 2</td><td>200</td><td>6 500 €</td><td>1 600 €</td><td><strong>8 100 €</strong></td><td>41 €</td></tr>
+<tr><td>Volume</td><td>2 000</td><td>53 900 €</td><td>14 000 €</td><td><strong>67 900 €</strong></td><td>34 €</td></tr>
+</table></div>
+<hr>
+<h2>2. Année 1 — ventes réalistes avec bonne communication</h2>
+<p>Hypothèse coût : <strong>28 200 XOF/kit</strong> (pilote).  </p>
+<p>Bénéfice brut = (prix vente − coût kit) × quantité vendue.  </p>
+<p>Bénéfice net estimé = brut × <strong>0,95</strong> (5 % SAV / retours).</p>
+<div class="table-wrap"><table>
+<tr><th>Prix vente</th><th>Ventes réalistes (fourchette)</th><th>Scénario médian</th><th>**CA (XOF)**</th><th>**CA (€)**</th><th>**Bénéfice brut (XOF)**</th><th>**Bénéfice brut (€)**</th><th>**Bénéfice net* (XOF)**</th></tr>
+<tr><td><strong>40 000</strong></td><td>2 000 – 5 000</td><td><strong>3 500</strong></td><td>140 M</td><td>214k €</td><td><strong>41,3 M</strong></td><td>63k €</td><td><strong>39,2 M</strong></td></tr>
+<tr><td><strong>50 000</strong></td><td>1 500 – 4 000</td><td><strong>2 750</strong></td><td>137,5 M</td><td>210k €</td><td><strong>59,9 M</strong></td><td>91k €</td><td><strong>56,9 M</strong></td></tr>
+<tr><td><strong>60 000</strong></td><td>1 000 – 3 000</td><td><strong>2 000</strong></td><td>120 M</td><td>183k €</td><td><strong>63,6 M</strong></td><td>97k €</td><td><strong>60,4 M</strong></td></tr>
+<tr><td><strong>70 000</strong></td><td>800 – 2 500</td><td><strong>1 650</strong></td><td>115,5 M</td><td>176k €</td><td><strong>69,0 M</strong></td><td>105k €</td><td><strong>65,5 M</strong></td></tr>
+<tr><td><strong>80 000</strong></td><td>500 – 2 000</td><td><strong>1 250</strong></td><td>100 M</td><td>153k €</td><td><strong>64,8 M</strong></td><td>99k €</td><td><strong>61,5 M</strong></td></tr>
+<tr><td><strong>90 000</strong></td><td>400 – 1 500</td><td><strong>950</strong></td><td>85,5 M</td><td>131k €</td><td><strong>58,7 M</strong></td><td>90k €</td><td><strong>55,8 M</strong></td></tr>
+<tr><td><strong>100 000</strong></td><td>300 – 1 200</td><td><strong>750</strong></td><td>75 M</td><td>114k €</td><td><strong>53,9 M</strong></td><td>82k €</td><td><strong>51,2 M</strong></td></tr>
+</table></div>
+<p>\* Net après 5 % SAV. Hors ton salaire / marketing payant.</p>
+<p><strong>Marge/kit au scénario médian :</strong></p>
+<div class="table-wrap"><table>
+<tr><th>Prix</th><th>Marge/kit (XOF)</th><th>Marge/kit (€)</th><th>% marge</th></tr>
+<tr><td>40 000</td><td>11 800</td><td>18 €</td><td>30 %</td></tr>
+<tr><td>50 000</td><td>21 800</td><td>33 €</td><td>44 %</td></tr>
+<tr><td>60 000</td><td>31 800</td><td>49 €</td><td>53 %</td></tr>
+<tr><td>70 000</td><td>41 800</td><td>64 €</td><td>60 %</td></tr>
+<tr><td>80 000</td><td>51 800</td><td>79 €</td><td>65 %</td></tr>
+<tr><td>90 000</td><td>61 800</td><td>94 €</td><td>69 %</td></tr>
+<tr><td>100 000</td><td>71 800</td><td>110 €</td><td>72 %</td></tr>
+</table></div>
+<hr>
+<h2>3. Année 1 — scénarios bas / haut (prix 40k – 100k)</h2>
+<h3>Scénario prudent (bas de fourchette)</h3>
+<div class="table-wrap"><table>
+<tr><th>Prix</th><th>Ventes</th><th>CA (XOF)</th><th>Bénéfice brut (XOF)</th><th>Bénéfice net (XOF)</th></tr>
+<tr><td>40 000</td><td>2 000</td><td>80 M</td><td>23,6 M</td><td>22,4 M</td></tr>
+<tr><td>50 000</td><td>1 500</td><td>75 M</td><td>32,7 M</td><td>31,1 M</td></tr>
+<tr><td>60 000</td><td>1 000</td><td>60 M</td><td>31,8 M</td><td>30,2 M</td></tr>
+<tr><td>70 000</td><td>800</td><td>56 M</td><td>33,4 M</td><td>31,8 M</td></tr>
+<tr><td>80 000</td><td>500</td><td>40 M</td><td>25,9 M</td><td>24,6 M</td></tr>
+<tr><td>90 000</td><td>400</td><td>36 M</td><td>24,7 M</td><td>23,5 M</td></tr>
+<tr><td>100 000</td><td>300</td><td>30 M</td><td>21,5 M</td><td>20,5 M</td></tr>
+</table></div>
+<h3>Scénario optimiste (haut de fourchette + 3× + écoles)</h3>
+<div class="table-wrap"><table>
+<tr><th>Prix</th><th>Ventes</th><th>CA (XOF)</th><th>Bénéfice brut (XOF)</th><th>Bénéfice net (XOF)</th></tr>
+<tr><td>40 000</td><td>5 000</td><td>200 M</td><td>59 M</td><td>56,1 M</td></tr>
+<tr><td>50 000</td><td>4 000</td><td>200 M</td><td>87,2 M</td><td>82,8 M</td></tr>
+<tr><td>60 000</td><td>3 000</td><td>180 M</td><td>95,4 M</td><td>90,6 M</td></tr>
+<tr><td>70 000</td><td>2 500</td><td>175 M</td><td>104,5 M</td><td>99,3 M</td></tr>
+<tr><td>80 000</td><td>2 000</td><td>160 M</td><td>103,6 M</td><td>98,4 M</td></tr>
+<tr><td>90 000</td><td>1 500</td><td>135 M</td><td>92,7 M</td><td>88,1 M</td></tr>
+<tr><td>100 000</td><td>1 200</td><td>120 M</td><td>86,2 M</td><td>81,9 M</td></tr>
+</table></div>
+<hr>
+<h2>4. À 3 ans — cumul réaliste (marque installée)</h2>
+<p>Coût/kit moyen sur 3 ans : <strong>27 000 XOF</strong> (économies d'échelle).</p>
+<div class="table-wrap"><table>
+<tr><th>Prix</th><th>Ventes cumulées (fourchette)</th><th>Scénario médian</th><th>**CA cumulé (XOF)**</th><th>**Bénéfice brut (XOF)**</th><th>**Bénéfice net (XOF)**</th></tr>
+<tr><td><strong>40 000</strong></td><td>15 000 – 40 000</td><td><strong>25 000</strong></td><td>1 000 M (1 Md)</td><td>325 M</td><td><strong>309 M</strong></td></tr>
+<tr><td><strong>50 000</strong></td><td>12 000 – 30 000</td><td><strong>20 000</strong></td><td>1 000 M</td><td>460 M</td><td><strong>437 M</strong></td></tr>
+<tr><td><strong>60 000</strong></td><td>8 000 – 22 000</td><td><strong>14 000</strong></td><td>840 M</td><td>462 M</td><td><strong>439 M</strong></td></tr>
+<tr><td><strong>70 000</strong></td><td>6 000 – 18 000</td><td><strong>11 000</strong></td><td>770 M</td><td>473 M</td><td><strong>449 M</strong></td></tr>
+<tr><td><strong>80 000</strong></td><td>4 000 – 14 000</td><td><strong>8 500</strong></td><td>680 M</td><td>450 M</td><td><strong>428 M</strong></td></tr>
+<tr><td><strong>90 000</strong></td><td>3 000 – 10 000</td><td><strong>6 000</strong></td><td>540 M</td><td>378 M</td><td><strong>359 M</strong></td></tr>
+<tr><td><strong>100 000</strong></td><td>2 000 – 8 000</td><td><strong>4 500</strong></td><td>450 M</td><td>328,5 M</td><td><strong>312 M</strong></td></tr>
+</table></div>
+<hr>
+<h2>5. Matrices stock — 30 / 100 / 200 kits (tous prix de vente)</h2>
+<p>Coût/kit : 43 € / 42 € / 41 € selon scénario. Quantité vendue = stock entièrement écoulé.</p>
+<h3>Pilote — 30 kits (coût 28 200 XOF/kit)</h3>
+<div class="table-wrap"><table>
+<tr><th>Prix (XOF)</th><th>CA (XOF)</th><th>Bénéfice brut (XOF)</th><th>Bénéfice net (XOF)</th><th>CA (€)</th><th>Bénéfice net (€)</th></tr>
+<tr><td>40 000</td><td>1,2 M</td><td>354k</td><td>336k</td><td>1 832 €</td><td>513 €</td></tr>
+<tr><td>50 000</td><td>1,5 M</td><td>654k</td><td>621k</td><td>2 290 €</td><td>948 €</td></tr>
+<tr><td>60 000</td><td>1,8 M</td><td>954k</td><td>906k</td><td>2 748 €</td><td>1 384 €</td></tr>
+<tr><td>70 000</td><td>2,1 M</td><td>1,25 M</td><td>1,19 M</td><td>3 206 €</td><td>1 817 €</td></tr>
+<tr><td>80 000</td><td>2,4 M</td><td>1,55 M</td><td>1,48 M</td><td>3 664 €</td><td>2 259 €</td></tr>
+<tr><td>90 000</td><td>2,7 M</td><td>1,85 M</td><td>1,76 M</td><td>4 122 €</td><td>2 687 €</td></tr>
+<tr><td>100 000</td><td>3 M</td><td>2,15 M</td><td>2,05 M</td><td>4 580 €</td><td>3 130 €</td></tr>
+</table></div>
+<h3>Stock — 100 kits (coût 27 500 XOF/kit)</h3>
+<div class="table-wrap"><table>
+<tr><th>Prix (XOF)</th><th>CA (XOF)</th><th>Bénéfice brut (XOF)</th><th>Bénéfice net (XOF)</th><th>CA (€)</th><th>Bénéfice net (€)</th></tr>
+<tr><td>40 000</td><td>4 M</td><td>1,25 M</td><td>1,19 M</td><td>6 107 €</td><td>1 816 €</td></tr>
+<tr><td>50 000</td><td>5 M</td><td>2,25 M</td><td>2,14 M</td><td>7 634 €</td><td>3 267 €</td></tr>
+<tr><td>60 000</td><td>6 M</td><td>3,25 M</td><td>3,09 M</td><td>9 160 €</td><td>4 718 €</td></tr>
+<tr><td>70 000</td><td>7 M</td><td>4,25 M</td><td>4,04 M</td><td>10 687 €</td><td>6 168 €</td></tr>
+<tr><td>80 000</td><td>8 M</td><td>5,25 M</td><td>4,99 M</td><td>12 214 €</td><td>7 618 €</td></tr>
+<tr><td>90 000</td><td>9 M</td><td>6,25 M</td><td>5,94 M</td><td>13 740 €</td><td>9 069 €</td></tr>
+<tr><td>100 000</td><td>10 M</td><td>7,25 M</td><td>6,89 M</td><td>15 267 €</td><td>10 519 €</td></tr>
+</table></div>
+<h3>Stock — 200 kits (coût 26 850 XOF/kit)</h3>
+<div class="table-wrap"><table>
+<tr><th>Prix (XOF)</th><th>CA (XOF)</th><th>Bénéfice brut (XOF)</th><th>Bénéfice net (XOF)</th><th>CA (€)</th><th>Bénéfice net (€)</th></tr>
+<tr><td>40 000</td><td>8 M</td><td>2,63 M</td><td>2,50 M</td><td>12 214 €</td><td>3 817 €</td></tr>
+<tr><td>50 000</td><td>10 M</td><td>4,63 M</td><td>4,40 M</td><td>15 267 €</td><td>6 718 €</td></tr>
+<tr><td>60 000</td><td>12 M</td><td>6,63 M</td><td>6,30 M</td><td>18 321 €</td><td>9 618 €</td></tr>
+<tr><td>70 000</td><td>14 M</td><td>8,63 M</td><td>8,20 M</td><td>21 374 €</td><td>12 519 €</td></tr>
+<tr><td>80 000</td><td>16 M</td><td>10,6 M</td><td>10,1 M</td><td>24 427 €</td><td>15 420 €</td></tr>
+<tr><td>90 000</td><td>18 M</td><td>12,6 M</td><td>12,0 M</td><td>27 481 €</td><td>18 321 €</td></tr>
+<tr><td>100 000</td><td>20 M</td><td>14,6 M</td><td>13,9 M</td><td>30 534 €</td><td>21 221 €</td></tr>
+</table></div>
+<hr>
+<h2>6. Lecture rapide — quel prix choisir ?</h2>
+<div class="table-wrap"><table>
+<tr><th>Prix</th><th>Volume an 1 (médian)</th><th>CA an 1</th><th>Bénéfice net an 1</th><th>Verdict</th></tr>
+<tr><td>40k</td><td>3 500 (max volume)</td><td>140 M</td><td>39 M</td><td>Volume ↑, marge ↓ (30 %)</td></tr>
+<tr><td>60k</td><td>2 000</td><td>120 M</td><td>60 M</td><td>Bon équilibre</td></tr>
+<tr><td><strong>70k</strong></td><td><strong>1 650</strong></td><td><strong>115 M</strong></td><td><strong>65 M</strong></td><td><strong>Meilleur bénéfice absolu an 1</strong></td></tr>
+<tr><td>80k</td><td>1 250</td><td>100 M</td><td>62 M</td><td>Marge ↑, volume ↓</td></tr>
+<tr><td>100k</td><td>750</td><td>75 M</td><td>51 M</td><td>Premium, petit volume</td></tr>
+</table></div>
+<p><strong>Recommandation : 65 000 – 75 000 XOF</strong> — bon volume + <strong>~60–65 M XOF</strong> de bénéfice net la 1ʳᵉ année au scénario médian.</p>
+<hr>
+
+  <div class="section-break"></div>
+  <h1>Checklist fournisseur</h1>
+  <h1>Checklist fournisseur — avant commande tablette + stylet</h1>
+<p>À envoyer par message Alibaba <strong>avant</strong> tout paiement en volume.  </p>
+<p>Copier-coller en anglais (les fournisseurs chinois répondent mieux en anglais).</p>
+<hr>
+<h2>A. Échantillon obligatoire (2 tablettes + 5 stylets)</h2>
+<ul>
+<li>[ ] Commander <strong>2 unités</strong> tablette au prix échantillon</li>
+<li>[ ] Commander <strong>5 stylets</strong> (même modèle que la prod)</li>
+<li>[ ] Payer via <strong>Alibaba Trade Assurance</strong> uniquement</li>
+<li>[ ] Exiger <strong>numéro de suivi</strong> sous 48 h</li>
+<li>[ ] Tester <strong>14 jours</strong> avec SeNote APK avant commande pilote</li>
+</ul>
+<hr>
+<h2>B. Questions tablette (Jilian Xingmeng ou équivalent)</h2>
+<p>Envoyer ce bloc au fournisseur :</p>
+<pre><code>
+Hi, before bulk order we need exact specifications (not marketing specs):
+
+
+
+1. REAL RAM and ROM (we will verify with AIDA64) — is "12GB+512GB" real or virtual expanded?
+
+2. Exact chipset model (e.g. MTK6762, Unisoc SC9863A)?
+
+3. Android version and security patch date?
+
+4. Screen: IPS or TN? Touch sampling rate for stylus?
+
+5. Battery capacity (mAh) and real battery life (video/idle)?
+
+6. Does it support USB OTG?
+
+7. MicroSD max capacity?
+
+8. Warranty: 1 year? Who pays return shipping for DOA units?
+
+9. Can you pre-install our APK (kiosk mode) before shipping? Cost per unit?
+
+10. MOQ for custom boot logo / box with "SeNote" branding?
+
+11. Provide 2-minute factory video of EXACT unit we will receive.
+
+12. Lead time for 30 / 100 / 200 units?
+
+13. Sea freight quote to Dakar, Senegal — CIF or FOB Shenzhen?
+
+</code></pre>
+<h3>Critères GO / NO-GO après réception échantillon</h3>
+<div class="table-wrap"><table>
+<tr><th>Test</th><th>Minimum acceptable</th></tr>
+<tr><td>RAM réelle</td><td>≥ 3 Go utilisable</td></tr>
+<tr><td>Stockage réel</td><td>≥ 32 Go libres après OS</td></tr>
+<tr><td>Latence stylet</td><td>Pas de traînée visible à écriture rapide</td></tr>
+<tr><td>SeNote APK</td><td>Installation + écriture 30 min sans crash</td></tr>
+<tr><td>Autonomie</td><td>≥ 4 h écriture continue</td></tr>
+<tr><td>Écran</td><td>1280×800 IPS, pas de zones mortes au toucher</td></tr>
+<tr><td>Chauffe</td><td>Pas de surchauffe en 1 h d'usage</td></tr>
+</table></div>
+<ul>
+<li>[ ] Tous les critères GO validés</li>
+<li>[ ] Si NON-GO → changer de fournisseur (ne pas commander 30+)</li>
+</ul>
+<hr>
+<h2>C. Questions stylet (Kingstar KS-A02)</h2>
+<pre><code>
+Hi, for model KS-A02:
+
+
+
+1. Passive or active capacitive? Compatible with generic Android 10 tablets (not only iPad)?
+
+2. Palm rejection supported on Android?
+
+3. Replaceable nib included? How many spare nibs per unit?
+
+4. Battery: real usage hours? Charging time via USB-C?
+
+5. Power indicator: how does it work?
+
+6. Can we add laser logo "SeNote" on pen body? MOQ and cost?
+
+7. Custom packaging box MOQ 300 — total price per unit?
+
+8. Sample 5 pcs — can you ship with tablets in same parcel?
+
+9. Warranty for DOA / dead battery within 30 days?
+
+10. Lead time for 30 / 100 / 500 units?
+
+</code></pre>
+<h3>Critères GO / NO-GO stylet</h3>
+<div class="table-wrap"><table>
+<tr><th>Test</th><th>Minimum acceptable</th></tr>
+<tr><td>Écriture SeNote</td><td>Trait continu, pas de coupures</td></tr>
+<tr><td>Recharge</td><td>LED / indicateur fonctionne</td></tr>
+<tr><td>Tenue en main</td><td>Confortable pour élève 12–18 ans</td></tr>
+<tr><td>Poids</td><td>&lt; 20 g</td></tr>
+<tr><td>Autonomie</td><td>≥ 6 h usage réel</td></tr>
+</table></div>
+<hr>
+<h2>D. Logistique &amp; paiement</h2>
+<ul>
+<li>[ ] Devis <strong>écrit</strong> : prix unitaire × quantité + fret + assurance</li>
+<li>[ ] Incoterm clarifié (<strong>FOB</strong> Shenzhen ou <strong>CIF</strong> Dakar)</li>
+<li>[ ] Transitaire Dakar identifié (ou agent Alibaba freight)</li>
+<li>[ ] Budget douane Sénégal estimé (demander à transitaire : <strong>10–25 %</strong> CIF)</li>
+<li>[ ] Paiement : <strong>30 % acompte / 70 % avant expédition</strong> max (Trade Assurance)</li>
+<li>[ ] Jamais de Western Union hors plateforme</li>
+</ul>
+<hr>
+<h2>E. Bundle SeNote (préparation avant vente)</h2>
+<ul>
+<li>[ ] APK SeNote kiosk signé et testé sur le modèle exact</li>
+<li>[ ] Stylet + tablette + câble USB-C dans la boîte</li>
+<li>[ ] Quick start 1 page en français (QR code vers aide)</li>
+<li>[ ] Numéro WhatsApp SAV sur l'étiquette</li>
+<li>[ ] Politique retour : 7 jours DOA, 1 an défaut fabrication</li>
+</ul>
+<hr>
+<h2>F. Modèle de message court (premier contact)</h2>
+<pre><code>
+Hello,
+
+
+
+We are SeNote (education app, Senegal market). We want to order a pilot batch:
+
+
+
+- 30 tablets 10.1" Android (exact model from your listing)
+
+- 30 stylus pens KS-A02 (or your recommended universal capacitive pen)
+
+- Pre-install our APK if possible
+
+- Ship to Dakar, Senegal — please quote sea freight
+
+
+
+First step: we need 2 tablet samples + 5 stylus samples for testing.
+
+Please confirm real RAM/ROM specs and send factory video.
+
+
+
+Payment via Alibaba Trade Assurance only.
+
+
+
+Thank you.
+
+</code></pre>
+<hr>
+<h2>G. Suivi commande pilote (30 kits)</h2>
+<div class="table-wrap"><table>
+<tr><th>Étape</th><th>Délai typique</th><th>Action</th></tr>
+<tr><td>Échantillon</td><td>7–15 jours</td><td>Tests SeNote</td></tr>
+<tr><td>Commande 30</td><td>J+0</td><td>Paiement Trade Assurance</td></tr>
+<tr><td>Production</td><td>15–25 jours</td><td>Demander photos avant expédition</td></tr>
+<tr><td>Fret mer</td><td>25–35 jours</td><td>Suivre conteneur / LCL</td></tr>
+<tr><td>Dédouanement Dakar</td><td>5–10 jours</td><td>Transitaire</td></tr>
+<tr><td>Flash APK final</td><td>2–3 jours</td><td>Sur place</td></tr>
+<tr><td>Vente</td><td>—</td><td>Prix cible <strong>79 000 XOF</strong></td></tr>
+</table></div>
+<hr>
+<p>*Dernière mise à jour : juin 2026 — ajuster taux XOF et prix fournisseur après devis réels.*</p>
+
+  <div class="section-break"></div>
+  <h1>Annexes — données tabulaires</h1>
+  <p>Tableaux exportés depuis les fichiers CSV du dossier docs/.</p>
+  
+    <section class="csv-section">
+      <h2>Annexe A — Feuille de route KPI (mois par mois)</h2>
+      <div class="table-wrap">
+        <table class="data"><tr><th>Mois</th><th>Phase</th><th>Ventes objectif mois</th><th>Cumul objectif</th><th>CA mois XOF prix 70k</th><th>Benefice net mois XOF</th><th>Stock a avoir</th><th>Actions prioritaires</th><th>Gate si pas atteint</th></tr><tr><td>1</td><td>0 Produit</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>Finir APK + commander echantillons</td><td>Reporter lancement</td></tr><tr><td>2</td><td>0 Produit</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>Tests stylet + video demo</td><td>Changer fournisseur si echec</td></tr><tr><td>3</td><td>1 Pilote</td><td>5</td><td>5</td><td>350000</td><td>209000</td><td>30</td><td>WhatsApp Business + 1ere demo lycee</td><td>-</td></tr><tr><td>4</td><td>1 Pilote</td><td>25</td><td>30</td><td>1750000</td><td>1045000</td><td>0</td><td>Ecouler 30 kits pilote</td><td>Si &lt;20 ventes revoir prix</td></tr><tr><td>5</td><td>2 Accel</td><td>40</td><td>70</td><td>2800000</td><td>1672000</td><td>100</td><td>Commander 100 kits + TikTok</td><td>-</td></tr><tr><td>6</td><td>2 Accel</td><td>50</td><td>120</td><td>3500000</td><td>2090000</td><td>80</td><td>2 ecoles partenaires + 3x paiement</td><td>-</td></tr><tr><td>7</td><td>2 Accel</td><td>80</td><td>200</td><td>5600000</td><td>3344000</td><td>50</td><td>1 commande groupe ecole</td><td>-</td></tr><tr><td>8</td><td>2 Accel</td><td>100</td><td>300</td><td>7000000</td><td>4180000</td><td>30</td><td>4 villes + ambassadeurs</td><td>Si cumul &lt;200 accelerer pub</td></tr><tr><td>9</td><td>3 Charge</td><td>150</td><td>450</td><td>10500000</td><td>6270000</td><td>200</td><td>Commander 200 kits + livreur</td><td>-</td></tr><tr><td>10</td><td>3 Charge</td><td>250</td><td>700</td><td>17500000</td><td>10450000</td><td>150</td><td>Campagne examens + pub Facebook</td><td>-</td></tr><tr><td>11</td><td>3 Charge</td><td>450</td><td>1150</td><td>31500000</td><td>18810000</td><td>100</td><td>Diaspora + influenceurs</td><td>-</td></tr><tr><td>12</td><td>3 Charge</td><td>500</td><td>1650</td><td>35000000</td><td>20900000</td><td>50</td><td>Fin annee stock suffisant</td><td>Si &lt;1200 ajuster an2</td></tr><tr><td>An2</td><td>4 Scale</td><td>290</td><td>5000</td><td>20300000</td><td>12110000</td><td>500</td><td>30 ecoles + 1 commercial</td><td>-</td></tr><tr><td>An3</td><td>4 Scale</td><td>488</td><td>11000</td><td>34160000</td><td>20368000</td><td>1000</td><td>Distributeur regions + volume Alibaba</td><td>-</td></tr></table>
+      </div>
+    </section>
+
+    <section class="csv-section">
+      <h2>Annexe B — Coûts par scénario de commande</h2>
+      <div class="table-wrap">
+        <table class="data"><tr><th>Scenario</th><th>Kits</th><th>Tablettes EUR</th><th>Stylets EUR</th><th>Fret douane prep EUR</th><th>Total EUR</th><th>Cout par kit EUR</th><th>Cout par kit XOF</th></tr><tr><td>Echantillons</td><td>2</td><td>64</td><td>25</td><td>80</td><td>169</td><td>85</td><td>55675</td></tr><tr><td>Pilote</td><td>30</td><td>900</td><td>75</td><td>325</td><td>1300</td><td>43</td><td>28165</td></tr><tr><td>Stock 1</td><td>100</td><td>3000</td><td>250</td><td>950</td><td>4200</td><td>42</td><td>27510</td></tr><tr><td>Stock 2</td><td>200</td><td>6000</td><td>500</td><td>1600</td><td>8100</td><td>41</td><td>26855</td></tr><tr><td>Volume</td><td>2000</td><td>50000</td><td>3900</td><td>14000</td><td>67900</td><td>34</td><td>22270</td></tr></table>
+      </div>
+    </section>
+
+    <section class="csv-section">
+      <h2>Annexe C — Marges stock 30 / 100 / 200 kits</h2>
+      <div class="table-wrap">
+        <table class="data"><tr><th>Scenario</th><th>Kits</th><th>Cout kit XOF</th><th>Prix vente XOF</th><th>Quantite vendue</th><th>CA XOF</th><th>Benefice brut XOF</th><th>Benefice net XOF</th><th>CA EUR</th><th>Benefice net EUR</th></tr><tr><td>Pilote</td><td>30</td><td>28200</td><td>40000</td><td>30</td><td>1200000</td><td>354000</td><td>336300</td><td>1832</td><td>513</td></tr><tr><td>Pilote</td><td>30</td><td>28200</td><td>50000</td><td>30</td><td>1500000</td><td>654000</td><td>621300</td><td>2290</td><td>948</td></tr><tr><td>Pilote</td><td>30</td><td>28200</td><td>60000</td><td>30</td><td>1800000</td><td>954000</td><td>906300</td><td>2748</td><td>1384</td></tr><tr><td>Pilote</td><td>30</td><td>28200</td><td>70000</td><td>30</td><td>2100000</td><td>1254000</td><td>1191300</td><td>3206</td><td>1817</td></tr><tr><td>Pilote</td><td>30</td><td>28200</td><td>80000</td><td>30</td><td>2400000</td><td>1554000</td><td>1476300</td><td>3664</td><td>2259</td></tr><tr><td>Pilote</td><td>30</td><td>28200</td><td>90000</td><td>30</td><td>2700000</td><td>1854000</td><td>1761300</td><td>4122</td><td>2687</td></tr><tr><td>Pilote</td><td>30</td><td>28200</td><td>100000</td><td>30</td><td>3000000</td><td>2154000</td><td>2046300</td><td>4580</td><td>3130</td></tr><tr><td>Stock 1</td><td>100</td><td>27500</td><td>40000</td><td>100</td><td>4000000</td><td>1250000</td><td>1187500</td><td>6107</td><td>1816</td></tr><tr><td>Stock 1</td><td>100</td><td>27500</td><td>50000</td><td>100</td><td>5000000</td><td>2250000</td><td>2137500</td><td>7634</td><td>3267</td></tr><tr><td>Stock 1</td><td>100</td><td>27500</td><td>60000</td><td>100</td><td>6000000</td><td>3250000</td><td>3087500</td><td>9160</td><td>4718</td></tr><tr><td>Stock 1</td><td>100</td><td>27500</td><td>70000</td><td>100</td><td>7000000</td><td>4250000</td><td>4037500</td><td>10687</td><td>6168</td></tr><tr><td>Stock 1</td><td>100</td><td>27500</td><td>80000</td><td>100</td><td>8000000</td><td>5250000</td><td>4987500</td><td>12214</td><td>7618</td></tr><tr><td>Stock 1</td><td>100</td><td>27500</td><td>90000</td><td>100</td><td>9000000</td><td>6250000</td><td>5937500</td><td>13740</td><td>9069</td></tr><tr><td>Stock 1</td><td>100</td><td>27500</td><td>100000</td><td>100</td><td>10000000</td><td>7250000</td><td>6887500</td><td>15267</td><td>10519</td></tr><tr><td>Stock 2</td><td>200</td><td>26850</td><td>40000</td><td>200</td><td>8000000</td><td>2630000</td><td>2498500</td><td>12214</td><td>3817</td></tr><tr><td>Stock 2</td><td>200</td><td>26850</td><td>50000</td><td>200</td><td>10000000</td><td>4630000</td><td>4398500</td><td>15267</td><td>6718</td></tr><tr><td>Stock 2</td><td>200</td><td>26850</td><td>60000</td><td>200</td><td>12000000</td><td>6630000</td><td>6298500</td><td>18321</td><td>9618</td></tr><tr><td>Stock 2</td><td>200</td><td>26850</td><td>70000</td><td>200</td><td>14000000</td><td>8630000</td><td>8198500</td><td>21374</td><td>12519</td></tr><tr><td>Stock 2</td><td>200</td><td>26850</td><td>80000</td><td>200</td><td>16000000</td><td>10630000</td><td>10098500</td><td>24427</td><td>15420</td></tr><tr><td>Stock 2</td><td>200</td><td>26850</td><td>90000</td><td>200</td><td>18000000</td><td>12630000</td><td>11998500</td><td>27481</td><td>18321</td></tr><tr><td>Stock 2</td><td>200</td><td>26850</td><td>100000</td><td>200</td><td>20000000</td><td>14630000</td><td>13898500</td><td>30534</td><td>21221</td></tr></table>
+      </div>
+    </section>
+
+    <section class="csv-section">
+      <h2>Annexe D — Marché année 1 (prudent / médian / optimiste)</h2>
+      <div class="table-wrap">
+        <table class="data"><tr><th>Prix vente XOF</th><th>Cout kit XOF</th><th>Ventes prudent</th><th>Ventes median</th><th>Ventes optimiste</th><th>CA median XOF</th><th>Benefice brut median XOF</th><th>Benefice net median XOF</th><th>CA median EUR</th><th>Benefice net median EUR</th><th>Marge pct</th></tr><tr><td>40000</td><td>28200</td><td>2000</td><td>3500</td><td>5000</td><td>140000000</td><td>41300000</td><td>39235000</td><td>213740</td><td>59901</td><td>30</td></tr><tr><td>50000</td><td>28200</td><td>1500</td><td>2750</td><td>4000</td><td>137500000</td><td>59930000</td><td>56933500</td><td>209924</td><td>86921</td><td>44</td></tr><tr><td>60000</td><td>28200</td><td>1000</td><td>2000</td><td>3000</td><td>120000000</td><td>63600000</td><td>60420000</td><td>183206</td><td>92244</td><td>53</td></tr><tr><td>70000</td><td>28200</td><td>800</td><td>1650</td><td>2500</td><td>115500000</td><td>68970000</td><td>65521500</td><td>176336</td><td>100032</td><td>60</td></tr><tr><td>80000</td><td>28200</td><td>500</td><td>1250</td><td>2000</td><td>100000000</td><td>64750000</td><td>61512500</td><td>152672</td><td>93912</td><td>65</td></tr><tr><td>90000</td><td>28200</td><td>400</td><td>950</td><td>1500</td><td>85500000</td><td>58710000</td><td>55774500</td><td>130534</td><td>85152</td><td>69</td></tr><tr><td>100000</td><td>28200</td><td>300</td><td>750</td><td>1200</td><td>75000000</td><td>53850000</td><td>51157500</td><td>114504</td><td>78103</td><td>72</td></tr></table>
+      </div>
+    </section>
+
+    <section class="csv-section">
+      <h2>Annexe E — Marché cumulé 3 ans</h2>
+      <div class="table-wrap">
+        <table class="data"><tr><th>Prix vente XOF</th><th>Cout kit XOF</th><th>Ventes prudent</th><th>Ventes median</th><th>Ventes optimiste</th><th>CA median XOF</th><th>Benefice brut median XOF</th><th>Benefice net median XOF</th><th>CA median EUR</th><th>Benefice net median EUR</th></tr><tr><td>40000</td><td>27000</td><td>15000</td><td>25000</td><td>40000</td><td>1000000000</td><td>325000000</td><td>308750000</td><td>152672</td><td>471374</td></tr><tr><td>50000</td><td>27000</td><td>12000</td><td>20000</td><td>30000</td><td>1000000000</td><td>460000000</td><td>437000000</td><td>152672</td><td>667176</td></tr><tr><td>60000</td><td>27000</td><td>8000</td><td>14000</td><td>22000</td><td>840000000</td><td>462000000</td><td>438900000</td><td>128244</td><td>670076</td></tr><tr><td>70000</td><td>27000</td><td>6000</td><td>11000</td><td>18000</td><td>770000000</td><td>473000000</td><td>449350000</td><td>117557</td><td>686031</td></tr><tr><td>80000</td><td>27000</td><td>4000</td><td>8500</td><td>14000</td><td>680000000</td><td>450500000</td><td>427975000</td><td>103817</td><td>653397</td></tr><tr><td>90000</td><td>27000</td><td>3000</td><td>6000</td><td>10000</td><td>540000000</td><td>378000000</td><td>359100000</td><td>82443</td><td>548244</td></tr><tr><td>100000</td><td>27000</td><td>2000</td><td>4500</td><td>8000</td><td>450000000</td><td>328500000</td><td>312075000</td><td>68702</td><td>476451</td></tr></table>
+      </div>
+    </section>
+
+  <p class="footer-note">
+    SeNote · Formules : CA = Prix × Qté · Bénéfice net = (Prix − Coût) × Qté × 0,95
+  </p>
+</main>
+
+</body>
+</html>

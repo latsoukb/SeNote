@@ -1,0 +1,15 @@
+Mois;Phase;Ventes_objectif_mois;Cumul_objectif;CA_mois_XOF_prix_70k;Benefice_net_mois_XOF;Stock_a_avoir;Actions_prioritaires;Gate_si_pas_atteint
+1;0 Produit;0;0;0;0;0;Finir APK + commander echantillons;Reporter lancement
+2;0 Produit;0;0;0;0;0;Tests stylet + video demo;Changer fournisseur si echec
+3;1 Pilote;5;5;350000;209000;30;WhatsApp Business + 1ere demo lycee;-
+4;1 Pilote;25;30;1750000;1045000;0;Ecouler 30 kits pilote;Si <20 ventes revoir prix
+5;2 Accel;40;70;2800000;1672000;100;Commander 100 kits + TikTok;-
+6;2 Accel;50;120;3500000;2090000;80;2 ecoles partenaires + 3x paiement;-
+7;2 Accel;80;200;5600000;3344000;50;1 commande groupe ecole;-
+8;2 Accel;100;300;7000000;4180000;30;4 villes + ambassadeurs;Si cumul <200 accelerer pub
+9;3 Charge;150;450;10500000;6270000;200;Commander 200 kits + livreur;-
+10;3 Charge;250;700;17500000;10450000;150;Campagne examens + pub Facebook;-
+11;3 Charge;450;1150;31500000;18810000;100;Diaspora + influenceurs;-
+12;3 Charge;500;1650;35000000;20900000;50;Fin annee stock suffisant;Si <1200 ajuster an2
+An2;4 Scale;290;5000;20300000;12110000;500;30 ecoles + 1 commercial;-
+An3;4 Scale;488;11000;34160000;20368000;1000;Distributeur regions + volume Alibaba;-
