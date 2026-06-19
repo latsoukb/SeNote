@@ -16,10 +16,12 @@ import AccessGate from './components/AccessGate';
 import ErrorBoundary from './components/ErrorBoundary';
 import GoogleDriveOAuthHandler from './components/GoogleDriveOAuthHandler';
 import { ensureAppConfig } from './lib/appConfig';
+import { initKioskLock } from './lib/kioskLock';
 
 function App() {
   React.useEffect(() => {
     ensureAppConfig();
+    initKioskLock();
   }, []);
 
   const native = isNativeApp();

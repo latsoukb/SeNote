@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { applyAccentTheme, DEFAULT_ACCENT, isValidAccent } from '../lib/accentThemes';
+import { syncSystemChrome } from '../lib/systemChrome';
 
 const ThemeContext = createContext({
   theme: 'light',
@@ -27,6 +28,7 @@ export const ThemeProvider = ({ children }) => {
     applyAccentTheme(accent, isDark);
     localStorage.setItem('senote-theme', theme);
     localStorage.setItem('senote-accent', accent);
+    syncSystemChrome(theme);
   }, [theme, accent]);
 
   const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));

@@ -45,6 +45,71 @@ Ouvre l'adresse affichée (ex. `http://192.168.1.x:3000`) sur la tablette dans C
 
 ---
 
+## Option 3 — Émulateur Android Studio (APK kiosk)
+
+SeNote sur tablette combine **deux niveaux** :
+
+| Niveau | Rôle |
+|--------|------|
+| **App kiosk** (`isKioskApp()`) | Pas de PIN bêta, bibliothèque vide, sidebar fermée, stockage natif |
+| **Verrou Android** (`lockTaskMode`) | L'élève ne peut pas quitter SeNote (pas d'accueil Android, pas de multitâche) |
+
+Comportements app kiosk :
+- pas de code PIN bêta
+- bibliothèque vide au premier lancement
+- sidebar pages **fermée** dans un cahier
+- stockage natif (Capacitor Preferences)
+- sync Google Drive / JokkoNote comme sur tablette
+
+Comportements verrou Android (APK natif uniquement) :
+- **Lock Task Mode** activé au lancement (`startLockTask`)
+- bouton **Retour** ne ferme plus l'app
+- barres système (haut/bas) suivent le thème clair/sombre
+
+**Sortir du verrou** (admin / test) : maintenir **Retour + Aperçu** (multitâche) quelques secondes, ou `adb shell am task lock stop`.
+
+### Prérequis
+
+1. Android Studio installé
+2. Un émulateur lancé (Device Manager → **Pixel Tablet** recommandé)
+3. Vérifier : `adb devices` affiche `emulator-5554 device`
+
+### Installer et lancer (1 commande)
+
+```bash
+chmod +x scripts/run-emulator.sh
+./scripts/run-emulator.sh
+```
+
+Le script : build web en mode kiosk → `cap sync` → `installDebug` → ouvre SeNote.
+
+Si erreur **INSTALL_FAILED_UPDATE_INCOMPATIBLE** : le script désinstalle l’ancienne version automatiquement.
+
+### Google Drive sur émulateur
+
+Copier `frontend/.env.example` → `frontend/.env` avec vos IDs Google (voir [GOOGLE_DRIVE.md](./GOOGLE_DRIVE.md)), puis relancer `./scripts/run-emulator.sh`.
+
+### Checklist kiosk émulateur
+
+- [ ] Pas d’écran « Accès bêta privé » au démarrage
+- [ ] Accueil vide (pas de cahiers démo)
+- [ ] Créer un cahier → sidebar pages reste fermée
+- [ ] **Verrou kiosk** : impossible de quitter via Accueil / multitâche
+- [ ] **Mode clair** : barres haut et bas blanches (pas noires)
+- [ ] Interrupteurs (sync auto, etc.) **verts** quand activés (style iOS)
+- [ ] Paramètres → Google Drive → connexion OAuth
+- [ ] Réception JokkoNote (si `REACT_APP_JOKKO_SYNC_URL` configuré)
+
+### Alternative : APK release GitHub
+
+Télécharger **SeNote-tablet.apk** depuis [Releases](https://github.com/latsoukb/SeNote/releases), glisser-déposer sur l’émulateur, ou :
+
+```bash
+adb install -r SeNote-tablet.apk
+```
+
+---
+
 ## Google Drive (optionnel, tester sur Mac)
 
 1. Suivre [GOOGLE_DRIVE.md](./GOOGLE_DRIVE.md) (Google Cloud + `REACT_APP_GOOGLE_WEB_CLIENT_ID` dans `frontend/.env`)
